@@ -1,0 +1,2477 @@
+[
+  {
+    "name": "/ai_distiller",
+    "score": 0.77,
+    "description": "AI-Distiller wrapper for code analysis - refactoring, security, performance, architecture.",
+    "category": "development",
+    "keywords": [
+      "analysis",
+      "performance"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "analyze",
+      "bug-hunt",
+      "comply"
+    ]
+  },
+  {
+    "name": "/diffbro",
+    "score": 0.58,
+    "description": "AI-powered code review using diffbro (semantic diff analysis)",
+    "category": "quality",
+    "keywords": [
+      "analysis"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "analyze",
+      "comply",
+      "llm-api"
+    ]
+  },
+  {
+    "name": "/cleanup",
+    "score": 0.49,
+    "description": "Review and clean up directory structure violations with LLM-guided analysis",
+    "category": "maintenance",
+    "keywords": [
+      "analysis"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "bug-hunt",
+      "standards"
+    ]
+  },
+  {
+    "name": "/perf",
+    "score": 0.49,
+    "description": "Performance tracing wrapper for Python - detects anti-patterns like nested ThreadPoolExecutors.",
+    "category": "utilities",
+    "keywords": [
+      "performance"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "bug-hunt",
+      "analyze",
+      "r"
+    ]
+  },
+  {
+    "name": "/Master Skill Orchestrator",
+    "score": 0.47,
+    "description": "Intelligent central orchestrator for unified skill routing and workflow management across 192+ skills with Phase 2 Quality Pipeline integration",
+    "category": "orchestration",
+    "keywords": [
+      "across",
+      "routing"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "analyze",
+      "arch",
+      "workflow",
+      "cwo_orchestrator"
+    ]
+  },
+  {
+    "name": "/review_bundle",
+    "score": 0.42,
+    "description": "Create decision-ready review bundles for external architectural review with evidence quality controls",
+    "category": "documentation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "analyze",
+      "llm-api"
+    ]
+  },
+  {
+    "name": "/code-python-2025",
+    "score": 0.39,
+    "description": "Python 2025 standards checker. Validates uv, ruff, mypy, Pydantic V2, asyncio.TaskGroup.",
+    "category": "execution",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "test",
+      "bug-hunt"
+    ]
+  },
+  {
+    "name": "/comply",
+    "score": 0.39,
+    "description": "Unified standards and constitutional validation for implemented code",
+    "category": "validation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "test",
+      "bug-hunt",
+      "q",
+      "analyze",
+      "standards",
+      "qa",
+      "build"
+    ]
+  },
+  {
+    "name": "/refactor",
+    "score": 0.39,
+    "description": "Multi-file refactoring with orchestration - discovers synergies and assigns tasks to agents.",
+    "category": "Refactoring",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "analyze",
+      "test",
+      "comply",
+      "evolve"
+    ]
+  },
+  {
+    "name": "/adversarial-review",
+    "score": 0.37,
+    "description": "Parallel adversarial code review with 8 specialized analysis perspectives",
+    "category": "analysis",
+    "keywords": [
+      "analysis"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "analyze",
+      "test",
+      "fix"
+    ]
+  },
+  {
+    "name": "/command-enhance",
+    "score": 0.37,
+    "description": "Enhance existing commands with strategic gap analysis and MVP compliance",
+    "category": "development",
+    "keywords": [
+      "analysis"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "command-create",
+      "analyze",
+      "nse"
+    ]
+  },
+  {
+    "name": "/think",
+    "score": 0.37,
+    "description": "Lightweight to comprehensive analysis gate - pause and think before implementing",
+    "category": "meta",
+    "keywords": [
+      "analysis"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "s",
+      "r",
+      "sequential-thinking",
+      "nse",
+      "analyze"
+    ]
+  },
+  {
+    "name": "/cb",
+    "score": 0.36,
+    "description": "CereBrum (CB) - Governance Brain for CSDA ecosystem audits and compliance",
+    "category": "governance",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "analyze",
+      "comply"
+    ]
+  },
+  {
+    "name": "/code-typescript-2025",
+    "score": 0.36,
+    "description": "TypeScript 2025 standards checker. Validates Node 22, pnpm, Biome, Zod, Vitest, ESM, Hono.",
+    "category": "execution",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "test",
+      "bug-hunt"
+    ]
+  },
+  {
+    "name": "/nse",
+    "score": 0.36,
+    "description": "Next Step Engine v2 - Unified intelligent development recommendations with constitutional compliance",
+    "category": "analysis",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "analyze",
+      "search",
+      "r",
+      "arch",
+      "r",
+      "llm-brainstorm",
+      "comply",
+      "build",
+      "workflow"
+    ]
+  },
+  {
+    "name": "/r",
+    "score": 0.35,
+    "description": "Deterministic remember/refine pass with decomposed DUF checks, mode decision, and context writing. Finds what was forgotten, validates plans, proposes predictable low-risk improvements, decides mode, and writes context for downstream skills; escalates to /s when needed.",
+    "category": "quality",
+    "keywords": [
+      "context",
+      "mode"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "q",
+      "s",
+      "p"
+    ]
+  },
+  {
+    "name": "/validate-safety-patterns",
+    "score": 0.33,
+    "description": "Safety pattern validation with evidence-based reporting",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "bug-hunt",
+      "apply_safety-patterns"
+    ]
+  },
+  {
+    "name": "/dgate",
+    "score": 0.32,
+    "description": "Data-driven AI Gateway with real provider performance tracking and intelligent routing",
+    "category": "llm",
+    "keywords": [
+      "performance",
+      "routing"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "llm-route",
+      "llm-performance",
+      "research"
+    ]
+  },
+  {
+    "name": "/apply_safety_patterns",
+    "score": 0.3,
+    "description": "Constitutionally compliant safety pattern application with proven success rates",
+    "category": "safety",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "bug-hunt",
+      "validate-safety-patterns"
+    ]
+  },
+  {
+    "name": "/agent_team",
+    "score": 0.29,
+    "description": "Upgrade a Claude Skill or project prompt to use Claude Code agent teams and subagents effectively, with clear routing, task coordination, and completion safeguards.",
+    "category": "",
+    "keywords": [
+      "routing",
+      "task"
+    ],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/code",
+    "score": 0.27,
+    "description": "AI-assisted feature development workflow (Idea to PR).",
+    "category": "development",
+    "keywords": [],
+    "depends_on": [
+      "search"
+    ],
+    "suggest": [
+      "qa",
+      "test",
+      "comply"
+    ]
+  },
+  {
+    "name": "/multi-file-refactor",
+    "score": 0.27,
+    "description": "Multi-file refactoring with synergy detection and confidence scoring.",
+    "category": "development",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "refactor",
+      "test",
+      "comply"
+    ]
+  },
+  {
+    "name": "/context_status",
+    "score": 0.26,
+    "description": "Context usage statistics via compaction timing analysis",
+    "category": "utilities",
+    "keywords": [
+      "analysis",
+      "context"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "llm-health",
+      "llm-performance",
+      "quota"
+    ]
+  },
+  {
+    "name": "/evidence-applicability",
+    "score": 0.26,
+    "description": "Evidence must apply to the claim's context, not just support its content.",
+    "category": "verification",
+    "keywords": [
+      "context",
+      "not"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "research"
+    ]
+  },
+  {
+    "name": "/agent-orchestrator",
+    "score": 0.25,
+    "description": "Meta-agent for dynamic multi-agent coordination. Discovers, selects, and orchestrates subagents.",
+    "category": "execution",
+    "keywords": [
+      "dynamic"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "orchestrator",
+      "nse",
+      "cwo"
+    ]
+  },
+  {
+    "name": "/ask",
+    "score": 0.25,
+    "description": "Universal CLI router for intelligent command discovery and orchestration",
+    "category": "consultation",
+    "keywords": [
+      "discovery"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "search",
+      "orchestrator",
+      "nse"
+    ]
+  },
+  {
+    "name": "/prrp",
+    "score": 0.25,
+    "description": "LLM Production-Ready Code Review Prompt - comprehensive post-coding production-ready reviews",
+    "category": "code-review",
+    "keywords": [
+      "llm"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "qa",
+      "review"
+    ]
+  },
+  {
+    "name": "/cks-usage",
+    "score": 0.24,
+    "description": "Constitutional Knowledge System usage patterns and queries",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "cks",
+      "search",
+      "analyze"
+    ]
+  },
+  {
+    "name": "/constitutional-patterns",
+    "score": 0.24,
+    "description": "Standards for constitutional compliance and pattern enforcement.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "standards",
+      "validate-safety-patterns"
+    ]
+  },
+  {
+    "name": "/discover",
+    "score": 0.24,
+    "description": "Discover and explore codebase patterns",
+    "category": "discovery",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "search",
+      "analyze",
+      "nse"
+    ]
+  },
+  {
+    "name": "/hooks-edit",
+    "score": 0.24,
+    "description": "Edit Claude Code hook files",
+    "category": "control",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "git-safety",
+      "comply",
+      "standards"
+    ]
+  },
+  {
+    "name": "/skeptic",
+    "score": 0.24,
+    "description": "AI output validation using cognitive frameworks and evidence checking",
+    "category": "validation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "cognitive-frameworks",
+      "guard",
+      "analyze",
+      "verify"
+    ]
+  },
+  {
+    "name": "/truth",
+    "score": 0.24,
+    "description": "Truth Constitution Command - Verify claims using actual evidence",
+    "category": "validation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply"
+    ]
+  },
+  {
+    "name": "/obs",
+    "score": 0.22,
+    "description": "View hook performance, traces, and system health from SQLite events database",
+    "category": "observability",
+    "keywords": [
+      "performance"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "health-monitor",
+      "debug",
+      "nse"
+    ]
+  },
+  {
+    "name": "/ocpa",
+    "score": 0.22,
+    "description": "Optimal Completion Path Analysis for architectural decision validation",
+    "category": "architecture",
+    "keywords": [
+      "analysis"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "arch",
+      "r"
+    ]
+  },
+  {
+    "name": "/quota",
+    "score": 0.22,
+    "description": "API Provider Quota Status Checker",
+    "category": "utilities",
+    "keywords": [
+      "api"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "llm-health",
+      "llm-performance",
+      "nse"
+    ]
+  },
+  {
+    "name": "/ralph",
+    "score": 0.22,
+    "description": "Ralph Loop - task decomposition and iterative development",
+    "category": "strategy",
+    "keywords": [
+      "task"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "build",
+      "tdd",
+      "test"
+    ]
+  },
+  {
+    "name": "/artifact_done",
+    "score": 0.21,
+    "description": "Mark an artifact as complete for a tracked item - PRD, ARD, CHANGELOG, README",
+    "category": "tracking",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "artifact-audit",
+      "comply",
+      "build"
+    ]
+  },
+  {
+    "name": "/cognitive_stack",
+    "score": 0.21,
+    "description": "Cognitive-Stack Framework management and orchestration command",
+    "category": "orchestration",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "cognitive-frameworks",
+      "nse",
+      "analyze"
+    ]
+  },
+  {
+    "name": "/constraints",
+    "score": 0.21,
+    "description": "Show active project constraints from CLAUDE.md",
+    "category": "project",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "standards",
+      "nse"
+    ]
+  },
+  {
+    "name": "/csf-nip-dev",
+    "score": 0.21,
+    "description": "Development standards for the CSF/NIP ecosystem.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "standards",
+      "test"
+    ]
+  },
+  {
+    "name": "/reports",
+    "score": 0.21,
+    "description": "Comprehensive report management system with intelligent organization and search",
+    "category": "documentation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "search",
+      "nse",
+      "analyze"
+    ]
+  },
+  {
+    "name": "/ship",
+    "score": 0.21,
+    "description": "Deploy readiness and runtime snapshot for pre/post deployment validation",
+    "category": "deployment",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "vdate-deploy",
+      "verify",
+      "qa",
+      "analyze"
+    ]
+  },
+  {
+    "name": "/similarity",
+    "score": 0.21,
+    "description": "Find skills similar to a target skill based on keywords, dependencies, and metadata",
+    "category": "analysis",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "search",
+      "analyze",
+      "adversarial-review"
+    ]
+  },
+  {
+    "name": "/standards",
+    "score": 0.21,
+    "description": "Read and enforce CSF NIP standards",
+    "category": "standards",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "csf-nip-dev",
+      "test"
+    ]
+  },
+  {
+    "name": "/tdd",
+    "score": 0.21,
+    "description": "Test-Driven Development with PARALLEL subagent delegation. RED\u2192GREEN\u2192REFACTOR cycle.",
+    "category": "execution",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "test",
+      "qa",
+      "analyze",
+      "breakdown-task"
+    ]
+  },
+  {
+    "name": "/write-file",
+    "score": 0.21,
+    "description": "Write files safely when Claude Code Edit/Write tools fail",
+    "category": "utilities",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "test",
+      "git-safety"
+    ]
+  },
+  {
+    "name": "/clear_notifications",
+    "score": 0.19,
+    "description": "Clear notifications from statusline by type or all",
+    "category": "management",
+    "keywords": [
+      "type"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "obs",
+      "health-monitor",
+      "nse"
+    ]
+  },
+  {
+    "name": "/cognitive-frameworks",
+    "score": 0.19,
+    "description": "Cognitive enhancement for RCA, architecture, and decisions using 5 mental models.",
+    "category": "strategy",
+    "keywords": [
+      "models"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "arch",
+      "r"
+    ]
+  },
+  {
+    "name": "/debugRCA",
+    "score": 0.19,
+    "description": "AI-assisted root cause analysis engine combining Python RCA library and Claude Code skill for systematic debugging and investigation.",
+    "category": "analysis",
+    "keywords": [
+      "analysis"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "r",
+      "verify",
+      "fix"
+    ]
+  },
+  {
+    "name": "/hook-audit",
+    "score": 0.19,
+    "description": "Hook behavioral compliance monitoring - tracks LLM compliance with hook injections, blocking rates, and escalation decisions.",
+    "category": "observability",
+    "keywords": [
+      "llm"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "analytics",
+      "debug"
+    ]
+  },
+  {
+    "name": "/p",
+    "score": 0.19,
+    "description": "Code Maturation Pipeline - auto-detects state and runs appropriate gates",
+    "category": "execution",
+    "keywords": [
+      "runs"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "p --quick",
+      "p --publish",
+      "p --dry-run"
+    ]
+  },
+  {
+    "name": "/response-atomicity",
+    "score": 0.19,
+    "description": "Enforces atomic responses and phase separation in task execution.",
+    "category": "strategy",
+    "keywords": [
+      "task"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "workflow",
+      "orchestrator"
+    ]
+  },
+  {
+    "name": "/t",
+    "score": 0.19,
+    "description": "Context-aware adaptive testing with code flow tracing, incremental testing, and advanced analytics",
+    "category": "testing",
+    "keywords": [
+      "adaptive"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "test",
+      "tdd",
+      "verify",
+      "qa"
+    ]
+  },
+  {
+    "name": "/task",
+    "score": 0.19,
+    "description": "Task orchestration - manage Claude Code task list",
+    "category": "workflow",
+    "keywords": [
+      "task"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "breakdown",
+      "session"
+    ]
+  },
+  {
+    "name": "/analytics",
+    "score": 0.18,
+    "description": "Constitutionally-compliant on-demand analytics for CSF NIP Phase 2 Load Testing Optimization System",
+    "category": "analytics",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "analyze",
+      "research"
+    ]
+  },
+  {
+    "name": "/artifact_audit",
+    "score": 0.18,
+    "description": "Show pending artifact updates grouped by severity - PRD, ARD, CHANGELOG, README status",
+    "category": "tracking",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "artifact-add",
+      "comply",
+      "nse"
+    ]
+  },
+  {
+    "name": "/cgate",
+    "score": 0.18,
+    "description": "Comprehensive AI Consultation gateway",
+    "category": "workflow",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "llm-route",
+      "llm-performance",
+      "quota"
+    ]
+  },
+  {
+    "name": "/deliberate-changes",
+    "score": 0.18,
+    "description": "Manage deliberate hook configuration changes to prevent false positives in validation systems",
+    "category": "utilities",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "validate",
+      "standards"
+    ]
+  },
+  {
+    "name": "/deps",
+    "score": 0.18,
+    "description": "Dependency management for TaskMaster projects - tracks dependencies, prevents breaking changes.",
+    "category": "utilities",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "build",
+      "test",
+      "comply"
+    ]
+  },
+  {
+    "name": "/llm_cli",
+    "score": 0.18,
+    "description": "Parallel Multi-LLM Command - Run qwen, gemini, codex, vibe, opencode, glm-4.7-flash CLI tools in parallel",
+    "category": "llm",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "gemini",
+      "codex",
+      "opencode"
+    ]
+  },
+  {
+    "name": "/search",
+    "score": 0.18,
+    "description": "Unified intelligent search - auto-detects chat/web/semantic/recent from your query",
+    "category": "unified",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "research",
+      "cks",
+      "daemon",
+      "nse",
+      "analyze"
+    ]
+  },
+  {
+    "name": "/slc",
+    "score": 0.18,
+    "description": "Pragmatic Solo Dev Guidelines - lean development principles for solo developers",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "code-python-2025",
+      "comply"
+    ]
+  },
+  {
+    "name": "/solo-dev-authority",
+    "score": 0.18,
+    "description": "Constitutional constraints on patterns for solo developers.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "standards",
+      "nse"
+    ]
+  },
+  {
+    "name": "/validate_spec",
+    "score": 0.18,
+    "description": "Validate implementation against specification (specify.md)",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "specify",
+      "build",
+      "comply"
+    ]
+  },
+  {
+    "name": "/adversarial-rca",
+    "score": 0.16,
+    "description": "Root cause analysis with multi-agent reasoning",
+    "category": "analysis",
+    "keywords": [
+      "analysis"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "adversarial-review",
+      "debug"
+    ]
+  },
+  {
+    "name": "/arch",
+    "score": 0.16,
+    "description": "Adaptive architecture advisor with template-based variants. Auto-routes to appropriate template based on domain and complexity. Supports: fast, deep, cli, python, data-pipeline, precedent. Configuration: .archconfig.json (project) \u2192 ~/.archconfig.json (user) \u2192 ARCH_DEFAULT_DOMAIN (env var). Override with template=<name> parameter.",
+    "category": "architecture",
+    "keywords": [
+      "adaptive"
+    ],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/bgkill",
+    "score": 0.16,
+    "description": "Background task cleanup - manage and kill zombie processes in Claude Code",
+    "category": "utility",
+    "keywords": [
+      "task"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "health-monitor",
+      "obs",
+      "debug"
+    ]
+  },
+  {
+    "name": "/evidence-tiers",
+    "score": 0.16,
+    "description": "Confidence ceilings based on evidence quality. Every claim must cite its tier.",
+    "category": "verification",
+    "keywords": [
+      "tier"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "research"
+    ]
+  },
+  {
+    "name": "/memory-integration",
+    "score": 0.16,
+    "description": "Memory integration layer for agent coordination and task dispatch.",
+    "category": "strategy",
+    "keywords": [
+      "task"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "memory-system",
+      "cks",
+      "nse"
+    ]
+  },
+  {
+    "name": "/multi-instance-coherence",
+    "score": 0.16,
+    "description": "Ensures coherence across multiple AI instances and concurrent tasks.",
+    "category": "quality",
+    "keywords": [
+      "across"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "orchestrator",
+      "workflow"
+    ]
+  },
+  {
+    "name": "/package",
+    "score": 0.16,
+    "description": "Package scaffolding + portfolio polish - create GitHub-ready Python libraries and Claude skills with badges, CI/CD, metrics, and media artifacts",
+    "category": "scaffolding",
+    "keywords": [
+      "metrics"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "init",
+      "code-python-2025",
+      "github-public-posting"
+    ]
+  },
+  {
+    "name": "/q6",
+    "score": 0.16,
+    "description": "Q Phase 6: ContextSink - persist /q handoff context",
+    "category": "quality",
+    "keywords": [
+      "context"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "q"
+    ]
+  },
+  {
+    "name": "/quality-gate",
+    "score": 0.16,
+    "description": "Final confidence filter for adversarial findings - keeps only >=80% confidence",
+    "category": "validation",
+    "keywords": [
+      "findings"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "p3",
+      "adversarial-review"
+    ]
+  },
+  {
+    "name": "/session",
+    "score": 0.16,
+    "description": "Manage logical work sessions across terminals and compaction",
+    "category": "task",
+    "keywords": [
+      "across"
+    ],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/subagent-first",
+    "score": 0.16,
+    "description": "Understanding Claude Code's automatic subagent routing system.",
+    "category": "strategy",
+    "keywords": [
+      "routing"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "build",
+      "orchestrator",
+      "nse"
+    ]
+  },
+  {
+    "name": "/evolve",
+    "score": 0.15,
+    "description": "Unified modernization workflow to transform working code into high-standard systems.",
+    "category": "evolution",
+    "keywords": [],
+    "depends_on": [
+      "debug",
+      "rca",
+      "analysis-profile",
+      "analysis-audit",
+      "learn",
+      "llm-debate",
+      "brainstorm",
+      "tdd",
+      "aid"
+    ],
+    "suggest": [
+      "comply",
+      "test",
+      "refactor"
+    ]
+  },
+  {
+    "name": "/library-first",
+    "score": 0.15,
+    "description": "Check for existing solutions before generating new code",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "slc"
+    ]
+  },
+  {
+    "name": "/planning",
+    "score": 0.15,
+    "description": "Build, review, and gate implementation plans using a single /planning entrypoint.",
+    "category": "planning",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "r",
+      "tdd",
+      "p --phase=4"
+    ]
+  },
+  {
+    "name": "/complexity",
+    "score": 0.13,
+    "description": "[DEPRECATED] Use /vdate-quality instead - Code complexity analysis",
+    "category": "development",
+    "keywords": [
+      "analysis"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "vdate-quality"
+    ]
+  },
+  {
+    "name": "/context7",
+    "score": 0.13,
+    "description": "Docs-as-Code: Fetch fresh, version-specific documentation via Context7 API.",
+    "category": "research",
+    "keywords": [
+      "api"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "research",
+      "search"
+    ]
+  },
+  {
+    "name": "/dne",
+    "score": 0.13,
+    "description": "DUF-NSE - Pre-mortem checks + Next Steps. Past to future analysis.",
+    "category": "strategy",
+    "keywords": [
+      "analysis"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "r",
+      "arch",
+      "llm-brainstorm"
+    ]
+  },
+  {
+    "name": "/task-unresolved",
+    "score": 0.13,
+    "description": "Detect unresolved items from chat history and propose task candidates, using the task unresolved detector and TaskList hook integration.",
+    "category": "workflow",
+    "keywords": [
+      "task"
+    ],
+    "depends_on": [],
+    "suggest": [
+      "task",
+      "search"
+    ]
+  },
+  {
+    "name": "/consult",
+    "score": 0.12,
+    "description": "Comprehensive AI consultation gateway",
+    "category": "workflow",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "search",
+      "nse",
+      "llm-brainstorm"
+    ]
+  },
+  {
+    "name": "/cwo",
+    "score": 0.12,
+    "description": "CWO 16-step unified orchestration with CKS handoff, ML health check, and step validation",
+    "category": "orchestration",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "workflow",
+      "quadlet"
+    ]
+  },
+  {
+    "name": "/prompt_refiner",
+    "score": 0.12,
+    "description": "Executable prompt specification system with constitutional compliance and cognitive techniques",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "standards",
+      "design"
+    ]
+  },
+  {
+    "name": "/q",
+    "score": 0.12,
+    "description": "Strategic quality check (did we do the right thing?) - architectural soundness, design patterns, technology fit, over/under-engineering detection",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "p",
+      "r",
+      "s"
+    ]
+  },
+  {
+    "name": "/query_alias",
+    "score": 0.12,
+    "description": "Knowledge base queries - backward compatibility alias for unified research",
+    "category": "research",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "cks",
+      "search",
+      "research"
+    ]
+  },
+  {
+    "name": "/sar-help",
+    "score": 0.12,
+    "description": "SAR Help - CWO-compliant sub-agent coordination docs",
+    "category": "documentation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "sar-inst",
+      "cwo",
+      "orchestrator"
+    ]
+  },
+  {
+    "name": "/cco",
+    "score": 0.09,
+    "description": "Concurrent Workflow Orchestrator - decompose tasks and delegate to parallel sub-agents",
+    "category": "development",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "cwo",
+      "workflow",
+      "nse"
+    ]
+  },
+  {
+    "name": "/chat-friction-analysis",
+    "score": 0.09,
+    "description": "",
+    "category": "",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/checkpoint_list",
+    "score": 0.09,
+    "description": "List/cleanup/validate checkpoints",
+    "category": "utility",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "checkpoint",
+      "checkpoint-restore",
+      "nse"
+    ]
+  },
+  {
+    "name": "/design",
+    "score": 0.09,
+    "description": "Intent-adaptive ideation workflow (Advisory for quick eval, Planning for full pipeline).",
+    "category": "architecture",
+    "keywords": [],
+    "depends_on": [
+      "search",
+      "research",
+      "specify",
+      "brainstorm",
+      "arch",
+      "breakdown",
+      "notebooklm"
+    ],
+    "suggest": [
+      "build",
+      "arch",
+      "nse"
+    ]
+  },
+  {
+    "name": "/doc_to_skill",
+    "score": 0.09,
+    "description": "Convert documentation into Claude Skills using automated scraping and AI enhancement",
+    "category": "generation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "skills-migrate",
+      "orchestrator",
+      "build"
+    ]
+  },
+  {
+    "name": "/memory-system",
+    "score": 0.09,
+    "description": "Memory system management with vector search and 5 memory types.",
+    "category": "knowledge",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "cks",
+      "search",
+      "nse"
+    ]
+  },
+  {
+    "name": "/prd",
+    "score": 0.09,
+    "description": "Import PRD requirements as TaskMaster tasks with full traceability",
+    "category": "taskmaster",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "specify",
+      "build",
+      "nse"
+    ]
+  },
+  {
+    "name": "/q4",
+    "score": 0.09,
+    "description": "Q Phase 4: Strategic renderer (future-focused path)",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "q6",
+      "q"
+    ]
+  },
+  {
+    "name": "/quadlet",
+    "score": 0.09,
+    "description": "Atomic quadlet operations with rollback for CSF NIP",
+    "category": "orchestration",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "cwo",
+      "workflow",
+      "nse"
+    ]
+  },
+  {
+    "name": "/research",
+    "score": 0.09,
+    "description": "Multi-source research with 10+ providers - intelligent auto-selection and semantic ranking.",
+    "category": "knowledge",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "context7",
+      "search",
+      "cks"
+    ]
+  },
+  {
+    "name": "/restore",
+    "score": 0.09,
+    "description": "Restore CKS checkpoint after compaction",
+    "category": "management",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "checkpoint",
+      "checkpoint-restore",
+      "chs"
+    ]
+  },
+  {
+    "name": "/rich-library-expert",
+    "score": 0.09,
+    "description": "Terminal UI mastery using Rich library for console output, renderables, and cross-platform support.",
+    "category": "development",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "docs",
+      "build",
+      "nse"
+    ]
+  },
+  {
+    "name": "/s",
+    "score": 0.09,
+    "description": "Strategy skill (orchestrator-backed Diverge\u2192Discuss\u2192Converge). Owns exploratory DUF decomposition; deterministic remember/refine moved to /r.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "r",
+      "q",
+      "nse",
+      "arch"
+    ]
+  },
+  {
+    "name": "/sar-inst",
+    "score": 0.09,
+    "description": "SAR Implementation - CWO-compliant coordination execution",
+    "category": "development",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "sar-help",
+      "build",
+      "nse"
+    ]
+  },
+  {
+    "name": "/synergy",
+    "score": 0.09,
+    "description": "Detect cross-file refactoring opportunities (extract, merge, consolidate, standardize, restructure)",
+    "category": "analysis",
+    "keywords": [],
+    "depends_on": [
+      "refactor"
+    ],
+    "suggest": [
+      "refactor",
+      "p2"
+    ]
+  },
+  {
+    "name": "/team",
+    "score": 0.09,
+    "description": "",
+    "category": "orchestration",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/timeline",
+    "score": 0.09,
+    "description": "View timeline of tool usage with session summaries",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "checkpoint",
+      "health-monitor",
+      "nse"
+    ]
+  },
+  {
+    "name": "/truth-av",
+    "score": 0.09,
+    "description": "Assertion Verification - Auto-verify all statements as hypotheses requiring proof",
+    "category": "validation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "truth",
+      "consult",
+      "skeptic"
+    ]
+  },
+  {
+    "name": "/ytftss",
+    "score": 0.09,
+    "description": "YouTube Full Text Search CLI - search, download, and manage video subtitles",
+    "category": "tools",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "build",
+      "test",
+      "qa"
+    ]
+  },
+  {
+    "name": "/av",
+    "score": 0.06,
+    "description": "Analyze and improve skills - generates complete hook files automatically",
+    "category": "meta",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "hooks-edit"
+    ]
+  },
+  {
+    "name": "/breakdown",
+    "score": 0.06,
+    "description": "Granular implementation planning using atomic tasks with diminishing returns principle",
+    "category": "planning",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "build",
+      "task"
+    ]
+  },
+  {
+    "name": "/breakdown-task",
+    "score": 0.06,
+    "description": "Break implementation work into atomic tasks using diminishing returns principle.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "build",
+      "workflow"
+    ]
+  },
+  {
+    "name": "/checkpoint_delete",
+    "score": 0.06,
+    "description": "Safely delete a checkpoint using the trash recovery system",
+    "category": "utility",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "checkpoint",
+      "checkpoint-list",
+      "checkpoint-restore"
+    ]
+  },
+  {
+    "name": "/checkpoint_diff",
+    "score": 0.06,
+    "description": "Compare two checkpoints with commits, files, and metadata",
+    "category": "utility",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "checkpoint-list",
+      "search",
+      "nse"
+    ]
+  },
+  {
+    "name": "/checkpoint_restore",
+    "score": 0.06,
+    "description": "Restore a checkpoint from trash recovery system",
+    "category": "utility",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "checkpoint",
+      "nse",
+      "r"
+    ]
+  },
+  {
+    "name": "/clear_restore",
+    "score": 0.06,
+    "description": "Remove RESTORE_CONTEXT.md file created by CKS restoration",
+    "category": "management",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "restore",
+      "checkpoint",
+      "nse"
+    ]
+  },
+  {
+    "name": "/cognitive_stack_production",
+    "score": 0.06,
+    "description": "Production deployment command for Cognitive-Stack Framework integration",
+    "category": "orchestration",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "cognitive-stack",
+      "qa",
+      "deploy"
+    ]
+  },
+  {
+    "name": "/command_create",
+    "score": 0.06,
+    "description": "Create CSF NIP-compliant custom commands using the MVP pattern with integrated validation",
+    "category": "development",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "command-enhance",
+      "standards",
+      "build"
+    ]
+  },
+  {
+    "name": "/commit",
+    "score": 0.06,
+    "description": "Fast git commit in current directory",
+    "category": "git",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "push",
+      "git-safety"
+    ]
+  },
+  {
+    "name": "/crawl",
+    "score": 0.06,
+    "description": "Crawl web pages (legacy - integrated into /research)",
+    "category": "research",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "research",
+      "ingest",
+      "docs"
+    ]
+  },
+  {
+    "name": "/csda",
+    "score": 0.06,
+    "description": "Code Structure-Documentation Architecture Pattern - 4-layer architecture for CSAF bundles",
+    "category": "development",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "csaf",
+      "csf-nip-dev",
+      "standards"
+    ]
+  },
+  {
+    "name": "/csda-concept",
+    "score": 0.06,
+    "description": "CSDA Pattern Concept Documentation",
+    "category": "documentation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "csda",
+      "docs",
+      "research"
+    ]
+  },
+  {
+    "name": "/csf-nip-integration",
+    "score": 0.06,
+    "description": "Guide Claude in working with CSF NIP architecture, commands, patterns, and conventions",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "orchestrator",
+      "build"
+    ]
+  },
+  {
+    "name": "/data_processor",
+    "score": 0.06,
+    "description": "Process data efficiently",
+    "category": "utilities",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "build",
+      "design",
+      "nse"
+    ]
+  },
+  {
+    "name": "/data-safety-vcs",
+    "score": 0.06,
+    "description": "Data safety and version control standard for solo dev environments.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "git-safety",
+      "checkpoint",
+      "backup"
+    ]
+  },
+  {
+    "name": "/disler_start",
+    "score": 0.06,
+    "description": "Start disler observability stack server and client",
+    "category": "development",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "disler-stop",
+      "health-monitor",
+      "obs"
+    ]
+  },
+  {
+    "name": "/docs",
+    "score": 0.06,
+    "description": "Unified document system with locality awareness",
+    "category": "doc",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "search",
+      "cks",
+      "research"
+    ]
+  },
+  {
+    "name": "/exec",
+    "score": 0.06,
+    "description": "CWO15 execution entry point - context-aware execution that analyzes conversation for next action.",
+    "category": "execution",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "workflow",
+      "build"
+    ]
+  },
+  {
+    "name": "/execution-clarity",
+    "score": 0.06,
+    "description": "Atomic execution phases + confidence scoring for risk-aware decision-making.",
+    "category": "execution",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "response-atomicity",
+      "workflow"
+    ]
+  },
+  {
+    "name": "/git-conventional-commits",
+    "score": 0.06,
+    "description": "Generate and validate commit messages following Conventional Commits specification.",
+    "category": "execution",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "commit",
+      "push"
+    ]
+  },
+  {
+    "name": "/git-worktrees",
+    "score": 0.06,
+    "description": "Use git worktrees for parallel isolated development. Separate working directories per branch.",
+    "category": "execution",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "git-sapling",
+      "git-safety",
+      "build"
+    ]
+  },
+  {
+    "name": "/github-public-posting",
+    "score": 0.06,
+    "description": "Pre-publish checklist and best practices for posting code publicly to GitHub",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/hod",
+    "score": 0.06,
+    "description": "Research-backed handover documentation system using handoff package",
+    "category": "documentation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "restore",
+      "session-handoff"
+    ]
+  },
+  {
+    "name": "/hod",
+    "score": 0.06,
+    "description": "Research-backed handover documentation system using handoff package",
+    "category": "documentation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "restore",
+      "session-handoff"
+    ]
+  },
+  {
+    "name": "/init",
+    "score": 0.06,
+    "description": "Initialize CLAUDE.md at module/feature root",
+    "category": "initialization",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "build",
+      "standards",
+      "nse"
+    ]
+  },
+  {
+    "name": "/learn",
+    "score": 0.06,
+    "description": "Intelligent lesson capture with novelty detection and usefulness filtering",
+    "category": "learning",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "review",
+      "lessons",
+      "cooldown"
+    ]
+  },
+  {
+    "name": "/media-pipeline",
+    "score": 0.06,
+    "description": "This skill should be used when the user asks to \"generate portfolio media\", \"create a banner\", \"make architecture diagrams\", \"generate explainer videos\", \"set up media-pipeline\", \"check media providers\", or references NotebookLM/OpenRouter media generation. Provides interactive wizard-guided media asset generation for GitHub repositories.",
+    "category": "",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/q1",
+    "score": 0.06,
+    "description": "Q Phase 1: ScopeResolver - determine what /q should analyze",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "q2",
+      "q"
+    ]
+  },
+  {
+    "name": "/q3",
+    "score": 0.06,
+    "description": "Q Phase 3: IssueNormalizer + ModePlanner",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "q4",
+      "q5",
+      "q"
+    ]
+  },
+  {
+    "name": "/q5",
+    "score": 0.06,
+    "description": "Q Phase 5: Mixed/problem/deep renderer",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "q6",
+      "q"
+    ]
+  },
+  {
+    "name": "/skill-development",
+    "score": 0.06,
+    "description": "This skill should be used when the user wants to \"create a skill\", \"add a skill to plugin\", \"write a new skill\", \"improve skill description\", \"organize skill content\", or needs guidance on skill structure, progressive disclosure, or skill development best practices for Claude Code plugins.",
+    "category": "",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/spec-compliance",
+    "score": 0.06,
+    "description": "Protocol for following specifications exactly and when/how to request deviations.",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "build"
+    ]
+  },
+  {
+    "name": "/step_6_5",
+    "score": 0.06,
+    "description": "Generate ORCHESTRATION.md from plan.md and tasks.json",
+    "category": "orchestration",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "build",
+      "docs",
+      "workflow"
+    ]
+  },
+  {
+    "name": "/subagent-driven-development",
+    "score": 0.06,
+    "description": "Execute implementation plans by dispatching specialized subagents with two-stage review.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "build",
+      "tdd",
+      "qa"
+    ]
+  },
+  {
+    "name": "/system-internals-verification",
+    "score": 0.06,
+    "description": "Mandatory verification protocol before claiming how system components work.",
+    "category": "verification",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "research"
+    ]
+  },
+  {
+    "name": "/testing-skills",
+    "score": 0.06,
+    "description": "Quality gate for validating new skills. Tests triggers, execution paths, and integration.",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "test",
+      "qa",
+      "tdd"
+    ]
+  },
+  {
+    "name": "/update_state",
+    "score": 0.06,
+    "description": "Update session state tracking",
+    "category": "evolution",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "catchup",
+      "evolve",
+      "skills-migrate",
+      "sp"
+    ]
+  },
+  {
+    "name": "/av2",
+    "score": 0.03,
+    "description": "Skill optimizer - mechanical continuation enforcement via StopHook",
+    "category": "meta",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/bug_hunt",
+    "score": 0.03,
+    "description": "[DEPRECATED] Use /vdate instead - Comprehensive bug detection with mypy, pylint, vulture, ruff",
+    "category": "development",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "vdate"
+    ]
+  },
+  {
+    "name": "/catch-22-detection",
+    "score": 0.03,
+    "description": "Detect and respond to Catch-22 situations where fixing X requires tools that depend on X.",
+    "category": "troubleshooting",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "debug"
+    ]
+  },
+  {
+    "name": "/cks",
+    "score": 0.03,
+    "description": "Constitutional Knowledge System - unified command for search, add, and session extraction",
+    "category": "knowledge",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "search",
+      "daemon"
+    ]
+  },
+  {
+    "name": "/claude-hooks",
+    "score": 0.03,
+    "description": "Claude Code hooks development reference",
+    "category": "documentation",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "claude-code-guide"
+    ]
+  },
+  {
+    "name": "/compose-npm-pip",
+    "score": 0.03,
+    "description": "",
+    "category": "",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/csaf",
+    "score": 0.03,
+    "description": "Cognitive Systems Architect Framework - machine-enforceable behavior for orchestrators",
+    "category": "framework",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "csda",
+      "cwo",
+      "orchestrator"
+    ]
+  },
+  {
+    "name": "/data-processor-v2",
+    "score": 0.03,
+    "description": "Self-correcting data processing agent (JSON/YAML/CSV)",
+    "category": "utilities",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "agentic-validation",
+      "write-file"
+    ]
+  },
+  {
+    "name": "/disler_stop",
+    "score": 0.03,
+    "description": "Stop disler observability stack services",
+    "category": "development",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "disler-start",
+      "obs",
+      "health-monitor"
+    ]
+  },
+  {
+    "name": "/dpef",
+    "score": 0.03,
+    "description": "Deterministic Prompt Execution Framework - command template generation with gw.ask/gw.exec metadata",
+    "category": "framework",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "prompt_refiner",
+      "design",
+      "build"
+    ]
+  },
+  {
+    "name": "/flow",
+    "score": 0.03,
+    "description": "Advanced workflow orchestration and pipeline coordination system",
+    "category": "orchestration",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "workflow",
+      "cwo",
+      "nse"
+    ]
+  },
+  {
+    "name": "/health-monitor",
+    "score": 0.03,
+    "description": "System health monitoring with real-time memory checks, hook validation, and remediation guidance.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "q",
+      "debug"
+    ]
+  },
+  {
+    "name": "/hook-inventory",
+    "score": 0.03,
+    "description": "Hook file inventory audit - classify all hooks as dead/active/router-dispatched/utility.",
+    "category": "observability",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/main",
+    "score": 0.03,
+    "description": "Main Cognitive Steering Framework - system health checks and workspace validation",
+    "category": "governance",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "search",
+      "standards"
+    ]
+  },
+  {
+    "name": "/main-hooks",
+    "score": 0.03,
+    "description": "Main Cognitive Steering Framework with enforcement - system health checks and workspace validation",
+    "category": "governance",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "nse",
+      "search",
+      "standards"
+    ]
+  },
+  {
+    "name": "/output-style-extractor",
+    "score": 0.03,
+    "description": "Analyze CLAUDE.md to identify content safe for output-style extraction vs content that must remain",
+    "category": "analysis",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/pds",
+    "score": 0.03,
+    "description": "Smart Engineering Orchestrator with advanced XoT (X of Thought) cognitive depth.",
+    "category": "orchestration",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/push",
+    "score": 0.03,
+    "description": "Fast push with retry logic for concurrent operations",
+    "category": "execution",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "commit",
+      "git-safety"
+    ]
+  },
+  {
+    "name": "/reflect",
+    "score": 0.03,
+    "description": "Analyze session and propose improvements to skills",
+    "category": "self-learning",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "learn",
+      "retro",
+      "nse"
+    ]
+  },
+  {
+    "name": "/scratchpad",
+    "score": 0.03,
+    "description": "Persistent scratchpad worktree management with sl (lock-free)",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "sp",
+      "sap",
+      "git-worktrees"
+    ]
+  },
+  {
+    "name": "/sharing-skills",
+    "score": 0.03,
+    "description": "Automates skill upstreaming via GitHub PR workflow. Creates branches, commits, and opens PRs.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "git",
+      "commit",
+      "push"
+    ]
+  },
+  {
+    "name": "/solo_dev_mappings",
+    "score": 0.03,
+    "description": "",
+    "category": "",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/sp",
+    "score": 0.03,
+    "description": "Scratchpad worktrees - lock-free with Sapling",
+    "category": "evolution",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "scratchpad",
+      "sap",
+      "git-sapling"
+    ]
+  },
+  {
+    "name": "/specify",
+    "score": 0.03,
+    "description": "Create TSK project and Step 1 specification",
+    "category": "specification",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "build",
+      "design",
+      "arch"
+    ]
+  },
+  {
+    "name": "/telemetry",
+    "score": 0.03,
+    "description": "Records system events, execution outcomes, and constitutional violations to a persistent database",
+    "category": "utility",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "health-monitor",
+      "debug",
+      "nse"
+    ]
+  },
+  {
+    "name": "/trace",
+    "score": 0.03,
+    "description": "Manual trace-through verification for code, skills, workflows, and documents - catch logic errors that automated testing misses",
+    "category": "verification",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "code (Phase 3.5 delegates to /trace)",
+      "refactor (uses /trace for verification)",
+      "q (strategic quality check)",
+      "av (skill analysis)"
+    ]
+  },
+  {
+    "name": "/acef",
+    "score": 0.0,
+    "description": "Agentic Command Engineering Framework for creating composable engineering assets",
+    "category": "framework",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "build",
+      "design",
+      "orchestrator"
+    ]
+  },
+  {
+    "name": "/adf",
+    "score": 0.0,
+    "description": "Evaluate whether structural code changes are justified. Prevents over-engineering.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "arch",
+      "r",
+      "nse"
+    ]
+  },
+  {
+    "name": "/agentic-validation",
+    "score": 0.0,
+    "description": "Self-correcting agent patterns using validation and state-transition hooks",
+    "category": "patterns",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "hooks-edit"
+    ]
+  },
+  {
+    "name": "/artifact-add",
+    "score": 0.0,
+    "description": "Manually add an item for artifact tracking - tracks pending documentation (PRD, ARD, CHANGELOG).",
+    "category": "tracking",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "artifact-audit",
+      "build",
+      "nse"
+    ]
+  },
+  {
+    "name": "/cfg",
+    "score": 0.0,
+    "description": "Control Flow Graph visualization for Python files - visualize execution paths and branching logic",
+    "category": "debug",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "debug",
+      "complexity"
+    ]
+  },
+  {
+    "name": "/cwo_orchestrator",
+    "score": 0.0,
+    "description": "CWO Orchestrator - Terminal A monitoring for parallel subagent coordination",
+    "category": "orchestration",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "cwo",
+      "nse",
+      "workflow"
+    ]
+  },
+  {
+    "name": "/daemon",
+    "score": 0.0,
+    "description": "Semantic Daemon Management - control CHS/CKS search daemon",
+    "category": "system",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "chs",
+      "cks",
+      "search",
+      "debug"
+    ]
+  },
+  {
+    "name": "/file-relocation-recovery",
+    "score": 0.0,
+    "description": "Auto-relocation system for CSF root files and how to recover \"missing\" files.",
+    "category": "operations",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "research"
+    ]
+  },
+  {
+    "name": "/garden",
+    "score": 0.0,
+    "description": "Knowledge hygiene for CKS and SKILL.md to prevent knowledge entropy",
+    "category": "maintenance",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "cks",
+      "chs",
+      "cleanup"
+    ]
+  },
+  {
+    "name": "/git",
+    "score": 0.0,
+    "description": "",
+    "category": "",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": []
+  },
+  {
+    "name": "/harden",
+    "score": 0.0,
+    "description": "Harden function with guards + logging for defensive programming",
+    "category": "defensive",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "debug"
+    ]
+  },
+  {
+    "name": "/llm-api",
+    "score": 0.0,
+    "description": "Multi-provider LLM API calls with dynamic model discovery and performance-based curation",
+    "category": "ai-llm",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "comply",
+      "bug-hunt",
+      "analyze"
+    ]
+  },
+  {
+    "name": "/notebooklm",
+    "score": 0.0,
+    "description": "This skill should be used when the user asks to \"query my NotebookLM\", \"ask my notebook\", \"create a NotebookLM notebook\", \"add sources to NotebookLM\", \"generate a podcast from my notes\", or mentions working with Google NotebookLM notebooks, sources, or studio artifacts.",
+    "category": "strategy",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "research",
+      "search",
+      "cks"
+    ]
+  },
+  {
+    "name": "/pace",
+    "score": 0.0,
+    "description": "Cognitive load and WIP tracking for solo dev throttle",
+    "category": "wellness",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "health-monitor",
+      "cooldown",
+      "q"
+    ]
+  },
+  {
+    "name": "/q2",
+    "score": 0.0,
+    "description": "Q Phase 2: QuickCollectors - parallel fast checks",
+    "category": "quality",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "q3",
+      "q"
+    ]
+  },
+  {
+    "name": "/staging-protocol",
+    "score": 0.0,
+    "description": "Required staging protocol for complex file modifications via bash.",
+    "category": "operations",
+    "keywords": [],
+    "depends_on": [],
+    "suggest": [
+      "research"
+    ]
+  }
+]

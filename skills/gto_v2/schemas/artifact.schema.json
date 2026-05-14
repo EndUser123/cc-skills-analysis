@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GTO Artifact",
+  "type": "object",
+  "required": ["artifact_version", "mode", "terminal_id", "session_id", "target", "findings", "machine_output", "human_output", "verification", "coverage"],
+  "properties": {
+    "artifact_version": {"type": "string"},
+    "mode": {"type": "string", "enum": ["full", "quick", "agent-only"]},
+    "created_at": {"type": "string", "format": "date-time"},
+    "terminal_id": {"type": "string"},
+    "session_id": {"type": "string"},
+    "target": {"type": "string"},
+    "git_sha": {"type": ["string", "null"]},
+    "health_score": {"type": ["integer", "null"]},
+    "freshness": {"type": "string", "enum": ["fresh", "stale-git", "stale-target", "unknown"]},
+    "findings": {"type": "array"},
+    "summary": {"type": "object"},
+    "machine_output": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "human_output": {"type": "string"},
+    "verification": {"type": "object"},
+    "coverage": {"type": "object"},
+    "metadata": {"type": "object"}
+  }
+}

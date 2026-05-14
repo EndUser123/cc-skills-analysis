@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GTO Finding",
+  "type": "object",
+  "required": ["id", "title", "description", "source_type", "source_name", "domain", "gap_type", "severity", "evidence_level"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[A-Z]+-\\d+$"},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string", "minLength": 1},
+    "source_type": {"type": "string", "enum": ["detector", "agent", "hook", "artifact", "carryover", "user"]},
+    "source_name": {"type": "string"},
+    "domain": {"type": "string"},
+    "gap_type": {"type": "string"},
+    "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"]},
+    "evidence_level": {"type": "string", "enum": ["verified", "unverified", "derived"]},
+    "action": {"type": "string", "enum": ["recover", "prevent", "realize"], "default": "recover"},
+    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"], "default": "medium"},
+    "status": {"type": "string", "enum": ["open", "mapped", "rejected", "deferred", "resolved", "stale"], "default": "open"},
+    "scope": {"type": "string", "enum": ["local", "systemic", "architectural"], "default": "local"},
+    "owner_skill": {"type": ["string", "null"]},
+    "file": {"type": ["string", "null"]},
+    "line": {"type": ["integer", "null"]},
+    "effort": {"type": ["string", "null"]},
+    "unverified": {"type": "boolean", "default": false},
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "value"],
+        "properties": {
+          "kind": {"type": "string"},
+          "value": {"type": "string"},
+          "detail": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}
