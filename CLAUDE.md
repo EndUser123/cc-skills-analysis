@@ -11,8 +11,7 @@ Tools for understanding what was missed or deferred.
 
 | Skill | Purpose | Home |
 |-------|---------|------|
-| /gto | Gap-to-Opportunity analysis (Production variant) | `gto/` |
-| gto_v2 | Experimental GTO (Multi-turn) | `gto_v2/` |
+| /gto | Session-aware gap-to-opportunity analysis with execution-contract runtime | `gto/` |
 
 ### 2. Session Behavioral Insight
 Analyzing HOW the work is progressing.

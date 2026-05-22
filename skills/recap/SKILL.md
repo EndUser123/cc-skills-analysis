@@ -116,13 +116,33 @@ The script extracts structured data via regex and presents it in a format compat
 - **External Block**: {dependency} — *Blocks*: Action#
 
 ### Recommended Next Steps
-```
-RNS|D|{n}|TERMINAL RECAP
-RNS|A|1|recap|E:~1min|none|no-terminal-recap-RNS-available|{file_path}|owner=/recap|done=0|caused_by=|blocks=|unverified=0
-RNS|Z|0|NONE
+
+Use `render_actions()` from `skills/rns/scripts/core/render.py` (same plugin) to render actionable next steps in human-readable RNS format:
+
+```python
+import sys
+sys.path.insert(0, 'P:/packages/cc-skills-analysis/skills/rns/scripts')
+from core.render import render_actions, RenderOptions
+
+actions = [
+    {"id": "1a", "domain": "recap", "priority": "medium", "description": "...", "file_ref": "file.py:line", "effort": "~5min"},
+]
+print(render_actions(actions, RenderOptions(show_effort=True, show_file_ref=True)))
 ```
 
-> **Note:** RNS format is emitted when the recap output includes actionable next steps derived from the session chain analysis. Each RNS|A| line represents one recommended next step with: id, domain tag, estimated time, risk profile, description, file reference, owning skill, done flag, causation, and blocking relationships. When no terminal-recap-specific RNS is available (brief mode, no session chain, or no actionables found), emit `RNS|Z|0|NONE` to indicate no RNS was produced.
+Rendered output format (via `render_actions`):
+
+```
+1 🔄 RECAP (2)
+  1a 🟡 [E:~5min] Resume pending snapshot unit tests @ test_phase2_scan.py
+  1b 🔵 Check handoff chain integrity for recent sessions
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+0 — Do ALL Recommended Next Actions (2 items)
+```
+
+When no actionables found (brief mode, no session chain), skip the RNS section entirely — do not emit `RNS|Z|0|NONE` to the user.
 
 ### Raw Context
 {condensed text for full transcript access}

@@ -36,7 +36,7 @@ from .__lib.freshness import classify_freshness
 from .__lib.targeting import resolve_target
 from .__lib.coverage import compute_coverage, compute_health_score
 from .__lib.evidence import write_artifact
-from .__lib.state import RunState, load_state, save_state
+from .__lib.state import RunState, load_state, save_state, sync_to_execution_state
 from .__lib.verify import verify_artifact
 from .__lib.changelog import detect_changelog_findings
 from .__lib.invocation_tracker import check_invocations
@@ -209,6 +209,7 @@ def run(argv: list[str] | None = None) -> int:
     state.verification_required = True
     state.verification_status = "pending"
     save_state(state_file, state)
+    sync_to_execution_state(state, paths.artifacts_dir)
 
     # Phase 1: Deterministic detectors
     findings = run_basic_detectors(root, args.terminal_id, args.session_id, settings.git_sha)
@@ -502,11 +503,13 @@ def run(argv: list[str] | None = None) -> int:
     state.last_artifact = str(artifact_path)
     state.expected_artifacts = [str(artifact_path)]
     save_state(state_file, state)
+    sync_to_execution_state(state, paths.artifacts_dir)
 
     # Phase 10: Verify
     verification = verify_artifact(artifact_path)
     state.verification_status = "pass" if verification["valid"] else "fail"
     save_state(state_file, state)
+    sync_to_execution_state(state, paths.artifacts_dir)
 
     # Output summary
     print(f"GTO complete: {len(all_findings)} findings", file=sys.stderr)

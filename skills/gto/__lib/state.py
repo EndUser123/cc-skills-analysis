@@ -66,3 +66,39 @@ def load_state(path: Path) -> RunState:
 def save_state(path: Path, state: RunState) -> None:
     state.touch()
     atomic_write_json(path, state.to_dict())
+
+
+def sync_to_execution_state(state: RunState, artifacts_dir: Path) -> None:
+    """Write execution-state.json for the skill-guard contract runtime.
+
+    Writes atomically to {artifacts_base}/{terminal_id}/execution-state.json.
+    This enables the execution runtime to track phase and artifact completion
+    independently of GTO's own run_state.json.
+    """
+    exec_state = {
+        "run_id": state.run_id,
+        "skill_name": "gto",
+        "contract_type": "workflow-execution",
+        "phase": state.phase,
+        "status": "active" if state.phase != "completed" else "complete",
+        "terminal_id": artifacts_dir.name,
+        "created_at": state.created_at,
+        "updated_at": state.updated_at,
+        "required_artifacts": [
+            str(artifacts_dir / "outputs" / "artifact.json"),
+        ],
+        "completed_artifacts": [state.last_artifact] if state.last_artifact else [],
+        "missing_requirements": [],
+        "allowed_tools_now": [
+            "Bash", "Read", "Grep", "Glob", "AskUserQuestion",
+            "Skill", "Agent", "WebSearch", "WebFetch", "Write",
+            "Edit", "Task",
+        ],
+        "blocked_tools": [],
+    }
+    exec_path = artifacts_dir.parent / "execution-state.json"
+    tmp = exec_path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(exec_state, indent=2, ensure_ascii=False), encoding="utf-8")
+    if exec_path.exists():
+        exec_path.unlink()
+    tmp.rename(exec_path)

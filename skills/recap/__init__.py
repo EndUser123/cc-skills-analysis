@@ -21,6 +21,23 @@ class SessionSummary(TypedDict):
     created_at: str
     transcript_path: str
 
+from recap.acquire import (
+    _get_current_session_id,
+    _get_fresh_handoff,
+    _get_most_recent_transcript,
+    _get_project_hash,
+    _get_sessions_index_path,
+    _is_subagent_transcript,
+    _is_transcript_file,
+    _load_from_handoff,
+    _scan_transcript_dir,
+    _validate_handoff_identity,
+    find_transcript_file,
+    get_project_root,
+    load_sessions_index,
+    resolve_terminal_key,
+)
+
 logger = logging.getLogger(__name__)
 
 # AIR Gap state file path
@@ -111,138 +128,6 @@ _RE_OUTCOME = re.compile(
 )
 
 
-def resolve_terminal_key(terminal_id: str | None = None) -> str:
-    """Resolve terminal ID from parameter, environment, or system detection.
-
-    Priority:
-    1. Explicit terminal_id parameter
-    2. CLAUDE_TERMINAL_ID env var (set by SessionStart hook)
-    3. WT_SESSION env var (Windows Terminal session UUID)
-    4. Empty string if no detection succeeds
-
-    Args:
-        terminal_id: Optional terminal ID override
-
-    Returns:
-        Resolved terminal key (e.g. 'console_6a2e4c2b-1272-4b8c-b50d-c8907f830513')
-    """
-    if terminal_id:
-        return terminal_id
-
-    # Priority 1: CLAUDE_TERMINAL_ID env var (set by SessionStart hook)
-    env_terminal = os.environ.get("CLAUDE_TERMINAL_ID")
-    if env_terminal:
-        return env_terminal
-
-    # Priority 2: WT_SESSION env var (Windows Terminal session UUID)
-    wt_session = os.environ.get("WT_SESSION")
-    if wt_session:
-        # Normalize to console_* format (same as hook_base.py)
-        return f"console_{wt_session}"
-
-    # Priority 3: No detection succeeded — return empty string
-    # (PID fallback was removed: it changed every restart and caused
-    # 10,700 empty directories in task #2275)
-    return ""
-
-
-def _get_project_hash(project_path: Path) -> str:
-    """Derive the Claude Code project hash for a project path.
-
-    Claude Code stores project transcripts under ~/.claude/projects/{hash}/,
-    where the hash is derived from the absolute project path.
-    Each path separator and colon is replaced with a dash.
-
-    Args:
-        project_path: Absolute path to the project root
-
-    Returns:
-        Project hash string (e.g., 'P--' for 'P:\\\\\\\')
-    """
-    path_str = str(project_path.resolve())
-    # Replace both path separators and colons with dash
-    path_str = path_str.replace("/", "-").replace("\\", "-").replace(":", "-")
-    return path_str
-
-
-def _get_sessions_index_path(project_path: Path) -> Path | None:
-    """Find the sessions-index.json for a given project.
-
-    Args:
-        project_path: The project root path (e.g. P:\\\\\\\)
-
-    Returns:
-        Path to sessions-index.json or None if not found
-    """
-    project_hash = _get_project_hash(project_path)
-    index_path = Path.home() / ".claude" / "projects" / project_hash / "sessions-index.json"
-    if index_path.exists():
-        return index_path
-    return None
-
-
-def load_sessions_index(index_path: Path) -> list[dict[str, Any]]:
-    """Load and parse a sessions-index.json file.
-
-    The sessions-index.json uses a dict-keyed schema:
-        {sessionId: {summary, lastPrompt, lastActiveAt, createdAt, fullPath}}
-
-    Args:
-        index_path: Path to sessions-index.json
-
-    Returns:
-        List of session index entries sorted by creation time (oldest first),
-        normalized to the format expected by build_session_chain().
-    """
-    try:
-        with open(index_path, encoding="utf-8") as f:
-            data = json.load(f)
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.error("Failed to load sessions index %s: %s", index_path, exc)
-        return []
-
-    # Handle both schemas: dict-keyed (actual) and array-based (legacy)
-    raw_entries: list[dict[str, Any]]
-    if isinstance(data, dict) and "entries" not in data:
-        # Actual schema: {sessionId: {summary, lastPrompt, lastActiveAt, createdAt, fullPath}}
-        raw_entries = []
-        for session_id, entry in data.items():
-            if not isinstance(entry, dict):
-                continue
-            # Convert epoch ms to ISO string for sort compatibility
-            created_val = entry.get("createdAt", "")
-            if isinstance(created_val, (int, float)):
-                from datetime import datetime, timezone
-
-                created_str = datetime.fromtimestamp(
-                    created_val / 1000, tz=timezone.utc
-                ).isoformat()
-            else:
-                created_str = str(created_val)
-
-            # Prefer summary over lastPrompt for goal text
-            goal = entry.get("summary") or entry.get("lastPrompt") or ""
-            if isinstance(goal, str):
-                goal = goal.strip()
-
-            raw_entries.append(
-                {
-                    "sessionId": session_id,
-                    "created": created_str,
-                    "transcript_path": entry.get("fullPath", ""),
-                    "last_goal": goal[:200],  # Truncate for display
-                    "summary": goal,
-                }
-            )
-    else:
-        # Legacy array schema: {entries: [{sessionId, created, projectPath, ...}]}
-        raw_entries = data.get("entries", [])
-
-    # Sort chronologically: oldest first
-    raw_entries.sort(key=lambda e: e.get("created", ""))
-    return raw_entries
-
-
 # Constants for session chain building
 _MAX_RECENT_SESSIONS = 30  # 30 sessions balances coverage vs parse time (~5 min for typical session)
 # Windows short-path prefix normalization (e.g., cts\ -> C:\Users\brsth\)
@@ -267,6 +152,19 @@ _MIN_EXTRACT_LEN = 15  # Minimum character length for extracted strings
 _MIN_MULTILINE_LEN = 30  # Minimum length for multi-line strings
 _MIN_USER_PROBLEM_LEN = 20  # Minimum length for user problem matches
 
+# Constants for narrative extraction (Domain 3: Magic numbers)
+_MIN_REQUEST_LENGTH = 30  # Minimum length for user request to be considered
+_MAX_REQUEST_LENGTH = 500  # Maximum length for truncated original requests
+_MAX_ITEM_LENGTH = 200  # Maximum length for decision/step/question items
+_MIN_STEP_LENGTH = 10   # Minimum length for handoff steps
+_MIN_QUESTION_LENGTH = 15  # Minimum length for open questions
+_MAX_TEXT_WINDOW = 1000  # Text window for handoff pattern search
+_MAX_ITEMS_PER_FIELD = 5  # Maximum items per narrative field
+_MAX_ACTION_COUNT = 10  # Maximum actions to scan for modified files
+_MAX_PATH_LENGTH = 100  # Maximum length for file path/state item truncation
+_MAX_DEDUP_LENGTH = 300  # Maximum length for deduplication
+_MAX_BLOCKED_ITEMS = 3  # Maximum blocked state items
+
 
 def _filter(items: list[str]) -> list[str]:
     """Filter out low-quality extractions: too short, backticks, or ASCII art."""
@@ -282,26 +180,6 @@ def _filter(items: list[str]) -> list[str]:
             continue
         result.append(s)
     return result
-
-
-def _scan_transcript_dir(transcript_dir: Path) -> list[tuple[float, Path]]:
-    """Scan a directory for .jsonl files with real transcript content.
-
-    Args:
-        transcript_dir: Directory to scan
-
-    Returns:
-        List of (mtime, path) tuples for valid transcript files
-    """
-    candidates: list[tuple[float, Path]] = []
-    for jsonl_file in transcript_dir.glob("*.jsonl"):
-        try:
-            mtime = jsonl_file.stat().st_mtime
-            if _is_transcript_file(jsonl_file):
-                candidates.append((mtime, jsonl_file))
-        except OSError:
-            continue
-    return candidates
 
 
 def _parse_last_session_summary(entries: list[dict[str, Any]]) -> str | None:
@@ -342,44 +220,6 @@ def _parse_last_session_summary(entries: list[dict[str, Any]]) -> str | None:
     if (h * 60 + m) > 0 and len(body_stripped) > 50 and not body_stripped.startswith("#"):
         return f"[Prior session: {when_m.group(1).strip()}, ~{h}h {m}m] {body_stripped[:200]}"
     return None
-
-
-def _validate_handoff_identity(
-    handoff_path: Path,
-    expected_session_id: str,
-    expected_terminal_id: str | None,
-) -> bool:
-    """Validate handoff file belongs to this session and terminal.
-
-    Args:
-        handoff_path: Path to handoff file
-        expected_session_id: Expected session ID
-        expected_terminal_id: Expected terminal ID (None to skip terminal check)
-
-    Returns:
-        True if valid, False if should be skipped
-    """
-    # R-001: Extract and validate terminal_id from filename
-    if expected_terminal_id:
-        hf_stem = handoff_path.stem  # console_{terminal_id}_handoff
-        parts = hf_stem.split("_")
-        if len(parts) >= 3:
-            hf_terminal_id = parts[1]
-            if hf_terminal_id != expected_terminal_id:
-                return False
-
-    # Pre-mortem fix 1b: Validate session_id match (requires reading file)
-    try:
-        with open(handoff_path, encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return False
-
-    handoff_session_id = data.get("resume_snapshot", {}).get("session_id")
-    if handoff_session_id and handoff_session_id != expected_session_id:
-        return False
-
-    return True
 
 
 def build_session_chain(cwd: Path | None = None) -> list[dict[str, Any]]:
@@ -453,39 +293,6 @@ def build_session_chain(cwd: Path | None = None) -> list[dict[str, Any]]:
     return result
 
 
-def find_transcript_file(terminal_id: str) -> Path | None:
-    """Find the transcript file for this terminal.
-
-    Args:
-        terminal_id: Terminal identifier
-
-    Returns:
-        Path to transcript file or None if not found
-    """
-    # Strategy 1: Check common transcript locations
-    cwd = Path.cwd()
-    candidates = [
-        # Project-local .claude directory
-        cwd / ".claude" / "transcripts" / f"{terminal_id}.jsonl",
-        # User-level transcript storage
-        Path.home() / ".claude" / "transcripts" / f"{terminal_id}.jsonl",
-        # Check current directory
-        cwd / f"{terminal_id}.jsonl",
-    ]
-
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-
-    # Strategy 3: Fallback — scan project transcript directory for actual transcript files
-    # This handles the case where sessions-index is stale but .jsonl files still exist
-    transcript_path = _find_project_transcript()
-    if transcript_path:
-        return transcript_path
-
-    return None
-
-
 def _find_project_transcript() -> Path | None:
     """Find the most recent project transcript file with actual user/assistant content.
 
@@ -530,28 +337,6 @@ def _find_project_transcript() -> Path | None:
     # Return most recently modified
     candidates.sort(key=lambda x: x[0], reverse=True)
     return candidates[0][1]
-
-
-def _is_transcript_file(path: Path) -> bool:
-    """Check if a .jsonl file is a real transcript (has user/assistant entries)."""
-    try:
-        with open(path, encoding="utf-8") as f:
-            for i, line in enumerate(f):
-                if i >= _TRANSCRIPT_SCAN_LINES:
-                    break
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                    t = entry.get("type", "")
-                    if t in ("user", "assistant"):
-                        return True
-                except json.JSONDecodeError:
-                    continue
-        return False
-    except OSError:
-        return False
 
 
 def _find_project_root_for_transcripts() -> Path | None:
@@ -606,23 +391,6 @@ def _find_project_root_for_transcripts() -> Path | None:
             pass
 
     return None
-
-
-def get_project_root() -> Path:
-    """Detect project root from current working directory."""
-    cwd = Path.cwd()
-
-    # Look for .claude directory or common project markers
-    if (cwd / ".claude").exists():
-        return cwd
-
-    # Check parent directories
-    for parent in cwd.parents:
-        if (parent / ".claude").exists():
-            return parent
-
-    # Fallback to current directory
-    return cwd
 
 
 def load_transcript_entries(transcript_path: str | None) -> list[dict[str, Any]]:
@@ -1118,10 +886,44 @@ def _extract_first_user_request(entries: list[dict[str, Any]]) -> str | None:
         if any(pattern in text for pattern in skip_patterns):
             continue
         # Skip very short entries (likely acknowledgments)
-        if len(text.strip()) < 30:
+        if len(text.strip()) < _MIN_REQUEST_LENGTH:
             continue
-        return text[:500]  # Truncate long requests
+        return text[:_MAX_REQUEST_LENGTH]  # Truncate long requests
     return None
+
+
+def _safe_finditer(pattern: str | re.Pattern[str], text: str, flags: int = 0) -> list[re.Match[str]]:
+    """Safely execute re.finditer with error handling for invalid patterns.
+
+    Args:
+        pattern: Regex pattern (string or compiled)
+        text: Text to search
+        flags: Optional regex flags (only used if pattern is string)
+
+    Returns:
+        List of match objects, or empty list on error
+    """
+    try:
+        return list(re.finditer(pattern, text, flags))
+    except (re.error, TypeError):
+        return []
+
+
+def _safe_search(pattern: str | re.Pattern[str], text: str, flags: int = 0) -> re.Match[str] | None:
+    """Safely execute re.search with error handling for invalid patterns.
+
+    Args:
+        pattern: Regex pattern (string or compiled)
+        text: Text to search
+        flags: Optional regex flags (only used if pattern is string)
+
+    Returns:
+        Match object or None on error/no match
+    """
+    try:
+        return re.search(pattern, text, flags)
+    except (re.error, TypeError):
+        return None
 
 
 def _extract_session_narrative(
@@ -1187,28 +989,25 @@ def _extract_session_narrative(
         if not text:
             continue
         for pattern in decision_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
+            matches = _safe_finditer(pattern, text, re.IGNORECASE)
             for match in matches:
                 decision_text = match.group(1).strip()
                 if decision_text and decision_text not in narrative["decisions_made"]:
-                    narrative["decisions_made"].append(decision_text[:200])
+                    narrative["decisions_made"].append(decision_text[:_MAX_ITEM_LENGTH])
 
     # Parse handoff blocks for next steps
-    handoff_pattern = re.compile(
-        r"(?:next step|pending|remaining|todo|to do|action item)[:\s]+(.+?)(?:\n\n|\n\*\*|\Z)",
-        re.IGNORECASE | re.DOTALL,
-    )
+    handoff_pattern = r"(?:next step|pending|remaining|todo|to do|action item)[:\s]+(.+?)(?:\n\n|\n\*\*|\Z)"
     for entry in entries:
         text = _extract_content(entry)
         if not text:
             continue
-        for match in handoff_pattern.finditer(text[:1000]):
+        for match in _safe_finditer(handoff_pattern, text[:_MAX_TEXT_WINDOW], re.IGNORECASE | re.DOTALL):
             step = match.group(1).strip()
-            if step and len(step) > 10:
-                narrative["next_steps"].append(step[:200])
+            if step and len(step) > _MIN_STEP_LENGTH:
+                narrative["next_steps"].append(step[:_MAX_ITEM_LENGTH])
         # Also check for "## Last Session Summary" blocks
         if "## Last Session Summary" in text or "Next Immediate Action" in text:
-            next_action_match = re.search(
+            next_action_match = _safe_search(
                 r"(?:next immediate action|remaining|nxt step)[:\s]*\n(?:[0-9]+\.\s*(.+?)(?:\n|$))+",
                 text,
                 re.IGNORECASE,
@@ -1217,30 +1016,92 @@ def _extract_session_narrative(
                 for line in next_action_match.group(0).split("\n"):
                     line = line.strip()
                     if line and not line.lower().startswith("next"):
-                        narrative["next_steps"].append(line[:200])
+                        narrative["next_steps"].append(line[:_MAX_ITEM_LENGTH])
 
     # Extract open questions (explicit uncertainty markers)
     question_patterns = [
         r"(?:open question|unresolved|uncertain|not sure|don't know)[:\s]+(.+)",
         r"(?:blocked by|depends on|waiting for)[:\s]+(.+)",
-        r"(?:what if|how to)[:\s]+(.+?)(?:\?|$)",
+        r"(?:^|[\n\r]\s*|\. )(?:what if|how to)[:\s]+(.+?)(?:\?|$)",
     ]
     for entry in entries:
         text = _extract_content(entry)
         if not text:
             continue
         for pattern in question_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
+            matches = _safe_finditer(pattern, text, re.IGNORECASE)
             for match in matches:
                 question = match.group(1).strip()
-                if question and len(question) > 15:
-                    narrative["open_questions"].append(question[:200])
+                if question and len(question) > _MIN_QUESTION_LENGTH:
+                    narrative["open_questions"].append(question[:_MAX_ITEM_LENGTH])
+
+    # Extract current state: modified, working, blocked
+    # Modified files from semantic extraction
+    for action in actions[:_MAX_ACTION_COUNT]:
+        if "edit" in action.lower() or "modify" in action.lower() or "fix" in action.lower():
+            # Extract file path from action text if possible
+            file_match = _safe_search(r'([A-Za-z]:\\\\[^"\'\s]+|["\']?[\w.-]+\.[a-z]{2,4}["\']?)', action, re.IGNORECASE)
+            if file_match:
+                file_path = file_match.group(1)
+                narrative["current_state"]["modified"].append(file_path[:_MAX_PATH_LENGTH])
+
+    # Working state from transcript patterns
+    working_patterns = [
+        r"(?:now\s+)?working\s+as\s+expected",
+        r"(?:is\s+)?(?:fully\s+)?(?:operational|functional)",
+        r"(?:test|verification|check)\s+succee[ds]",
+        r"(?:ready|deployed|launched|complete)",
+    ]
+    for entry in entries:
+        if entry.get("type") != "assistant":
+            continue
+        text = _extract_content(entry)
+        if not text:
+            continue
+        for pattern in working_patterns:
+            if _safe_search(pattern, text, re.IGNORECASE):
+                # Extract what's working from context
+                working_match = _safe_search(r'(?:working|operational|functional|success)(?:\s+(?:for|with|on)?\s+([^.!\n]+))?', text, re.IGNORECASE)
+                if working_match:
+                    working_item = working_match.group(1).strip() if working_match.group(1) else "system"
+                else:
+                    working_item = "system"
+                if working_item and working_item not in narrative["current_state"]["working"]:
+                    narrative["current_state"]["working"].append(working_item[:_MAX_PATH_LENGTH])
+                break
+
+    # Blocked state from transcript patterns
+    blocked_patterns = [
+        r"(?:blocked|stuck|waiting\s+(?:on|for)|blocked\s+by)",
+        r"(?:cannot|unable to|fail(?:ed|s?\s+to))",
+        r"(?:error|issue|bug)(?:\s+(?:in|at|on))?",
+    ]
+    for entry in entries:
+        if entry.get("type") != "assistant":
+            continue
+        text = _extract_content(entry)
+        if not text:
+            continue
+        for pattern in blocked_patterns:
+            if _safe_search(pattern, text, re.IGNORECASE):
+                # Extract what's blocked from context
+                blocked_match = _safe_search(r'(?:blocked|waiting|stuck)(?:\s+(?:on|for|by)\s+)?([^.!\n]+)', text, re.IGNORECASE)
+                if blocked_match:
+                    blocked_item = blocked_match.group(1).strip() if blocked_match.group(1) else "progress"
+                else:
+                    blocked_item = "progress"
+                if blocked_item and blocked_item not in narrative["current_state"]["blocked"]:
+                    narrative["current_state"]["blocked"].append(blocked_item[:_MAX_PATH_LENGTH])
+                break
 
     # Deduplicate and limit
-    narrative["what_was_done"] = _unique_truncate(narrative["what_was_done"], max_len=300)[:5]
-    narrative["decisions_made"] = _unique_truncate(narrative["decisions_made"], max_len=300)[:5]
-    narrative["next_steps"] = _unique_truncate(narrative["next_steps"], max_len=300)[:5]
-    narrative["open_questions"] = _unique_truncate(narrative["open_questions"], max_len=300)[:5]
+    narrative["what_was_done"] = _unique_truncate(narrative["what_was_done"], max_len=_MAX_DEDUP_LENGTH)[:_MAX_ITEMS_PER_FIELD]
+    narrative["decisions_made"] = _unique_truncate(narrative["decisions_made"], max_len=_MAX_DEDUP_LENGTH)[:_MAX_ITEMS_PER_FIELD]
+    narrative["next_steps"] = _unique_truncate(narrative["next_steps"], max_len=_MAX_DEDUP_LENGTH)[:_MAX_ITEMS_PER_FIELD]
+    narrative["open_questions"] = _unique_truncate(narrative["open_questions"], max_len=_MAX_DEDUP_LENGTH)[:_MAX_ITEMS_PER_FIELD]
+    narrative["current_state"]["modified"] = _unique_truncate(narrative["current_state"]["modified"], max_len=_MAX_DEDUP_LENGTH)[:_MAX_ITEMS_PER_FIELD]
+    narrative["current_state"]["working"] = _unique_truncate(narrative["current_state"]["working"], max_len=_MAX_DEDUP_LENGTH)[:_MAX_ITEMS_PER_FIELD]
+    narrative["current_state"]["blocked"] = _unique_truncate(narrative["current_state"]["blocked"], max_len=_MAX_DEDUP_LENGTH)[:_MAX_BLOCKED_ITEMS]
 
     return narrative
 
@@ -1700,154 +1561,6 @@ def format_quick_argument_section() -> str:
 FRESH_HANDOFF_THRESHOLD_SECONDS = 300
 
 # Pre-mortem fix 3a: Extract shared file discovery helper
-def _get_most_recent_transcript(transcript_dir: Path) -> Path | None:
-    """Get the most recent transcript file from a directory.
-
-    Args:
-        transcript_dir: Directory containing transcript files
-
-    Returns:
-        Path to most recent transcript file, or None if not found
-    """
-    jsonl_files: list[tuple[float, Path]] = []
-    for jsonl_file in transcript_dir.glob("*.jsonl"):
-        if _is_transcript_file(jsonl_file):
-            try:
-                mtime = jsonl_file.stat().st_mtime
-                jsonl_files.append((mtime, jsonl_file))
-            except OSError:
-                continue
-
-    if not jsonl_files:
-        return None
-
-    jsonl_files.sort(key=lambda x: x[0], reverse=True)
-    return jsonl_files[0][1]
-
-
-def _get_fresh_handoff(
-    session_id: str,
-    terminal_id: str | None = None,
-) -> Path | None:
-    """Check for a fresh handoff file (< 5 minutes old).
-
-    Args:
-        session_id: Current session ID (for validation, R-001)
-        terminal_id: Optional terminal ID for cross-terminal filtering (R-001)
-
-    Returns:
-        Path to fresh handoff file, or None if not found
-
-    Raises:
-        None - all errors are caught and logged
-    """
-    from datetime import datetime, timezone
-    import os
-
-    # Extract terminal_id from filename if not provided (R-001)
-    if terminal_id is None:
-        terminal_id = os.environ.get("CLAUDE_TERMINAL_ID")
-
-    # R-014: Use absolute paths, no resolve() (handles P:\\\\\\ drive unavailable)
-    handoff_dirs = [
-        Path("P:\\\\\\") / ".claude" / "state" / "handoff",
-        Path.home() / ".claude" / "state" / "handoff",
-    ]
-
-    for handoff_dir in handoff_dirs:
-        try:
-            if not handoff_dir.exists():
-                continue
-
-            for hf in handoff_dir.glob("console_*_handoff.json"):
-                try:
-                    # R-001: Validate terminal_id and session_id match
-                    if not _validate_handoff_identity(hf, session_id, terminal_id):
-                        continue
-
-                    with open(hf, encoding="utf-8") as f:
-                        data = json.load(f)
-
-                    created_str = data.get("resume_snapshot", {}).get("created_at")
-                    if not created_str:
-                        continue
-
-                    # R-006: Handle timezone-naive datetime explicitly
-                    try:
-                        if created_str.endswith("Z"):
-                            created = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
-                        elif "+" in created_str or "-" in created_str[-6:]:
-                            created = datetime.fromisoformat(created_str)
-                        else:
-                            # Naive datetime - treat as UTC (R-006 fix)
-                            created = datetime.fromisoformat(created_str).replace(tzinfo=timezone.utc)
-
-                        age = (datetime.now(timezone.utc) - created).total_seconds()
-                        if age < FRESH_HANDOFF_THRESHOLD_SECONDS:
-                            return hf
-                    except ValueError as e:
-                        logger.warning("Invalid timestamp in handoff %s: %s", hf, e)
-                        continue
-                except (OSError, json.JSONDecodeError) as e:
-                    logger.debug("Failed to read handoff %s: %s", hf, e)
-                    continue
-        except OSError as e:
-            # R-014: Handle P:\\\\\\ drive unavailable
-            # Pre-mortem fix 3c: User-friendly error message
-            logger.warning(
-                "Unable to access handoff directory at %s. "
-                "Your session history may be incomplete. Cause: %s",
-                handoff_dir,
-                e,
-            )
-            continue
-
-    return None
-
-
-def _load_from_handoff(handoff_path: Path) -> list[SessionSummary]:
-    """Load sessions from a handoff file.
-
-    Args:
-        handoff_path: Path to handoff JSON file
-
-    Returns:
-        List of session summaries (single current session)
-
-    Raises:
-        OSError: If handoff file cannot be read
-        json.JSONDecodeError: If handoff JSON is malformed
-    """
-    with open(handoff_path, encoding="utf-8") as f:
-        data = json.load(f)
-
-    # Pre-mortem fix 2c: Validate handoff schema
-    # V2 handoff: session_id lives inside resume_snapshot, not at top level
-    resume_snapshot = data.get("resume_snapshot", {})
-    required_fields = ["resume_snapshot"]
-    for field in required_fields:
-        if field not in data:
-            logger.warning(
-                "Handoff file is incomplete (missing '%s'). "
-                "Unable to load session context. File: %s",
-                field,
-                handoff_path,
-            )
-            return []
-
-    # Construct session summary from handoff
-    session = {
-        "session_id": resume_snapshot.get("session_id", ""),
-        "goal": resume_snapshot.get("goal", ""),
-        "current_task": resume_snapshot.get("current_task", ""),
-        "active_files": resume_snapshot.get("active_files", []),
-        "created_at": resume_snapshot.get("created_at", ""),
-        "transcript_path": resume_snapshot.get("transcript_path", ""),
-    }
-
-    return [session]
-
-
 def _load_from_chain_result(
     chain_result,
     project_root: Path,
@@ -1856,7 +1569,7 @@ def _load_from_chain_result(
     """Load sessions from chain result, filtering subagents.
 
     Args:
-        chain_result: SessionChainResult from walk_session_chain or walk_handoff_chain
+        chain_result: SessionChainResult from walk_session_chain
         project_root: Project root path for validation (R-004)
         seen_session_ids: Track seen sessions for deduplication (R-007)
 
@@ -1988,31 +1701,6 @@ def _load_from_direct_transcript(project_root: Path) -> list[SessionSummary]:
     return sessions
 
 
-def _is_subagent_transcript(path: Path) -> bool:
-    """Check if a transcript path belongs to a subagent.
-
-    Uses structural path analysis (component check via path.parts),
-    not substring matching (R-012: exact component match).
-
-    Args:
-        path: Transcript path to check
-
-    Returns:
-        True if path is a subagent transcript
-    """
-    # R-012: Exact component-level check, not substring
-    if path.parts:
-        for part in path.parts:
-            if part == "subagents":
-                return True
-
-    # Filename prefix check
-    if path.name.startswith("agent-"):
-        return True
-
-    return False
-
-
 def _load_all_sessions_via_history_index(
     project_root: Path | None = None,
 ) -> list[SessionSummary]:
@@ -2043,11 +1731,9 @@ def _load_all_sessions_via_history_index(
     try:
         from core.session_chain import (
             SessionChainEntry,
-            walk_handoff_chain,
             walk_session_chain,
         )
         # 1c: Verify API
-        assert hasattr(walk_handoff_chain, '__call__'), "walk_handoff_chain not callable"
         assert hasattr(walk_session_chain, '__call__'), "walk_session_chain not callable"
     except (ImportError, ValueError, OSError, AssertionError) as exc:
         logger.warning("Failed to import session_chain: %s", exc)
@@ -2066,7 +1752,7 @@ def _load_all_sessions_via_history_index(
 
     # Strategy 2: Walk handoff chain
     try:
-        handoff_result = walk_handoff_chain(current_session_id)
+        handoff_result = walk_session_chain(current_session_id)
         # R-008, R-011: Check chain length and session_id presence
         if handoff_result.entries:
             # R-011: Validate current session_id is in chain
@@ -2102,44 +1788,6 @@ def _load_all_sessions_via_history_index(
 
     # Strategy 4: Direct transcript fallback
     return _load_from_direct_transcript(project_root)
-
-
-def _get_current_session_id(project_root: Path | None) -> str | None:
-    """Find the current session ID from the most recent transcript file.
-
-    Args:
-        project_root: Project root path
-
-    Returns:
-        Session ID string, or None if not found
-    """
-    transcript_dir = _find_transcript_dir(project_root)
-    if not transcript_dir or not transcript_dir.exists():
-        return None
-
-    # Pre-mortem fix 3a: Use shared helper
-    most_recent = _get_most_recent_transcript(transcript_dir)
-    if not most_recent:
-        return None
-
-    # Read first entry to get sessionId
-    try:
-        with open(most_recent, encoding="utf-8", errors="replace") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                    sid = entry.get("sessionId")
-                    if sid:
-                        return str(sid)
-                except json.JSONDecodeError:
-                    continue
-    except OSError:
-        pass
-
-    return None
 
 
 def _find_transcript_dir(project_root: Path | None) -> Path | None:

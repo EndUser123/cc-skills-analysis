@@ -1,33 +1,56 @@
 ---
 name: gto
-description: "GTO v4.2 \u2014 Session-aware gap-to-opportunity analysis with RNS-compatible\
-  \ output"
-version: 4.2.0
+description: "GTO v4.3 — Session-aware gap-to-opportunity analysis with execution-contract runtime. Reads session transcripts to produce RNS-formatted findings. Contract: workflow-execution with artifact as completion object."
+version: "4.3.0"
 triggers:
-- /gto
-- gap analysis
-- find gaps
-- gap to opportunity
+  - "/gto"
 category: analysis
-enforcement: advisory
-workflow_steps:
-- Run deterministic analysis + session transcript analysis (orchestrator)
-- Spawn gap reviewer subagent for structured reasoning beyond detectors
-- Re-run orchestrator to merge gap reviewer results
-- Display findings in RNS domain-grouped format with Do ALL footer
+contract_type: workflow-execution
+
+# Hard gate: Bash is the first tool to invoke the orchestrator.
+# All other tools are blocked until the orchestrator runs.
+allowed_first_tools:
+  - Bash
+
+# Artifact is the single completion criterion for workflow-execution.
+# The skill-guard runtime tracks this via execution-state.json.
 required_artifacts:
   - ".claude/.artifacts/{terminal_id}/gto/outputs/artifact.json"
-  - ".claude/.artifacts/{terminal_id}/gto/gap_reviewer_result.json"
-response_requirements:
-  format: "RNS domain-grouped with Do ALL footer"
-  must_have:
-    - "RNS|D| markers for domain sections"
-    - "RNS|Z| marker for footer"
-    - "gap_reviewer_result.json merged into final output"
-contract_type: workflow-execution
+
+# Tools available after orchestrator starts.
+# Bash: orchestrator itself and sub-shells.
+# Read/Grep/Glob: session and artifact analysis.
+# Agent: gap reviewer and enrichment subagents.
+# Skill/WebSearch/WebFetch: investigation.
+# Write/Edit: artifact and session-scoped files only.
+allowed_tools_now:
+  - Bash
+  - Read
+  - Grep
+  - Glob
+  - AskUserQuestion
+  - Skill
+  - Agent
+  - WebSearch
+  - WebFetch
+  - Write
+  - Edit
+  - Task
 ---
 
-# GTO v4.2 — Session-Aware Gap-to-Opportunity Analysis
+### Operating Contract
+
+You are working inside a repository where GTO implements a full gap‑analysis and verification pipeline. Your job is to work **within** that pipeline, not to invent parallel workflows or formats.
+
+- Treat the GTO orchestrators, models, detectors, hooks, and artifact writers as the **contract of record** for how gap analysis, verification, and session state work. When you change them, you must preserve existing JSON shapes, run‑state phases, and RNS machine output unless explicitly asked to change the contract.
+- For any change that touches GTO quality gates, gap reviewer wiring, or their tests, use the automated quality flow instead of manually sequencing prompts. The canonical flow is: (1) implementer step, (2) pytest for `gto` suite, (3) verifier step, (4) gate on `FINALVERDICT.status`. Use `gto_quality_runner.py` as the single entry point.
+- When adding new behavior, prefer new deterministic detectors in the existing `lib/` modules that feed the orchestrator, or new verification logic that uses the existing `GTOArtifact` structure and RNS machine output — rather than new top‑level artifacts, file formats, or one‑off drivers.
+- The agents (domain analyzer, findings reviewer, action normalizer, gap reviewer, session reviewer) have stable prompts and JSON schemas. You may change prompts and tests freely, but you must not change agent I/O schemas unless explicitly requested and all consumers are updated together.
+- Hooks (PreToolUse, PostToolUse, SessionStart, Stop) are boundary layers, not orchestration systems. Hook changes should focus on validating artifacts and run state, and must not bypass the orchestrator, mutate artifacts by hand, or introduce new hidden state.
+- Do **not** assume utilities like `stripscaffoldingblocks`, turn‑mode routers, or per‑mode message schemas exist. If you need that behavior, implement it explicitly in shared modules rather than referencing unknown helpers.
+- When in doubt, reuse existing detectors, orchestrator entry points, and artifact contracts. Enforce quality via the automated implement → pytest → verify → verdict flow rather than adding configuration layers or runner scripts.
+
+# GTO v4.3 — Session-Aware Gap-to-Opportunity Analysis (Contract Runtime)
 
 ## Overview
 
@@ -38,7 +61,7 @@ GTO analyzes the current session's work — what was discussed, what was attempt
 ### Step 1: Run Session-Aware Analysis
 
 ```bash
-cd "P:\\\\\\packages/cc-skills-analysis" && python -m skills.gto.orchestrator --terminal-id "console_${WT_SESSION}" --session-id "$CLAUDE_SESSION_ID" --root .
+cd "P:\\\\\\packages/cc-skills-analysis" && python -m skills.gto.orchestrator --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
 ```
 
 This runs:
@@ -92,9 +115,6 @@ Produce a JSON object with two fields and write it to: $ARTIFACTS_ROOT/$WT_SESSI
 2. "findings": a JSON array of any NEW gaps you discovered that are NOT already in the input findings, following the standard finding schema:
    {"id": "GAPR-{domain}-{number}", "title": "...", "description": "...", "domain": "...", "gap_type": "...", "severity": "...", "action": "realize", "priority": "...", "evidence": [...]}
 
-3. "weakest_assumption": the single assumption most likely to be wrong, with:
-   {"assumption": "...", "if_wrong": "...", "mitigation": "...", "verification_status": "verified|unverifiable|partially_confirmed"}
-
 Rules:
 - Do not duplicate findings already present in the input
 - Prefer issues predictable from system structure (overlapping validators, mode flags, format constraints)
@@ -108,7 +128,7 @@ Rules:
 After the subagent completes, re-run the orchestrator to merge the gap reviewer results:
 
 ```bash
-cd "P:\\\\\\packages/cc-skills-analysis" && python -m skills.gto.orchestrator --terminal-id "console_${WT_SESSION}" --session-id "$CLAUDE_SESSION_ID" --root .
+cd "P:\\\\\\packages/cc-skills-analysis" && python -m skills.gto.orchestrator --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
 ```
 
 The second run reads `gap_reviewer_result.json` and merges its findings into the final artifact.
@@ -120,7 +140,7 @@ The gap reviewer is the only mandatory agent. The remaining agents are optional 
 **Optional agents** (spawn sequentially if needed):
 
 | Agent | Handoff | Result | Purpose |
-|-||--||
+|-------|---------|--------|---------|
 | Domain Analyzer | `domain_analyzer_handoff.json` | `domain_analyzer_result.json` | Domain-specific health assessments |
 | Findings Reviewer | `findings_reviewer_handoff.json` | `findings_reviewer_result.json` | Validate severity, reject false positives |
 | Action Normalizer | `action_normalizer_handoff.json` | `action_normalizer_result.json` | Normalize into canonical RNS actions |
@@ -129,6 +149,8 @@ The gap reviewer is the only mandatory agent. The remaining agents are optional 
 If any optional agents run, re-run the orchestrator afterward to merge their results.
 
 ### Step 2: Display Results
+
+**WAIT for Gap Reviewer before displaying.** Do NOT render RNS output until Step 1.5 (Gap Reviewer) has completed and the orchestrator has merged its results. The "0 — Do ALL Recommended Next Actions (N items)" footer must be the LAST line shown — predicted opportunities come BEFORE it, not after.
 
 Read the artifact:
 ```bash
@@ -147,19 +169,21 @@ The display must follow the `/rns` output format:
 - Domain-grouped sections with emoji headers: `{num} {emoji} {DOMAIN} ({count})`
 - Domain-numbered items: `{num}{letter} [{action}/{priority}] Description @ file:line`
 - Sort within domain: recover > prevent > realize, then CRITICAL > HIGH > MEDIUM > LOW
-- Footer: `0 — Do ALL Recommended Next Actions (N items)`
+- **The "0 — Do ALL Recommended Next Actions (N items)" footer is the LAST line** — predicted opportunities appear BEFORE it
 - No markdown fences around the RNS output
 
 ### Step 2.5: Forward-Looking Opportunity Analysis + Self-Reflection
 
+**This section appears BEFORE the final "0 — Do ALL" footer.**
+
 After rendering the deterministic findings, produce a structured gap-to-opportunity review. This is now partially automated via the **Gap Reviewer** (Step 1.5) which receives pre-populated detector evidence and produces a FACT/INFERENCE/UNKNOWN/RECOMMENDATION review plus any new findings.
 
-**If the Gap Reviewer ran successfully** (check `gap_reviewer_result.json`), incorporate its review into the display. The review appears as a structured section after the RNS findings.
+**If the Gap Reviewer ran successfully** (check `gap_reviewer_result.json`), incorporate its review into the display. The review appears as a structured section between the RNS findings and the predicted opportunities.
 
 **If the Gap Reviewer did not run** (first pass, no agent results yet), perform the analysis manually based on these signals:
 
 | Signal | What to notice |
-|--|-|
+|--------|----------------|
 | **Incomplete work** | Features half-implemented, functions with TODO bodies, tests commented out, branches unmerged |
 | **Dependency chains** | A was completed but B depends on A and wasn't started — B is the natural next step |
 | **Deferred decisions** | "We'll deal with that later", "skip for now", "not in scope" — these are future work queued by the user |
@@ -173,17 +197,12 @@ After rendering the deterministic findings, produce a structured gap-to-opportun
 2. **Boundary uncertainty**: *What is the smallest discriminating check that would resolve remaining uncertainty?* Name the falsification condition — the specific counterexample or signal that would prove the recommendation wrong.
 3. **Failure mode first**: *Before celebrating a fix, ask: what is the likely failure mode? What discriminating test would falsify it? Could this overfire?*
 4. **Implementation vs capability**: *Is the current implementation telling us the true capability, or just one way it was built?* Challenge assumed limits that are actually just current-impl constraints.
-5. **Weakest assumption challenge**: *Which assumption am I MOST confident about that I HAVEN'T verified?* What would happen if it is wrong? What's the smallest check to falsify it?
-
-For each predicted next action, render it as a `realize` action item in the RNS output with:
-- **Specific description**: not "add tests" but "write integration tests for agent handoff/result round-trip in domain_analyzer.py"
-- **Confidence indicator**: HIGH (dependency chain, explicitly deferred), MEDIUM (trajectory pattern), LOW (speculative)
-- **Evidence**: cite the transcript turn or finding that supports the prediction
 
 Display order:
-1. **Signals observed** — list each signal detected in the transcript with the specific evidence (turn number, finding ID, file reference)
-2. **Predicted opportunities** — the actions that follow from those signals, rendered as RNS `realize` items
-3. Evidence precedes prediction, not the reverse — the reader should see the reasoning before the recommendation
+1. **RNS findings block** — domain-grouped, action-sorted, priority-sorted
+2. **Gap Reviewer synthesis** (if available) — facts, inferences, unknowns, recommendations
+3. **Predicted opportunities** — HIGH/MEDIUM/LOW confidence next actions derived from session evidence
+4. **"0 — Do ALL Recommended Next Actions (N items)"** — final footer line
 
 Rules:
 - Do NOT surface predictions that duplicate existing findings (those already appear as gaps)
@@ -196,7 +215,7 @@ Rules:
 GTO reads from session-scoped sources (not global git state):
 
 | Source | Purpose |
-|--||
+|--------|---------|
 | `identity.json` | Hook-captured session_id, transcript_path, cwd |
 | `session_registry.jsonl` | Terminal-scoped session chain history |
 | `~/.claude/projects/*.jsonl` | Chat transcripts (tool call extraction, goal/outcome detection) |
@@ -209,7 +228,7 @@ GTO reads from session-scoped sources (not global git state):
 Agent prompts are defined in `skills/gto/agents/prompts.py`:
 
 | Agent | Prompt Constant | Purpose |
-|-|-||
+|-------|----------------|---------|
 | Domain Analyzer | `DOMAIN_ANALYZER_SYSTEM` | Enrich findings with domain-specific health assessments |
 | Findings Reviewer | `FINDINGS_REVIEWER_SYSTEM` | Validate severity, reject false positives, dedupe |
 | Action Normalizer | `ACTION_NORMALIZER_SYSTEM` | Normalize into canonical RNS action items |
@@ -221,7 +240,7 @@ Agent prompts are defined in `skills/gto/agents/prompts.py`:
 Findings are automatically routed to owning skills:
 
 | Gap Type | Routes To |
-|-|--|
+|----------|-----------|
 | missingdocs | /docs |
 | techdebt | /code |
 | runtime_error, bug | /diagnose |

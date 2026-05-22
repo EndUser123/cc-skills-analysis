@@ -1,16 +1,28 @@
 #!/usr/bin/env python3
-"""GTO Stop hook — state-driven completion verification.
+"""GTO-v2 Stop hook — mechanical artifact verification only.
 
-Claude Code hook protocol: reads JSON from stdin, outputs JSON to stdout.
+This hook performs ONLY mechanical checks. The skill-guard execution runtime
+evaluates the contract (phase, required_artifacts completion) separately.
 
-This hook runs on session stop and verifies GTO run completion by checking
-artifacts against expected state. It does NOT parse prose output.
+Checks:
+1. Artifact file exists at expected path
+2. Artifact is valid JSON
+3. Machine output has RNS|D| and RNS|Z| markers
 
-Verification checks:
-1. State file exists and phase == "completed"
-2. Artifact file exists and is valid JSON with required fields
-3. Artifact machine_output has RNS format markers
-4. All expected_artifacts are present
+Returns None (allow) on pass, {"decision": "warn"} with reason on failure.
+Does NOT block — skill-guard Stop is the contract authority.
+
+# Operating Contract (for LLM and hooks)
+# - GTO/GTO_v2 orchestrators and artifacts define the canonical contract
+#   for gap analysis and verification. This hook must not change JSON
+#   shapes or state semantics unless explicitly requested.
+# - When you modify hooks, keep them focused on: checking run state,
+#   validating artifacts (verifyartifact, RNS markers), capturing
+#   failures or hygiene signals via detectors.
+#   Do NOT introduce new ad‑hoc formats or bypass the orchestrator.
+# - Do not assume stripscaffoldingblocks, mode schemas, or other
+#   hidden sanitization layers exist. If you need them, implement
+#   them explicitly in a shared module instead of referencing them.
 """
 from __future__ import annotations
 
@@ -18,89 +30,40 @@ import json
 import sys
 from pathlib import Path
 
-from .common import (
-    is_gto_active,
-    read_state,
-    gto_state_dir,
-    write_hook_output,
-)
+from .common import gto_state_dir, write_hook_output
 
 
 def run(data: dict) -> dict | None:
     """In-process hook entry point."""
     session_id = data.get("session_id")
-    if not is_gto_active(session_id):
-        return None
+    state_dir = gto_state_dir(session_id)
+    artifact_path = state_dir.parent / "outputs" / "artifact.json"
 
-    state = read_state(session_id)
-    if not state:
-        return None
-
-    verification_required = state.get("verification_required", False)
-    if not verification_required:
-        return None
-
-    errors = _verify_completion(state)
-
-    if errors:
+    if not artifact_path.exists():
         return {
-            "decision": "block",
-            "reason": f"GTO verification failed: {'; '.join(errors)}",
-            "additionalContext": "\n\n💡 Problems with GTO state? Run /doctor to check identity and cache health."
+            "decision": "warn",
+            "reason": f"gto-v2: artifact not found at {artifact_path}",
         }
 
-    return None
-
-
-def _verify_completion(state: dict) -> list[str]:
-    """Run verification checks against state and artifacts. Returns errors."""
-    errors: list[str] = []
-
-    # Check phase
-    if state.get("phase") != "completed":
-        errors.append(f"phase is '{state.get('phase')}', expected 'completed'")
-
-    # Check artifact exists
-    artifact_path = state.get("last_artifact")
-    if not artifact_path:
-        errors.append("no artifact path in state")
-        return errors
-
-    path = Path(artifact_path)
-    if not path.exists():
-        errors.append(f"artifact file missing: {artifact_path}")
-        return errors
-
-    # Validate artifact content
     try:
-        artifact = json.loads(path.read_text(encoding="utf-8"))
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        errors.append(f"artifact not valid JSON: {exc}")
-        return errors
+        return {
+            "decision": "warn",
+            "reason": f"gto-v2: artifact not valid JSON: {exc}",
+        }
 
-    # Required fields
-    for field in ("terminal_id", "session_id", "findings", "machine_output"):
-        if field not in artifact:
-            errors.append(f"artifact missing field: {field}")
-
-    # Machine output format
     machine = artifact.get("machine_output", [])
     if isinstance(machine, list):
-        if not any(isinstance(l, str) and l.startswith("RNS|D|") for l in machine):
-            errors.append("machine_output missing RNS|D| header")
-        if not any(isinstance(l, str) and l.startswith("RNS|Z|") for l in machine):
-            errors.append("machine_output missing RNS|Z| terminator")
+        has_d = any(isinstance(l, str) and l.startswith("RNS|D|") for l in machine)
+        has_z = any(isinstance(l, str) and l.startswith("RNS|Z|") for l in machine)
+        if not has_d or not has_z:
+            return {
+                "decision": "warn",
+                "reason": "gto-v2: artifact machine_output missing RNS|D| or RNS|Z| markers",
+            }
 
-    # Expected artifacts
-    for expected in state.get("expected_artifacts", []):
-        exp_path = Path(expected)
-        if not exp_path.exists():
-            # Check relative to artifacts dir
-            artifacts_dir = gto_state_dir().parent
-            if not (artifacts_dir / expected).exists():
-                errors.append(f"expected artifact missing: {expected}")
-
-    return errors
+    return None
 
 
 def main() -> None:
@@ -114,8 +77,6 @@ def main() -> None:
     result = run(data)
     if result is not None:
         write_hook_output(result)
-        if result.get("decision") == "block":
-            sys.exit(2)
     else:
         write_hook_output({"decision": "allow"})
     sys.exit(0)

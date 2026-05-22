@@ -113,7 +113,6 @@ def detect_marker_staleness(
                 hdata = json.load(f)
             ctx = hdata.get("session_context", {})
             h_terminal_id = ctx.get("terminal_id")
-            h_session_id = ctx.get("session_id")
             h_git_sha = ctx.get("git_sha")
             if h_terminal_id and h_terminal_id != terminal_id:
                 findings.append(

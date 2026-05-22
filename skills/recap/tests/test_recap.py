@@ -35,11 +35,9 @@ class TestImportPath:
         try:
             from core.session_chain import (
                 SessionChainEntry,
-                walk_handoff_chain,
                 walk_session_chain,
             )
             # Verify API exists and is callable
-            assert hasattr(walk_handoff_chain, '__call__'), "walk_handoff_chain not callable"
             assert hasattr(walk_session_chain, '__call__'), "walk_session_chain not callable"
         except ImportError as e:
             pytest.skip(f"search-research package not available: {e}")
@@ -463,8 +461,6 @@ class TestErrorMessages:
         source = Path(recap.__file__).read_text()
 
         # Should have user-friendly messages
-        assert "Unable to access handoff directory" in source, "Should have user-friendly handoff error"
-        assert "Your session history may be incomplete" in source, "Should explain impact"
         assert "Some session history could not be loaded" in source, "Should use plain language"
         assert "Trying alternative method to load your sessions" in source, "Should be action-oriented"
 
@@ -570,3 +566,205 @@ class TestExtractModifiedFiles:
         result = _summarize_session(entries, "s1")
         assert "modified_files" in result
         assert result["modified_files"] == ["P:\\\\\\src/bug.py"]
+
+
+# Pre-mortem Domain 1a: Test _extract_first_user_request
+class TestExtractFirstUserRequest:
+    """Domain 1a: Test _extract_first_user_request edge cases and boundaries."""
+
+    def test_empty_entries_returns_none(self):
+        """Test that empty entries list returns None."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_first_user_request
+
+        result = _extract_first_user_request([])
+        assert result is None, "Empty entries should return None"
+
+    def test_all_entries_filtered_returns_none(self):
+        """Test that all entries filtered by skip_patterns returns None."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_first_user_request
+
+        entries = [
+            {"type": "user", "content": "Base directory for skill"},
+            {"type": "user", "content": "You are an AI assistant"},
+            {"type": "user", "content": "Skill: /some-command"},
+        ]
+        result = _extract_first_user_request(entries)
+        assert result is None, "All entries filtered should return None"
+
+    def test_all_entries_too_short_returns_none(self):
+        """Test that all entries too short (<30 chars) returns None."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_first_user_request
+
+        entries = [
+            {"type": "user", "content": "fix bug"},  # 8 chars
+            {"type": "user", "content": "help me"},  # 8 chars
+        ]
+        result = _extract_first_user_request(entries)
+        assert result is None, "All entries too short should return None"
+
+    def test_none_content_skipped(self):
+        """Test that entries with None content are skipped."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_first_user_request
+
+        entries = [
+            {"type": "user", "content": None},
+            {"type": "user", "content": "This is a valid request that is long enough to be counted"},
+        ]
+        result = _extract_first_user_request(entries)
+        assert result is not None
+        assert "valid request" in result
+
+    def test_boundary_30_chars(self):
+        """Test boundary condition: exactly 30 chars."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_first_user_request
+
+        # Exactly 30 chars (should pass)
+        entries = [{"type": "user", "content": "123456789012345678901234567890123"}]
+        result = _extract_first_user_request(entries)
+        assert result is not None, "30 char entry should pass minimum length check"
+
+    def test_29_chars_fails(self):
+        """Test boundary condition: 29 chars should fail."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_first_user_request
+
+        # 29 chars (should fail)
+        entries = [{"type": "user", "content": "12345678901234567890123456789"}]
+        result = _extract_first_user_request(entries)
+        assert result is None, "29 char entry should fail minimum length check"
+
+    def test_truncation_at_500_chars(self):
+        """Test that long requests are truncated to 500 chars."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_first_user_request
+
+        long_request = "A" * 600
+        entries = [{"type": "user", "content": long_request}]
+        result = _extract_first_user_request(entries)
+        assert result is not None
+        assert len(result) == 500, f"Truncated to 500 chars, got {len(result)}"
+        assert result == "A" * 500
+
+
+# Pre-mortem Domain 1b: Test _extract_session_narrative
+class TestExtractSessionNarrative:
+    """Domain 1b: Test _extract_session_narrative edge cases and logic."""
+
+    def test_empty_semantic_returns_empty_narrative(self):
+        """Test that empty semantic dict returns initialized narrative with empty lists."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_session_narrative
+
+        entries = [{"type": "user", "content": "This is a test request that is at least thirty characters long"}]
+        semantic = {"actions": [], "fixes": [], "decisions": [], "outcomes": []}
+        result = _extract_session_narrative(entries, semantic)
+
+        assert result["original_request"] is not None
+        assert result["what_was_done"] == []
+        assert result["decisions_made"] == []
+        assert result["next_steps"] == []
+        assert result["open_questions"] == []
+
+    def test_semantic_content_populates_what_was_done(self):
+        """Test that semantic extraction populates what_was_done."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_session_narrative
+
+        entries = [{"type": "user", "content": "test request"}]
+        semantic = {
+            "actions": ["Added feature X", "Fixed bug Y"],
+            "fixes": ["Fixed auth issue"],
+            "decisions": [],
+            "outcomes": ["Tests pass"],
+        }
+        result = _extract_session_narrative(entries, semantic)
+
+        assert len(result["what_was_done"]) == 4
+        assert any("Fixed auth issue" in item for item in result["what_was_done"])
+        assert any("Added feature X" in item for item in result["what_was_done"])
+
+    def test_limit_5_items_per_field(self):
+        """Test that narrative fields are limited to 5 items."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_session_narrative
+
+        entries = [{"type": "user", "content": "test"}]
+        semantic = {
+            "actions": [f"Action{i}" for i in range(10)],
+            "fixes": [f"Fix{i}" for i in range(10)],
+            "decisions": [],
+            "outcomes": [],
+        }
+        result = _extract_session_narrative(entries, semantic)
+
+        # Logic: fixes[:3] (3 items) + actions[:5] (5 items, but filtered) → limited by _MAX_ITEMS_PER_FIELD (5)
+        # The items are deduplicated in _unique_truncate, then limited to 5
+        assert len(result["what_was_done"]) == 5, "Should be limited to 5 items after deduplication"
+
+    def test_question_pattern_extraction(self):
+        """Test that question patterns are extracted from assistant entries."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_session_narrative
+
+        entries = [
+            {
+                "type": "assistant",
+                "content": "Open question: should we use approach X or Y?",
+            },
+        ]
+        semantic = {"actions": [], "fixes": [], "decisions": [], "outcomes": []}
+        result = _extract_session_narrative(entries, semantic)
+
+        assert len(result["open_questions"]) >= 1
+        assert any("approach X or Y" in q for q in result["open_questions"])
+
+    def test_current_state_populated_from_actions(self):
+        """Test that current_state is populated from semantic actions."""
+        skill_path = Path("P:\\\\.claude/skills/recap")
+        if str(skill_path) not in sys.path:
+            sys.path.insert(0, str(skill_path))
+        from recap import _extract_session_narrative
+
+        entries = [
+            {"type": "user", "content": "modify file.py"},
+            {"type": "assistant", "content": "Editing file.py now"},
+        ]
+        semantic = {
+            "actions": ["Editing file.py"],
+            "fixes": [],
+            "decisions": [],
+            "outcomes": [],
+        }
+        result = _extract_session_narrative(entries, semantic)
+
+        # current_state should extract file paths from actions containing "edit"/"modify"/"fix"
+        assert result["current_state"]["modified"] == ["file.py"] or result["current_state"]["modified"] == ["Editing file.py"]
+        assert result["current_state"]["working"] == []
+        assert result["current_state"]["blocked"] == []

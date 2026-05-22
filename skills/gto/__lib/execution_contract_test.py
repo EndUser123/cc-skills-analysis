@@ -1,8 +1,7 @@
-"""Tests for gto_v2 execution-contract integration.
+"""Tests for gto execution-contract integration.
 
 Mechanical tests for:
 - RNS marker verification in artifacts
-- path isolation (gto_v2 vs gto)
 - sync_to_execution_state output shape
 """
 from __future__ import annotations
@@ -13,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from skills.gto_v2.__lib.state import RunState, sync_to_execution_state
-from skills.gto_v2.__lib.verify import verify_artifact
+from skills.gto.__lib.state import RunState, sync_to_execution_state
+from skills.gto.__lib.verify import verify_artifact
 
 
 def test_verify_artifact_with_rns_markers_valid():
@@ -116,12 +115,12 @@ def test_verify_artifact_missing_file_fails():
 def test_sync_to_execution_state_writes_correct_shape():
     """sync_to_execution_state produces the expected execution-state.json structure."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        base = Path(tmpdir) / "console_test" / "gto_v2"
+        base = Path(tmpdir) / "console_test" / "gto"
         base.mkdir(parents=True)
         (base / "outputs").mkdir()
 
         state = RunState(
-            skill="gto_v2",
+            skill="gto",
             run_id="test-run-001",
             phase="completed",
             current_target="P:\\\\\\test",
@@ -140,7 +139,7 @@ def test_sync_to_execution_state_writes_correct_shape():
         data = json.loads(exec_path.read_text(encoding="utf-8"))
 
         assert data["run_id"] == "test-run-001"
-        assert data["skill_name"] == "gto_v2"
+        assert data["skill_name"] == "gto"
         assert data["contract_type"] == "workflow-execution"
         assert data["phase"] == "completed"
         assert data["status"] == "complete"
@@ -154,11 +153,11 @@ def test_sync_to_execution_state_writes_correct_shape():
 def test_sync_to_execution_state_active_phase():
     """sync_to_execution_state sets status=active when phase is not completed."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        base = Path(tmpdir) / "console_test" / "gto_v2"
+        base = Path(tmpdir) / "console_test" / "gto"
         base.mkdir(parents=True)
 
         state = RunState(
-            skill="gto_v2",
+            skill="gto",
             run_id="test-run-002",
             phase="running",
             created_at="2026-01-01T00:00:00Z",
@@ -174,7 +173,7 @@ def test_sync_to_execution_state_active_phase():
         assert data["status"] == "active"
 
 
-def test_run_state_skill_default_is_gto_v2():
-    """RunState defaults skill to gto_v2."""
+def test_run_state_skill_default_is_gto():
+    """RunState defaults skill to gto."""
     state = RunState()
-    assert state.skill == "gto_v2"
+    assert state.skill == "gto"

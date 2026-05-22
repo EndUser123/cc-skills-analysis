@@ -50,7 +50,21 @@ def detect_context_boundaries(transcript_path: Path | None) -> list[WorkContext]
             if match:
                 # Extract the goal phrase (rest of the sentence)
                 remainder = turn.content[match.end():].strip()
-                phrase = remainder[:100] if remainder else turn.content[match.start():match.start() + 100]
+                # Snap start AND end to word boundaries to avoid
+                # mid-path/mid-word corruption when pattern ends mid-segment
+                # or truncation cuts mid-word.
+                start_r = re.search(r"\w", remainder)
+                start_offset = start_r.start() if start_r else 0
+                end_offset = start_offset + 100
+                if end_offset < len(remainder):
+                    pre_end = remainder[start_offset:end_offset]
+                    # Find complete words (word followed by separator) in pre_end
+                    last_match = None
+                    for m in re.finditer(r"\w+(?=\W)", pre_end):
+                        last_match = m
+                    if last_match:
+                        end_offset = start_offset + last_match.end()
+                phrase = remainder[start_offset:end_offset]
                 contexts.append(WorkContext(
                     start_turn=turn.turn_number,
                     goal_phrase=phrase,

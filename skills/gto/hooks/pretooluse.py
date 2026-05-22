@@ -6,6 +6,18 @@ Claude Code hook protocol: reads JSON from stdin, outputs JSON to stdout.
 During GTO runs, this hook can:
 - Warn if tool usage might conflict with artifact generation
 - Block destructive operations during active analysis
+
+# Operating Contract (for LLM and hooks)
+# - GTO/GTO_v2 orchestrators and artifacts define the canonical contract
+#   for gap analysis and verification. This hook must not change JSON
+#   shapes or state semantics unless explicitly requested.
+# - When you modify hooks, keep them focused on: checking run state,
+#   validating artifacts (verifyartifact, RNS markers), capturing
+#   failures or hygiene signals via detectors.
+#   Do NOT introduce new ad‑hoc formats or bypass the orchestrator.
+# - Do not assume stripscaffoldingblocks, mode schemas, or other
+#   hidden sanitization layers exist. If you need them, implement
+#   them explicitly in a shared module instead of referencing them.
 """
 from __future__ import annotations
 

@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
-"""GTO PostToolUse hook — failure capture and format validation.
+"""GTO-v2 PostToolUse hook — failure capture and file-change logging.
 
-Claude Code hook protocol: reads JSON from stdin, outputs JSON to stdout.
+Artifact validation (JSON validity, RNS markers) is owned by hooks/stop.py.
+This hook handles local logging only.
 
-During GTO runs, captures tool failures as findings and validates
-artifact format after Write operations to the artifacts directory.
+# Operating Contract (for LLM and hooks)
+# - GTO/GTO_v2 orchestrators and artifacts define the canonical contract
+#   for gap analysis and verification. This hook must not change JSON
+#   shapes or state semantics unless explicitly requested.
+# - When you modify hooks, keep them focused on: checking run state,
+#   validating artifacts (verifyartifact, RNS markers), capturing
+#   failures or hygiene signals via detectors.
+#   Do NOT introduce new ad‑hoc formats or bypass the orchestrator.
+# - Do not assume stripscaffoldingblocks, mode schemas, or other
+#   hidden sanitization layers exist. If you need them, implement
+#   them explicitly in a shared module instead of referencing them.
 """
 from __future__ import annotations
 
@@ -14,20 +24,17 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .common import is_gto_active, read_state, gto_state_dir, write_hook_output
+from .common import gto_state_dir, write_hook_output
 
 
 def run(data: dict) -> dict | None:
     """In-process hook entry point."""
     session_id = data.get("session_id")
-    if not is_gto_active(session_id):
-        return None
-
     tool_name = data.get("tool_name", "")
     tool_input = data.get("tool_input", {})
     tool_output = data.get("tool_output", "")
 
-    # Capture failures during GTO runs
+    # Capture failures during GTO-v2 runs
     if _is_failure(tool_output):
         _capture_failure(tool_name, tool_input, tool_output, session_id)
 
@@ -36,15 +43,6 @@ def run(data: dict) -> dict | None:
         file_path = tool_input.get("file_path", "")
         if file_path:
             _record_file_change(file_path, session_id)
-
-    # Validate artifact writes
-    if tool_name in ("Write", "Edit"):
-        file_path = tool_input.get("file_path", "")
-        artifacts_dir = gto_state_dir(session_id).parent
-        if artifacts_dir in Path(file_path).resolve().parents or str(artifacts_dir) in file_path:
-            validation = _validate_artifact_write(file_path)
-            if validation:
-                return validation
 
     return None
 
@@ -58,7 +56,7 @@ def _is_failure(output: str) -> bool:
 
 
 def _capture_failure(tool_name: str, tool_input: dict, output: str, session_id: str | None = None) -> None:
-    """Append a failure capture entry to the GTO logs."""
+    """Append a failure capture entry to the GTO-v2 logs."""
     logs_dir = gto_state_dir(session_id).parent / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     log_file = logs_dir / "failures.jsonl"
@@ -85,37 +83,6 @@ def _record_file_change(file_path: str, session_id: str | None = None) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with open(log_path, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-
-
-def _validate_artifact_write(file_path: str) -> dict | None:
-    """Validate that a written artifact file is valid JSON."""
-    path = Path(file_path)
-    if not path.exists():
-        return None
-    if path.suffix != ".json":
-        return None
-
-    try:
-        content = path.read_text(encoding="utf-8")
-        data = json.loads(content)
-    except (json.JSONDecodeError, OSError) as exc:
-        return {
-            "decision": "warn",
-            "reason": f"GTO: artifact file has invalid JSON: {exc}",
-        }
-
-    # Check machine_output format if present
-    machine = data.get("machine_output", [])
-    if isinstance(machine, list) and len(machine) > 0:
-        has_d = any(isinstance(l, str) and l.startswith("RNS|D|") for l in machine)
-        has_z = any(isinstance(l, str) and l.startswith("RNS|Z|") for l in machine)
-        if not has_d or not has_z:
-            return {
-                "decision": "warn",
-                "reason": "GTO: artifact machine_output missing RNS|D| or RNS|Z| markers",
-            }
-
-    return None
 
 
 def main() -> None:

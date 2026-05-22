@@ -153,6 +153,7 @@ def read_result(path: Path) -> AgentResult:
                     evidence=evidence,
                 )
             )
+
         # Apply quality gates before returning findings
         signals_absent, detectors_ran = _load_handoff_context(path)
         findings = apply_quality_gates(findings, signals_absent, detectors_ran)

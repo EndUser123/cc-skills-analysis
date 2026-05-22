@@ -342,8 +342,8 @@ def _get_fresh_handoff(
         terminal_id = os.environ.get("CLAUDE_TERMINAL_ID")
 
     handoff_dirs = [
-        Path("P:\\\\\\") / ".claude" / ".state" / "handoff",
-        Path.home() / ".claude" / ".state" / "handoff",
+        Path("P:\\\\\\") / ".claude" / "state" / "handoff",
+        Path.home() / ".claude" / "state" / "handoff",
     ]
     for handoff_dir in handoff_dirs:
         if not handoff_dir.exists():
@@ -425,19 +425,8 @@ def _walk_session_chain(
         search_research_root = Path("P:\\\\\\packages/search-research")
         if str(search_research_root) not in sys.path:
             sys.path.insert(0, str(search_research_root))
-        from core.session_chain import walk_handoff_chain, walk_session_chain
-        handoff_result = walk_handoff_chain(session_id)
-        if handoff_result.entries:
-            return [
-                {
-                    "session_id": e.session_id,
-                    "transcript_path": str(e.transcript_path),
-                    "parent_transcript_path": str(e.parent_transcript_path) if e.parent_transcript_path else "",
-                    "created": e.created.isoformat() if e.created else "",
-                }
-                for e in handoff_result.entries
-            ]
-        chain_result = walk_session_chain(session_id=session_id)
+        from core.session_chain import walk_session_chain
+        chain_result = walk_session_chain(session_id)
         if chain_result.entries:
             return [
                 {
