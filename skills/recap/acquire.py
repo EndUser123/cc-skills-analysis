@@ -268,10 +268,12 @@ def load_sessions_index(index_path: Path) -> list[dict[str, Any]]:
 def _load_sessions_from_registry(
     terminal_id: str,
     limit: int | None = None,
+    session_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Load session entries from snapshot's session_registry.jsonl via query_registry.
 
-    Primary when sessions-index is absent or stale.
+    When session_id is provided, queries by session_id for cross-terminal chain
+    discovery. Falls back to terminal_id when session_id is absent.
     """
     try:
         snapshot_root = Path("P:\\\\\\packages/snapshot")
@@ -279,7 +281,10 @@ def _load_sessions_from_registry(
         if str(lib_path) not in sys.path:
             sys.path.insert(0, str(lib_path))
         from session_registry import query_registry
-        entries = query_registry(terminal_id=terminal_id, limit=limit)
+        if session_id:
+            entries = query_registry(session_id=session_id, limit=limit or 10_000)
+        else:
+            entries = query_registry(terminal_id=terminal_id, limit=limit)
     except Exception as exc:
         logger.warning("Failed to load from session_registry: %s", exc)
         return []
@@ -496,7 +501,7 @@ def discover_evidence(
 
     # Strategy 0: registry (primary when sessions-index is stale)
     if terminal_id:
-        registry_entries = _load_sessions_from_registry(terminal_id, limit=30)
+        registry_entries = _load_sessions_from_registry(terminal_id, limit=30, session_id=session_id)
         if registry_entries:
             result.mode = "registry"
             result.registry_entries = registry_entries
