@@ -1,14 +1,30 @@
 ---
 name: recap
 description: Catch up on all sessions in this terminal via checkpoint chain traversal and surface unresolved assumptions, contract gaps, Contract Authority Packet gaps, and resume risks
-version: 1.5.0
+version: 1.5.1
 status: stable
 category: session
+contract_type: hybrid
 enforcement: strict
 triggers:
   - /recap
+required_artifacts:
+  - session_chain_output
+response_requirements:
+  - per-session narrative with origin tags
+  - structured synthesis fields
+  - routing suggestions
 workflow_steps:
-  - execute_recap_workflow
+  - id: resolve_terminal_and_session
+    first_tool: Bash
+  - id: walk_session_chain
+    first_tool: Bash
+  - id: parse_transcripts
+    first_tool: Read
+  - id: aggregate_context
+  - id: synthesize_findings
+  - id: present_summary
+    first_tool: Write
 execution:
   directive: Run the recap CLI script to parse transcript files and extract session history, then synthesize findings
   default_args: ""
