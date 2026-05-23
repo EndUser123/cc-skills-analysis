@@ -59,6 +59,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _resolve_session_id_from_identity(terminal_id: str) -> str:
+    """Extract session_id from identity.json when CLI arg is empty."""
+    artifacts_root = Path(os.environ.get("CLAUDE_ARTIFACTS_ROOT", "P:\\\\\\.claude/.artifacts"))
+    identity_file = artifacts_root / terminal_id / "identity.json"
+    if not identity_file.exists():
+        return ""
+    try:
+        data = json.loads(identity_file.read_text(encoding="utf-8"))
+        return data.get("claude", {}).get("session_id", "")
+    except (json.JSONDecodeError, OSError):
+        return ""
+
+
 def _resolve_transcript_from_identity(terminal_id: str) -> Path | None:
     """Resolve transcript path from identity.json (hook-captured, no scanning)."""
     artifacts_root = Path(os.environ.get("CLAUDE_ARTIFACTS_ROOT", "P:\\\\\\.claude/.artifacts"))
@@ -185,6 +198,10 @@ def _extract_context(
 def run(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     root = args.root.resolve()
+
+    # Resolve session_id: CLI arg → identity.json fallback
+    if not args.session_id:
+        args.session_id = _resolve_session_id_from_identity(args.terminal_id)
 
     settings = GTOSettings(
         terminal_id=args.terminal_id,
@@ -443,6 +460,34 @@ def run(argv: list[str] | None = None) -> int:
 
     all_findings = route_findings(all_findings)
     all_findings = order_findings(all_findings)
+
+    # Phase 4.7.5: Staleness re-check — suppress findings with stale git evidence
+    # (e.g., workflow_hygiene detected uncommitted files that were committed before this point)
+    import subprocess as _sp
+    try:
+        _git_status = _sp.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True, text=True, cwd=str(root), timeout=10,
+        )
+        _dirty_files = set(_git_status.stdout.strip().splitlines()) if _git_status.stdout.strip() else set()
+        _dirty_names = {line.split(maxsplit=1)[-1] if line else "" for line in _dirty_files}
+    except Exception:
+        _dirty_names = None  # can't verify, don't suppress
+
+    if _dirty_names is not None:
+        _stale: list[Finding] = []
+        for f in all_findings:
+            if f.source_name == "workflow_hygiene_detector" and f.gap_type == "techdebt":
+                # Re-check: are the files still uncommitted?
+                for ev in f.evidence:
+                    if ev.kind == "git_status" and ev.detail:
+                        mentioned = {name.strip() for name in ev.detail.split(",")}
+                        if not mentioned & _dirty_names:
+                            f.status = "resolved"
+                            _stale.append(f)
+                            break
+        if _stale:
+            all_findings = [f for f in all_findings if f.status != "resolved"]
 
     # Phase 4.8: Impact radius enrichment
     all_findings = enrich_with_impact_radius(root, all_findings)
