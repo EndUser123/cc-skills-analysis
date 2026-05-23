@@ -357,3 +357,55 @@ class TestApplyQualityGates:
                 "downgraded_absent_signal", "mixed_substance",
             ]
         )
+
+# ─────────────────────────────────────────────────────────────────────────────
+# read_verdicts — findings reviewer verdict parsing
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestReadVerdicts:
+    def test_parses_verdict_format(self, tmp_path):
+        """read_verdicts extracts rejected IDs and reasons from verdict format."""
+        import json
+        from skills.gto.agents.findings_reviewer import read_verdicts
+
+        result_file = tmp_path / "findings_reviewer_result.json"
+        result_file.write_text(json.dumps({
+            "verdicts": [
+                {"finding_id": "CHANGELOG-001", "action": "reject", "reason": "False positive"},
+                {"finding_id": "CHANGELOG-002", "action": "keep", "reason": "Legitimate"},
+                {"finding_id": "WORKFLOW-001", "action": "reject", "reason": "Stale"},
+            ],
+            "summary": {"total": 3, "kept": 1, "rejected": 2},
+        }))
+
+        rejected, reasons = read_verdicts(result_file)
+        assert rejected == {"CHANGELOG-001", "WORKFLOW-001"}
+        assert reasons["CHANGELOG-001"] == "False positive"
+        assert "CHANGELOG-002" not in rejected
+
+    def test_returns_empty_for_missing_file(self, tmp_path):
+        """read_verdicts returns empty sets when file doesn't exist."""
+        from skills.gto.agents.findings_reviewer import read_verdicts
+
+        rejected, reasons = read_verdicts(tmp_path / "nonexistent.json")
+        assert rejected == set()
+        assert reasons == {}
+
+    def test_returns_empty_for_invalid_json(self, tmp_path):
+        """read_verdicts returns empty sets for malformed JSON."""
+        from skills.gto.agents.findings_reviewer import read_verdicts
+
+        result_file = tmp_path / "findings_reviewer_result.json"
+        result_file.write_text("not json")
+        rejected, reasons = read_verdicts(result_file)
+        assert rejected == set()
+
+    def test_returns_empty_for_no_verdicts_key(self, tmp_path):
+        """read_verdicts handles dict without verdicts key."""
+        import json
+        from skills.gto.agents.findings_reviewer import read_verdicts
+
+        result_file = tmp_path / "findings_reviewer_result.json"
+        result_file.write_text(json.dumps({"findings": [], "notes": "empty"}))
+        rejected, reasons = read_verdicts(result_file)
+        assert rejected == set()

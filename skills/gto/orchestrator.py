@@ -380,7 +380,7 @@ def run(argv: list[str] | None = None) -> int:
 
     # Phase 4.7: Read agent enrichment results (written by LLM-spawned subagents)
     from .agents.domain_analyzer import read_result as read_domain
-    from .agents.findings_reviewer import read_result as read_reviewer
+    from .agents.findings_reviewer import read_result as read_reviewer, read_verdicts
     from .agents.action_normalizer import read_result as read_normalizer
 
     domain_result = read_domain(paths.artifacts_dir / "domain_analyzer_result.json")
@@ -388,12 +388,10 @@ def run(argv: list[str] | None = None) -> int:
         all_findings.extend(domain_result.findings)
         all_findings = dedupe_findings(all_findings)
 
-    reviewer_result = read_reviewer(paths.artifacts_dir / "findings_reviewer_result.json")
-    if reviewer_result.success and reviewer_result.findings:
-        # Replace findings with reviewed versions (reviewer may reject/adjust)
-        reviewed_ids = {f.id for f in reviewer_result.findings}
-        all_findings = [f for f in all_findings if f.id not in reviewed_ids]
-        all_findings.extend(reviewer_result.findings)
+    # Apply findings reviewer verdicts (reject/keep) — verdicts format, not Finding-shaped
+    rejected_ids, _ = read_verdicts(paths.artifacts_dir / "findings_reviewer_result.json")
+    if rejected_ids:
+        all_findings = [f for f in all_findings if f.id not in rejected_ids]
 
     normalizer_result = read_normalizer(paths.artifacts_dir / "action_normalizer_result.json")
     if normalizer_result.success and normalizer_result.findings:
