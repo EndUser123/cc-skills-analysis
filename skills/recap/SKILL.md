@@ -51,7 +51,7 @@ execution:
 4. **Aggregate context**: Extract goals, message counts from each session
 5. **Present summary**: Shows chronological session history
 
-> **`session_chain` module**: `P://packages/search-research/core/session_chain.py` — exports `walk_session_chain()` (unified entry), `walk_handoff_chain()` (Strategy 1), `walk_sessions_index_chain()` (Strategy 2). All synchronous.
+> **`session_chain` module**: `P:/packages/search-research/core/session_chain.py` — exports `walk_session_chain()` (unified entry), `walk_handoff_chain()` (Strategy 1), `walk_sessions_index_chain()` (Strategy 2). All synchronous.
 
 > **Always parse the transcript.** Even when compaction context is available, the transcript contains the authoritative full session chain and detailed working state. Compaction summaries are lossy — they capture goals and outcomes but not the exact sequence of working decisions, errors encountered, or file states mid-edit.
 
