@@ -83,7 +83,7 @@ When `/similarity` is invoked with a target:
 
 ```bash
 # Run the similarity script
-python P:\\\\\\.claude/skills/similarity/similarity.py <target>
+python P://.claude/skills/similarity/similarity.py <target>
 ```
 
 ### Step 2: Format Results for User

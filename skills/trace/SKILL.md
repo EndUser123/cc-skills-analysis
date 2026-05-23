@@ -164,7 +164,7 @@ See `references/workflow-and-report-format.md` for the full TRACE report templat
 For `/trace` requests, execute this workflow:
 
 ```bash
-cd P:\\\\\\.claude/skills/trace && python __main__.py "domain:target"
+cd P://.claude/skills/trace && python __main__.py "domain:target"
 
 # Examples
 python __main__.py "code:src/handoff.py"

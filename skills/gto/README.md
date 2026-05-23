@@ -81,6 +81,6 @@ RNS|Z|0|NONE
 ## Testing
 
 ```bash
-cd P:\\\\\\packages/cc-skills-analysis
+cd P://packages/cc-skills-analysis
 python -m pytest tests/ -k "gto or test_models or test_detectors or test_normalize or test_dedupe or test_route or test_render or test_machine_render or test_verify" -v
 ```

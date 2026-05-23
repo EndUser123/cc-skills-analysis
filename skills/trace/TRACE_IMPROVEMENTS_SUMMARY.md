@@ -189,7 +189,7 @@ To verify all improvements work correctly:
 
 ### Test 1: Code TRACE with State Tables
 ```bash
-/trace code:P:\\\\\\.claude/skills/cleanup/scripts/cleanup.py
+/trace code:P://.claude/skills/cleanup/scripts/cleanup.py
 ```
 **Expected**: Mermaid diagram generated for each scenario
 

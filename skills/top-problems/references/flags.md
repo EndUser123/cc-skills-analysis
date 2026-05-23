@@ -23,7 +23,7 @@ Instead of time-based window, scan everything since a specific git SHA:
 
 ## --diff
 
-Compare with previous run. Read the most recent `P:\\\\\\.claude/.evidence/top-problems_YYYYMMDD.md`.
+Compare with previous run. Read the most recent `P://.claude/.evidence/top-problems_YYYYMMDD.md`.
 
 Match problems by title similarity (fuzzy match on key file:line references). For each match, show trend:
 - `up N->M` (score increased — getting worse)

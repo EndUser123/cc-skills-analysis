@@ -473,4 +473,4 @@ Pre-built Mermaid templates for common patterns:
 - **Code TRACE Templates**: `templates/code/TRACE_TEMPLATES.md`
 - **Code TRACE Checklist**: `templates/code/TRACE_CHECKLIST.md`
 - **Code TRACE Case Studies**: `templates/code/TRACE_CASE_STUDIES.md`
-- **Implementation Summary**: `P:\\\\\\.claude/skills/code/references/TRACE_IMPLEMENTATION.md`
+- **Implementation Summary**: `P://.claude/skills/code/references/TRACE_IMPLEMENTATION.md`

@@ -84,8 +84,8 @@ Run these 6 scans in parallel:
 
 | # | Source | Path/Command | Extract |
 |---|--------|-------------|---------|
-| 1 | Pre-mortems | `P:\\\\\\.claude/.artifacts/{terminal_id}/top-problems/premortem_*.md` | OPEN/DEFERRED items, risk scores |
-| 2 | Critiques | `P:\\\\\\.claude/.artifacts/{terminal_id}/critique/*/p1_findings.md` + staleness gate | CRITICAL/HIGH findings with staleness badge |
+| 1 | Pre-mortems | `P://.claude/.artifacts/{terminal_id}/top-problems/premortem_*.md` | OPEN/DEFERRED items, risk scores |
+| 2 | Critiques | `P://.claude/.artifacts/{terminal_id}/critique/*/p1_findings.md` + staleness gate | CRITICAL/HIGH findings with staleness badge |
 | 3 | Tasks | TaskList or `git status` | pending/in_progress, no owner |
 | 4 | Git | `git log --since="<date>" --oneline` | fix/bug/BLOCKER/revert patterns |
 | 5 | Session errors | `~/.claude/projects/P--/*.jsonl` (last 500 lines) | `"is_error":true` |
@@ -231,7 +231,7 @@ See `references/flags.md` for `--diff` procedure (including regression detection
 
 ### Results Cache
 
-Write to `P:\\\\\\.claude/.artifacts/{terminal_id}/top-problems/top-problems_<YYYYMMDD>.md`.
+Write to `P://.claude/.artifacts/{terminal_id}/top-problems/top-problems_<YYYYMMDD>.md`.
 
 ### Output Format
 
@@ -321,13 +321,13 @@ If gate fails: complete ranking before output.
 
 | Source | Path | What to extract |
 |--------|------|----------------|
-| Pre-mortems | `P:\\\\\\.claude/.artifacts/{terminal_id}/top-problems/premortem_*.md` | OPEN/DEFERRED items |
-| Critiques | `P:\\\\\\.claude/.artifacts/{terminal_id}/critique/*/p1_findings.md` | CRITICAL/HIGH |
+| Pre-mortems | `P://.claude/.artifacts/{terminal_id}/top-problems/premortem_*.md` | OPEN/DEFERRED items |
+| Critiques | `P://.claude/.artifacts/{terminal_id}/critique/*/p1_findings.md` | CRITICAL/HIGH |
 | Tasks | TaskList tool | pending/in_progress |
 | Git | `git log --since` or `<sha>..HEAD` | fix/bug/BLOCKER |
 | Sessions | `~/.claude/projects/P--/*.jsonl` | `"is_error":true` (sample) |
 | Retries | Same JSONL | Consecutive identical tool_use |
-| Previous runs | `P:\\\\\\.claude/.artifacts/{terminal_id}/top-problems/top-problems_*.md` | Trend, resolution |
+| Previous runs | `P://.claude/.artifacts/{terminal_id}/top-problems/top-problems_*.md` | Trend, resolution |
 
 ## Evidence-First Principles
 

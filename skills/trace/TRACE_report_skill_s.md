@@ -504,7 +504,7 @@ pip install pyan pygraphviz
 ### Usage
 ```bash
 # Generate DOT file
-python -m pyan P:\\\\\\.claude/skills/s/scripts/run_heavy.py --uses --no-defines --colored --grouped --annotated --dot > trace_s_callgraph.dot
+python -m pyan P://.claude/skills/s/scripts/run_heavy.py --uses --no-defines --colored --grouped --annotated --dot > trace_s_callgraph.dot
 
 # Convert to PNG
 dot -Tpng trace_s_callgraph.dot -o trace_s_callgraph.png

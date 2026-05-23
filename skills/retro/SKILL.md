@@ -211,7 +211,7 @@ Use `emerge` when multiple chained skills are pointing at the same hidden theme.
 Use `graduate` when the same class of retro lesson keeps recurring and should become durable enforcement or policy.
 Use `friction` when the session reveals manual patterns that could be automated or eliminated.
 
-Reference: `P:\\\\\\.claude/skills/__lib/sdlc_internal_modes.md`
+Reference: `P://.claude/skills/__lib/sdlc_internal_modes.md`
 
 ## Constraints
 

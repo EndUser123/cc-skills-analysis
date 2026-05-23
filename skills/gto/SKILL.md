@@ -43,7 +43,7 @@ allowed_tools_now:
 You are working inside a repository where GTO implements a full gap‑analysis and verification pipeline. Your job is to work **within** that pipeline, not to invent parallel workflows or formats.
 
 - Treat the GTO orchestrators, models, detectors, hooks, and artifact writers as the **contract of record** for how gap analysis, verification, and session state work. When you change them, you must preserve existing JSON shapes, run‑state phases, and RNS machine output unless explicitly asked to change the contract.
-- For any change that touches GTO quality gates, gap reviewer wiring, or their tests, use the automated quality flow instead of manually sequencing prompts. The canonical flow is: (1) implementer step, (2) pytest for `gto` suite, (3) verifier step, (4) gate on `FINALVERDICT.status`. Use `gto_quality_runner.py` as the single entry point.
+- For any change that touches GTO quality gates, gap reviewer wiring, or their tests, use the automated quality flow instead of manually sequencing prompts. The canonical flow is: (1) implementer step, (2) pytest for `gto` suite, (3) verifier step, (4) gate on `FINALVERDICT.status`. Use `gto/orchestrator.py` as the single entry point.
 - When adding new behavior, prefer new deterministic detectors in the existing `lib/` modules that feed the orchestrator, or new verification logic that uses the existing `GTOArtifact` structure and RNS machine output — rather than new top‑level artifacts, file formats, or one‑off drivers.
 - The agents (domain analyzer, findings reviewer, action normalizer, gap reviewer, session reviewer) have stable prompts and JSON schemas. You may change prompts and tests freely, but you must not change agent I/O schemas unless explicitly requested and all consumers are updated together.
 - Hooks (PreToolUse, PostToolUse, SessionStart, Stop) are boundary layers, not orchestration systems. Hook changes should focus on validating artifacts and run state, and must not bypass the orchestrator, mutate artifacts by hand, or introduce new hidden state.
@@ -61,7 +61,7 @@ GTO analyzes the current session's work — what was discussed, what was attempt
 ### Step 1: Run Session-Aware Analysis
 
 ```bash
-cd "P:\\\\\\packages/cc-skills-analysis" && python -m skills.gto.orchestrator --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
+cd "P://packages/cc-skills-analysis" && python -m skills.gto.orchestrator --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
 ```
 
 This runs:
@@ -84,7 +84,7 @@ Artifacts written to `.claude/.artifacts/{terminal_id}/gto/`.
 After the orchestrator writes its artifact, spawn the **Gap Reviewer** subagent. This is NOT optional — it is the only agent that can reason beyond deterministic detectors (producing facts, inferences, unknowns, and recommendations from the accumulated evidence).
 
 ```bash
-ARTIFACTS_ROOT="${CLAUDE_ARTIFACTS_ROOT:-P:\\\\\\.claude/.artifacts}"
+ARTIFACTS_ROOT="${CLAUDE_ARTIFACTS_ROOT:-P://.claude/.artifacts}"
 test -f "$ARTIFACTS_ROOT/$WT_SESSION/gto/gap_reviewer_handoff.json" && echo "GAP_REVIEW_NEEDED" || echo "NO_GAP_REVIEW"
 ```
 
@@ -128,7 +128,7 @@ Rules:
 After the subagent completes, re-run the orchestrator to merge the gap reviewer results:
 
 ```bash
-cd "P:\\\\\\packages/cc-skills-analysis" && python -m skills.gto.orchestrator --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
+cd "P://packages/cc-skills-analysis" && python -m skills.gto.orchestrator --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
 ```
 
 The second run reads `gap_reviewer_result.json` and merges its findings into the final artifact.

@@ -14,9 +14,9 @@ The `/code` skill Phase 3.5 (TRACE) delegates to `/trace code:<file>`:
 - Automatic: Delegates to `/trace code:<file>` during Phase 3.5
 - Manual: `/trace code:<file>` (standalone)
 
-**TRACE Methodology**: See P:\\\\\\.claude/skills/trace/templates/TRACE_METHODOLOGY.md
-**Code TRACE Templates**: See P:\\\\\\.claude/skills/trace/templates/code/TRACE_TEMPLATES.md
-**TRACE Checklist**: See P:\\\\\\.claude/skills/trace/templates/code/TRACE_CHECKLIST.md
+**TRACE Methodology**: See P://.claude/skills/trace/templates/TRACE_METHODOLOGY.md
+**Code TRACE Templates**: See P://.claude/skills/trace/templates/code/TRACE_TEMPLATES.md
+**TRACE Checklist**: See P://.claude/skills/trace/templates/code/TRACE_CHECKLIST.md
 ```
 
 ## Usage Examples
@@ -59,7 +59,7 @@ For `/trace` requests, execute this workflow:
 
 ```bash
 # Main entry point
-cd P:\\\\\\.claude/skills/trace && python __main__.py "domain:target"
+cd P://.claude/skills/trace && python __main__.py "domain:target"
 
 # Examples
 python __main__.py "code:src/handoff.py"

@@ -35,7 +35,7 @@ execution:
 4. **Aggregate context**: Extract goals, message counts from each session
 5. **Present summary**: Shows chronological session history
 
-> **`session_chain` module**: `P:\\\\\\packages/search-research/core/session_chain.py` — exports `walk_session_chain()` (unified entry), `walk_handoff_chain()` (Strategy 1), `walk_sessions_index_chain()` (Strategy 2). All synchronous.
+> **`session_chain` module**: `P://packages/search-research/core/session_chain.py` — exports `walk_session_chain()` (unified entry), `walk_handoff_chain()` (Strategy 1), `walk_sessions_index_chain()` (Strategy 2). All synchronous.
 
 > **Always parse the transcript.** Even when compaction context is available, the transcript contains the authoritative full session chain and detailed working state. Compaction summaries are lossy — they capture goals and outcomes but not the exact sequence of working decisions, errors encountered, or file states mid-edit.
 
@@ -184,7 +184,7 @@ Example: `[user-reported] [FACT] Path refactoring broke imports — sync.py rais
 
 **Assumptions to verify**: For each assumption the synthesis relies on, suggest one concrete check — a command to run, a file to inspect, or a question to ask. Each item states the assumption and the check that would confirm or falsify it. If no assumptions are uncertain, omit this section entirely.
 
-Example: "Assumption: sync.py import fix works for all package repos. Check: run `python P:\\\\\\.claude/skills/git/sync.py --health` and verify no ImportError."
+Example: "Assumption: sync.py import fix works for all package repos. Check: run `python P://.claude/skills/git/sync.py --health` and verify no ImportError."
 
 Present synthesis as a per-session narrative in the response, not replacing the script output but complementing it.
 
