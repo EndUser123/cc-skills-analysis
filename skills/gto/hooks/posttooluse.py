@@ -27,6 +27,8 @@ from pathlib import Path
 from .common import gto_state_dir, write_hook_output
 
 
+
+
 def run(data: dict) -> dict | None:
     """In-process hook entry point."""
     session_id = data.get("session_id")

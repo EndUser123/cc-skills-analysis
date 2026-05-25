@@ -26,6 +26,8 @@ import sys
 
 from .common import is_gto_active, read_state, write_hook_output
 
+
+
 # Tools that should be warned about during active GTO runs
 WARN_TOOLS = {"Bash"}
 

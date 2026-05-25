@@ -164,7 +164,35 @@ def read_hook_input() -> dict:
 
 
 def write_hook_output(data: dict) -> None:
-    """Write hook output to stdout (Claude Code hook protocol)."""
+    """Write hook output to stdout (Claude Code Zod-valid schema).
+
+    Normalizes legacy decision values and convenience fields:
+    - decision="allow" -> "approve"
+    - decision="deny"  -> "block"
+    - allow=False      -> decision="block"
+    - allow=True / continue=True / ok -> decision="approve"
+    """
+    # Legacy decision synonyms
+    if data.get("decision") == "allow":
+        data = {**data, "decision": "approve"}
+    elif data.get("decision") == "deny":
+        data = {**data, "decision": "block", "reason": data.get("reason", "")}
+
+    # Convenience boolean fields
+    if "decision" not in data:
+        if "allow" in data:
+            if data["allow"] is False:
+                data = {"decision": "block", "reason": data.get("reason", "")}
+            else:
+                data = {"decision": "approve"}
+        elif "continue" in data:
+            if data["continue"] is False:
+                data = {"decision": "block", "reason": data.get("reason", "")}
+            else:
+                data = {"decision": "approve"}
+        elif "ok" in data:
+            data = {"decision": "approve"}
+
     json.dump(data, sys.stdout, ensure_ascii=False)
     sys.stdout.write("\n")
     sys.stdout.flush()

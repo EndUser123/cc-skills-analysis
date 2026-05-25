@@ -27,6 +27,8 @@ from pathlib import Path
 from .common import is_gto_active, read_state, write_hook_output
 
 
+
+
 def _count_findings_in_artifact(artifact_path: str) -> int:
     """Count findings in an artifact JSON file. Returns 0 on any failure."""
     try:
