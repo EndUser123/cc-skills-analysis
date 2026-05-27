@@ -46,7 +46,7 @@ def cluster_findings(findings: list[Finding]) -> list[Finding]:
     # Only create cluster findings when 3+ findings share a directory+skill
     cluster_findings: list[Finding] = []
     for idx, ((directory, skill), group) in enumerate(
-        sorted(clusters.items()), start=1
+        sorted(clusters.items(), key=lambda kv: (kv[0][0] or "", kv[0][1] or "")), start=1
     ):
         if len(group) < 3:
             unclustered.extend(group)

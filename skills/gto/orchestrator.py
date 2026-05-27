@@ -56,6 +56,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--terminal-id", default="default")
     parser.add_argument("--session-id", default="")
     parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument("--merge-only", action="store_true", help="Skip detectors, only merge agent results into existing artifact")
     return parser.parse_args(argv)
 
 
@@ -195,6 +196,102 @@ def _extract_context(
     return excerpts
 
 
+def _run_merge_only(
+    args: argparse.Namespace,
+    settings: GTOSettings,
+    paths: object,
+    state: RunState,
+    state_file: Path,
+) -> int:
+    """Merge agent results into existing artifact without re-running detectors."""
+    artifact_path = paths.outputs_dir / "artifact.json"
+    if not artifact_path.exists():
+        print("GTO merge-only: no existing artifact, aborting", file=sys.stderr)
+        return 1
+
+    # Load existing findings from artifact
+    raw = json.loads(artifact_path.read_text(encoding="utf-8"))
+    all_findings = [Finding.from_dict(f) for f in raw.get("findings", [])]
+
+    # Merge agent results (same logic as full run, lines 381-409)
+    from .agents.domain_analyzer import read_result as read_domain
+    from .agents.findings_reviewer import read_result as read_reviewer, read_verdicts
+    from .agents.action_normalizer import read_result as read_normalizer
+    from .agents.gap_reviewer import read_result as read_gap
+
+    domain_result = read_domain(paths.artifacts_dir / "domain_analyzer_result.json")
+    if domain_result.success and domain_result.findings:
+        all_findings.extend(domain_result.findings)
+        all_findings = dedupe_findings(all_findings)
+
+    rejected_ids, _ = read_verdicts(paths.artifacts_dir / "findings_reviewer_result.json")
+    if rejected_ids:
+        all_findings = [f for f in all_findings if f.id not in rejected_ids]
+
+    normalizer_result = read_normalizer(paths.artifacts_dir / "action_normalizer_result.json")
+    if normalizer_result.success and normalizer_result.findings:
+        normalized_ids = {f.id for f in normalizer_result.findings}
+        all_findings = [f for f in all_findings if f.id not in normalized_ids]
+        all_findings.extend(normalizer_result.findings)
+
+    gap_result = read_gap(paths.artifacts_dir / "gap_reviewer_result.json")
+    if gap_result.success and gap_result.findings:
+        gap_ids = {f.id for f in gap_result.findings}
+        all_findings = [f for f in all_findings if f.id not in gap_ids]
+        all_findings.extend(gap_result.findings)
+
+    # Post-processing pipeline
+    all_findings = route_findings(all_findings)
+    all_findings = order_findings(all_findings)
+    all_findings = enrich_with_impact_radius(settings.root, all_findings)
+    all_findings = cluster_findings(all_findings)
+    all_findings = adjust_for_branch(settings.root, all_findings)
+
+    # Compute coverage + health
+    coverage = compute_coverage(all_findings)
+    freshness = classify_freshness(
+        artifact_git_sha=state.git_sha,
+        current_git_sha=settings.git_sha,
+        artifact_target=state.current_target,
+        current_target=state.current_target,
+    )
+    health = compute_health_score(all_findings, freshness)
+
+    # Write artifact
+    artifact = GTOArtifact.empty(
+        mode="full",
+        terminal_id=args.terminal_id,
+        session_id=args.session_id,
+        target=state.current_target,
+        git_sha=settings.git_sha,
+    )
+    artifact.freshness = freshness
+    artifact.coverage = coverage
+    artifact.summary = {
+        "total_findings": len(all_findings),
+        "by_severity": coverage.get("by_severity", {}),
+        "by_domain": coverage.get("by_domain", {}),
+        "health": health,
+    }
+    write_artifact(artifact_path, artifact, all_findings)
+
+    # Update state
+    state.phase = "completed"
+    state.verification_status = "pending"
+    state.last_artifact = str(artifact_path)
+    state.expected_artifacts = [str(artifact_path)]
+    save_state(state_file, state)
+    sync_to_execution_state(state, paths.artifacts_dir)
+
+    verification = verify_artifact(artifact_path)
+    state.verification_status = "pass" if verification["valid"] else "fail"
+    save_state(state_file, state)
+    sync_to_execution_state(state, paths.artifacts_dir)
+
+    print(f"GTO merge-only: {len(all_findings)} findings", file=sys.stderr)
+    return 0 if verification["valid"] else 1
+
+
 def run(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     root = args.root.resolve()
@@ -227,6 +324,10 @@ def run(argv: list[str] | None = None) -> int:
     state.verification_status = "pending"
     save_state(state_file, state)
     sync_to_execution_state(state, paths.artifacts_dir)
+
+    # Merge-only mode: skip all detectors, load from existing artifact + merge agent results
+    if args.merge_only:
+        return _run_merge_only(args, settings, paths, state, state_file)
 
     # Phase 1: Deterministic detectors
     findings = run_basic_detectors(root, args.terminal_id, args.session_id, settings.git_sha)

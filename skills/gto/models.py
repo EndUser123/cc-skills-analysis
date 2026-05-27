@@ -53,6 +53,46 @@ class Finding:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Finding:
+        evidence = [
+            EvidenceRef(kind=e.get("kind", ""), value=e.get("value", ""), detail=e.get("detail"))
+            for e in data.get("evidence", [])
+            if isinstance(e, dict)
+        ]
+        return cls(
+            id=data.get("id", ""),
+            title=data.get("title", ""),
+            description=data.get("description", ""),
+            source_type=data.get("source_type", "detector"),
+            source_name=data.get("source_name", ""),
+            domain=data.get("domain", "other"),
+            gap_type=data.get("gap_type", "unknown"),
+            severity=data.get("severity", "medium"),
+            evidence_level=data.get("evidence_level", "unverified"),
+            action=data.get("action", "recover"),
+            priority=data.get("priority", "medium"),
+            status=data.get("status", "open"),
+            scope=data.get("scope", "local"),
+            owner_skill=data.get("owner_skill"),
+            owner_reason=data.get("owner_reason"),
+            file=data.get("file"),
+            line=data.get("line"),
+            symbol=data.get("symbol"),
+            reversibility=data.get("reversibility"),
+            effort=data.get("effort"),
+            target=data.get("target"),
+            depends_on=data.get("depends_on", []),
+            evidence=evidence,
+            tags=data.get("tags", []),
+            terminal_id=data.get("terminal_id"),
+            session_id=data.get("session_id"),
+            git_sha=data.get("git_sha"),
+            freshness=data.get("freshness"),
+            unverified=data.get("unverified", False),
+            metadata=data.get("metadata", {}),
+        )
+
 
 @dataclass
 class AgentResult:

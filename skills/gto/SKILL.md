@@ -1,7 +1,7 @@
 ---
 name: gto
-description: "GTO v4.3 — Session-aware gap-to-opportunity analysis with execution-contract runtime. Reads session transcripts to produce RNS-formatted findings. Contract: workflow-execution with artifact as completion object."
-version: "4.3.0"
+description: "GTO v4.4 — Session-aware gap-to-opportunity analysis with execution-contract runtime. Reads session transcripts to produce RNS-formatted findings. Uses haiku model for gap reviewer and merge-only re-runs for speed. Contract: workflow-execution with artifact as completion object."
+version: "4.4.0"
 triggers:
   - "/gto"
 category: analysis
@@ -50,7 +50,7 @@ You are working inside a repository where GTO implements a full gap‑analysis a
 - Do **not** assume utilities like `stripscaffoldingblocks`, turn‑mode routers, or per‑mode message schemas exist. If you need that behavior, implement it explicitly in shared modules rather than referencing unknown helpers.
 - When in doubt, reuse existing detectors, orchestrator entry points, and artifact contracts. Enforce quality via the automated implement → pytest → verify → verdict flow rather than adding configuration layers or runner scripts.
 
-# GTO v4.3 — Session-Aware Gap-to-Opportunity Analysis (Contract Runtime)
+# GTO v4.4 — Session-Aware Gap-to-Opportunity Analysis (Contract Runtime)
 
 ## Overview
 
@@ -88,11 +88,14 @@ ARTIFACTS_ROOT="${CLAUDE_ARTIFACTS_ROOT:-P://.claude/.artifacts}"
 test -f "$ARTIFACTS_ROOT/$WT_SESSION/gto/gap_reviewer_handoff.json" && echo "GAP_REVIEW_NEEDED" || echo "NO_GAP_REVIEW"
 ```
 
-If `GAP_REVIEW_NEEDED`, spawn a subagent:
+If `GAP_REVIEW_NEEDED`, check whether the findings warrant a full agent review. **Skip the gap reviewer** when all deterministic findings are trivial — defined as fewer than 3 findings AND all findings have `severity: "low"`. In that case, print "GAP_REVIEW_SKIPPED: trivial findings only" and proceed directly to Step 2.
+
+Otherwise, spawn a subagent with the faster haiku model:
 
 ```python
 Agent(
     subagent_type="general-purpose",
+    model="haiku",
     description="GTO gap reviewer",
     prompt="""You are a gap-to-opportunity reviewer. You receive pre-populated detector evidence and produce a structured review.
 
@@ -125,13 +128,13 @@ Rules:
 )
 ```
 
-After the subagent completes, re-run the orchestrator to merge the gap reviewer results:
+After the subagent completes, run a **merge-only** pass (skips all detectors, just merges agent results into the artifact):
 
 ```bash
-cd "P://packages/cc-skills-analysis" && python -m skills.gto.orchestrator --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
+cd "P://packages/cc-skills-analysis" && python -m skills.gto.orchestrator --merge-only --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
 ```
 
-The second run reads `gap_reviewer_result.json` and merges its findings into the final artifact.
+The merge-only pass reads `gap_reviewer_result.json` and incorporates its findings without re-running detectors.
 
 ### Step 1.6: Additional Agent Enrichment (Optional)
 
@@ -146,7 +149,7 @@ The gap reviewer is the only mandatory agent. The remaining agents are optional 
 | Action Normalizer | `action_normalizer_handoff.json` | `action_normalizer_result.json` | Normalize into canonical RNS actions |
 | Session Reviewer | `session_reviewer_handoff.json` | `session_reviewer_result.json` | Classify ambiguous session outcomes |
 
-If any optional agents run, re-run the orchestrator afterward to merge their results.
+If any optional agents run, re-run with `--merge-only` afterward to merge their results.
 
 ### Step 2: Display Results
 
