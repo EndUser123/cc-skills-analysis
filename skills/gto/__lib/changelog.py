@@ -1,14 +1,9 @@
-"""Changelog detector — reads git log since previous GTO run.
+"""Changelog detector — maps session-edited files to skill recommendations.
 
-Compares current git_sha against the previous run's git_sha to identify
-changed files, then emits findings for skills that may need re-running
-based on those changes.
+Uses transcript-extracted file lists (terminal-scoped) instead of git diffs.
+Maps edited files to skills that may need re-running based on what changed.
 """
 from __future__ import annotations
-
-import subprocess
-from dataclasses import replace
-from pathlib import Path
 
 from ..models import EvidenceRef, Finding
 
@@ -71,29 +66,6 @@ def _base_skill(skill: str) -> str:
     return skill
 
 
-def get_changed_files(root: Path, prev_sha: str, curr_sha: str) -> list[str]:
-    """Return list of files changed between two git SHAs, relative to root."""
-    try:
-        out = subprocess.check_output(
-            ["git", "-C", str(root), "diff", "--name-only", f"{prev_sha}..{curr_sha}"],
-            text=True,
-        )
-    except subprocess.CalledProcessError:
-        return []
-    return [line.strip() for line in out.strip().splitlines() if line.strip()]
-
-
-def get_commit_count(root: Path, prev_sha: str, curr_sha: str) -> int:
-    """Return number of commits between two SHAs."""
-    try:
-        out = subprocess.check_output(
-            ["git", "-C", str(root), "rev-list", "--count", f"{prev_sha}..{curr_sha}"],
-            text=True,
-        )
-        return int(out.strip())
-    except (subprocess.CalledProcessError, ValueError):
-        return 0
-
 
 def map_changed_files_to_skills(
     changed_files: list[str],
@@ -117,53 +89,33 @@ def _matches_pattern(path: str, pattern: str) -> bool:
 
 
 def detect_changelog_findings(
-    root: Path,
-    prev_sha: str | None,
-    curr_sha: str | None,
-    terminal_id: str,
-    session_id: str,
-    git_sha: str | None,
+    edited_files: list[str],
+    terminal_id: str = "",
+    session_id: str = "",
+    git_sha: str | None = None,
 ) -> list[Finding]:
-    """Detect findings from git changelog since previous GTO run.
+    """Map session-edited files to skill recommendations.
 
-    Returns findings recommending skill re-runs for changed files.
-    Returns empty list if no previous SHA available or no changes detected.
+    Uses transcript-extracted file lists instead of git diffs.
+    Returns findings recommending skill re-runs for affected files.
     """
-    if not prev_sha or not curr_sha or prev_sha == curr_sha:
+    if not edited_files:
         return []
 
-    # Verify both SHAs exist in the repo
-    for sha in (prev_sha, curr_sha):
-        try:
-            subprocess.check_output(
-                ["git", "-C", str(root), "cat-file", "-t", sha],
-                text=True,
-            )
-        except subprocess.CalledProcessError:
-            return []
-
-    changed = get_changed_files(root, prev_sha, curr_sha)
-    if not changed:
-        return []
-
-    commit_count = get_commit_count(root, prev_sha, curr_sha)
-    skill_map = map_changed_files_to_skills(changed)
-    wave = classify_change_wave(len(changed), commit_count)
+    unique_files = sorted(set(edited_files))
+    skill_map = map_changed_files_to_skills(unique_files)
+    wave = classify_change_wave(len(unique_files), 0)
 
     findings: list[Finding] = []
 
-    # One finding per affected skill
-    for idx, (skill, file_reasons) in enumerate(
-        sorted(skill_map.items()), start=1
-    ):
+    for idx, (skill, file_reasons) in enumerate(sorted(skill_map.items()), start=1):
         files = list({f for f, _ in file_reasons})
         reasons = list({r for _, r in file_reasons})
         description = (
-            f"{commit_count} commits with {len(files)} files changed since last GTO run "
-            f"affect {skill}: {', '.join(reasons[:3])}"
+            f"{len(files)} file(s) edited this session affect {skill}: "
+            f"{', '.join(reasons[:3])}"
         )
 
-        # Staleness wave: significant changes elevate severity
         base_severity = "medium"
         base_priority = "medium"
         if wave == "significant":
@@ -173,7 +125,7 @@ def detect_changelog_findings(
         findings.append(
             Finding(
                 id=f"CHANGELOG-{idx:03d}",
-                title=f"Changes affect {skill} — consider re-running",
+                title=f"Edits affect {skill} — consider re-running",
                 description=description,
                 source_type="detector",
                 source_name="changelog_detector",
@@ -189,30 +141,25 @@ def detect_changelog_findings(
                 git_sha=git_sha,
                 evidence=[
                     EvidenceRef(
-                        kind="git_diff",
-                        value=f"{prev_sha[:12]}..{curr_sha[:12]}",
-                        detail=f"{commit_count} commits, {len(changed)} files, {len(files)} relevant, wave={wave}",
+                        kind="transcript_edits",
+                        value=f"{len(unique_files)} files",
+                        detail=f"{len(files)} relevant to {skill}, wave={wave}",
                     ),
                 ],
             )
         )
 
-    # If there are changed files that don't match any skill pattern,
-    # emit a generic finding
-    unmatched = []
-    for fp in changed:
-        if not any(_matches_entry(fp, prefix, ext) for prefix, ext, _, _ in FILE_SKILL_MAP):
-            unmatched.append(fp)
-
+    # Unmatched files
+    unmatched = [
+        fp for fp in unique_files
+        if not any(_matches_entry(fp, prefix, ext) for prefix, ext, _, _ in FILE_SKILL_MAP)
+    ]
     if unmatched and len(unmatched) <= 10:
         findings.append(
             Finding(
                 id="CHANGELOG-UNMATCHED-001",
-                title=f"{len(unmatched)} changed files not covered by skill patterns",
-                description=(
-                    f"Files changed since last run that don't map to known skill patterns: "
-                    f"{', '.join(unmatched[:10])}"
-                ),
+                title=f"{len(unmatched)} edited files not covered by skill patterns",
+                description=f"Files not mapping to known skill patterns: {', '.join(unmatched[:10])}",
                 source_type="detector",
                 source_name="changelog_detector",
                 domain=CHANGELOG_DOMAIN,
@@ -225,17 +172,12 @@ def detect_changelog_findings(
                 session_id=session_id,
                 git_sha=git_sha,
                 evidence=[
-                    EvidenceRef(
-                        kind="git_diff",
-                        value=f"{prev_sha[:12]}..{curr_sha[:12]}",
-                        detail=f"{len(unmatched)} unmatched files",
-                    ),
+                    EvidenceRef(kind="transcript_edits", value=f"{len(unmatched)} unmatched files", detail=""),
                 ],
             )
         )
 
-    # Anti-recommendations: skills NOT affected by the changes.
-    # Only emit when the change set is narrow enough to be confident.
+    # Anti-recommendations
     triggered_skills = {_base_skill(s) for s in skill_map}
     all_skills = {_base_skill(s) for _, _, s, _ in FILE_SKILL_MAP}
     untriggered = all_skills - triggered_skills
@@ -248,8 +190,8 @@ def detect_changelog_findings(
                 id="CHANGELOG-ANTI-001",
                 title=f"Change wave '{wave}' — {len(skipped)} skill categories not needed",
                 description=(
-                    f"Changes since last run only affect {sorted(triggered_skills)}. "
-                    f"The following are unlikely to find new issues: {', '.join(skipped_labels)}"
+                    f"Session edits only affect {sorted(triggered_skills)}. "
+                    f"Unlikely to find new issues: {', '.join(skipped_labels)}"
                 ),
                 source_type="detector",
                 source_name="changelog_detector",
@@ -266,7 +208,7 @@ def detect_changelog_findings(
                     EvidenceRef(
                         kind="anti_recommendation",
                         value=", ".join(skipped),
-                        detail=f"wave={wave}, {len(changed)} files, {len(skipped)} skills unaffected",
+                        detail=f"wave={wave}, {len(unique_files)} files, {len(skipped)} skills unaffected",
                     ),
                 ],
             )

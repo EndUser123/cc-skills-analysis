@@ -177,21 +177,23 @@ def write_hook_output(data: dict) -> None:
         data = {**data, "decision": "approve"}
     elif data.get("decision") == "deny":
         data = {**data, "decision": "block", "reason": data.get("reason", "")}
+    elif data.get("decision") == "warn":
+        data = {**data, "decision": "approve", "reason": data.get("reason", "")}
 
-    # Convenience boolean fields
+    # Convenience boolean fields (use spread to preserve extra fields)
     if "decision" not in data:
         if "allow" in data:
             if data["allow"] is False:
-                data = {"decision": "block", "reason": data.get("reason", "")}
+                data = {**data, "decision": "block", "reason": data.get("reason", "")}
             else:
-                data = {"decision": "approve"}
+                data = {**data, "decision": "approve"}
         elif "continue" in data:
             if data["continue"] is False:
-                data = {"decision": "block", "reason": data.get("reason", "")}
+                data = {**data, "decision": "block", "reason": data.get("reason", "")}
             else:
-                data = {"decision": "approve"}
+                data = {**data, "decision": "approve"}
         elif "ok" in data:
-            data = {"decision": "approve"}
+            data = {**data, "decision": "approve"}
 
     json.dump(data, sys.stdout, ensure_ascii=False)
     sys.stdout.write("\n")

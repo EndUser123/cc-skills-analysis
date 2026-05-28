@@ -8,6 +8,10 @@ EvidenceLevel = Literal["verified", "unverified", "derived"]
 FindingStatus = Literal["open", "mapped", "rejected", "deferred", "resolved", "stale"]
 FindingScope = Literal["local", "systemic", "architectural"]
 FindingSourceType = Literal["detector", "agent", "hook", "artifact", "carryover", "user"]
+RootCause = Literal[
+    "missing_instructions", "ignored_instructions", "wrong_approach",
+    "missing_context", "tool_misuse", "knowledge_gap", "structural_gap", "unknown",
+]
 
 
 @dataclass
@@ -48,6 +52,7 @@ class Finding:
     git_sha: str | None = None
     freshness: str | None = None
     unverified: bool = False
+    root_cause: RootCause = "unknown"
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -90,6 +95,7 @@ class Finding:
             git_sha=data.get("git_sha"),
             freshness=data.get("freshness"),
             unverified=data.get("unverified", False),
+            root_cause=data.get("root_cause", "unknown"),
             metadata=data.get("metadata", {}),
         )
 

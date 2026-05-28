@@ -17,6 +17,9 @@ DOMAIN_MAP: dict[str, tuple[str, str]] = {
     "git": ("🐙", "GIT"),
     "deps": ("📦", "DEPS"),
     "dependencies": ("📦", "DEPS"),
+    "knowledge": ("🧠", "KNOWLEDGE"),
+    "workflow": ("⚙️", "WORKFLOW"),
+    "friction": ("🌊", "FRICTION"),
     "session": ("💬", "SESSION"),
     "other": ("📌", "OTHER"),
 }
@@ -62,9 +65,12 @@ def _domain_sort_key(domain: str, findings: list[Finding]) -> tuple[int, str]:
         "security": 3,
         "performance": 4,
         "git": 5,
-        "deps": 6, "dependencies": 6,
-        "session": 7,
-        "other": 8,
+        "knowledge": 6,
+        "deps": 7, "dependencies": 7,
+        "workflow": 8,
+        "friction": 8,
+        "session": 9,
+        "other": 10,
     }
     return (explicit_order.get(domain, 99), -len(findings), domain)
 
@@ -102,6 +108,9 @@ def _render_finding_line(f: Finding, opts: RenderOptions) -> str:
     if opts.max_description_chars and len(desc) > opts.max_description_chars:
         desc = desc[:opts.max_description_chars].rstrip() + "…"
     parts.append(desc)
+
+    if f.root_cause and f.root_cause != "unknown":
+        parts.append(f"[RC:{f.root_cause}]")
 
     if opts.show_effort and f.effort:
         parts.append(f"[E:{f.effort}]")
@@ -176,6 +185,9 @@ def render_actions(
                 item_counter += 1
                 sub = _subletter(item_counter)
                 lines.append(f"    {domain_num}{sub} {_render_finding_line(f, opts)}")
+                if f.metadata.get("suggested_rule"):
+                    target = f.metadata.get("rule_target", "CLAUDE.md")
+                    lines.append(f"       └─ {target}: {f.metadata['suggested_rule']}")
                 prev_priority = f.priority
 
         lines.append("")
@@ -250,11 +262,14 @@ def render_machine_format(findings: list[Finding]) -> str:
             caused_by = ""
             blocks = ""
             unverified = "1" if f.unverified else "0"
+            root_cause = f.root_cause or "unknown"
+            suggested_rule = f.metadata.get("suggested_rule", "").replace("|", "\\|") if f.metadata.get("suggested_rule") else ""
             lines.append(
                 f"RNS|A|{domain_num}{sub}|{f.domain}|"
                 f"E:{effort}|{f.action}/{f.priority}|"
                 f"{desc}|{file_ref}|owner={owner}|done={done}|"
-                f"caused_by={caused_by}|blocks={blocks}|unverified={unverified}"
+                f"caused_by={caused_by}|blocks={blocks}|unverified={unverified}|"
+                f"root_cause={root_cause}|rule={suggested_rule}"
             )
 
     lines.append("RNS|Z|0|NONE")
