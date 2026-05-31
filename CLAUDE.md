@@ -18,7 +18,6 @@ Analyzing HOW the work is progressing.
 
 | Skill | Purpose | Home |
 |-------|---------|------|
-| /friction | Detects workflow automation gaps and confusion | `friction/` |
 | /behave | Analyzes LLM behavior and session patterns | `behave/` |
 | /similarity | Finds functionally similar skills to prevent bloat | `similarity/` |
 | /why | Deep "5 Whys" root cause analysis | `why/` |

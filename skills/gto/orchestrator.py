@@ -51,6 +51,8 @@ from .__lib.verification_debt import detect_verification_debt
 from .__lib.evidence_map import write_evidence_map
 from .__lib.prompt_quality import validate_prompt_output
 from .__lib.structural_analysis import write_structural_summary
+from .__lib import friction
+from .__lib.stale_detector import detect_stale_docs
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -441,6 +443,23 @@ def run(argv: list[str] | None = None) -> int:
         git_sha=settings.git_sha,
     )
     findings.extend(hygiene_findings)
+
+    # Phase 1.17: Friction detection — interaction and workflow patterns
+    if transcript_path:
+        friction_findings = []
+        friction_findings.extend(friction.detect_correction_patterns(transcript_path, args.terminal_id, args.session_id, settings.git_sha))
+        friction_findings.extend(friction.detect_workflow_repetition(transcript_path, args.terminal_id, args.session_id, settings.git_sha))
+        findings.extend(friction_findings)
+
+    # Phase 1.18: Stale documentation detection — docs referencing modified source files
+    stale_findings = detect_stale_docs(
+        root=root,
+        session_edited_files=session_edited_files,
+        terminal_id=args.terminal_id,
+        session_id=args.session_id,
+        git_sha=settings.git_sha,
+    )
+    findings.extend(stale_findings)
 
     # Phase 1.16: Verification debt — edits without test verification
     verification_findings = detect_verification_debt(

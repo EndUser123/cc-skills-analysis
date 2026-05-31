@@ -1,6 +1,6 @@
 ---
 name: recap
-description: Catch up on all sessions in this terminal via checkpoint chain traversal and surface unresolved assumptions, contract gaps, Contract Authority Packet gaps, and resume risks
+description: Generate a handoff-ready session recap across the full session chain — what was accomplished, what's incomplete, and what the next developer/PM needs to know
 version: 1.5.1
 status: stable
 category: session
@@ -11,7 +11,8 @@ triggers:
 required_artifacts:
   - session_chain_output
 response_requirements:
-  - per-session narrative with origin tags
+  - handoff document with Context/Completed/In Progress/Blocked/Next Actions/Risks sections
+  - per-session narrative with origin tags (full mode only)
   - structured synthesis fields
   - routing suggestions
 workflow_steps:
@@ -216,9 +217,87 @@ Regex extraction remains as fallback for sessions without identifiable file chan
 ## Usage
 
 ```bash
-/recap                    # Show full terminal recap (current + history)
+/recap                    # Generate handoff document (default mode)
 /recap brief              # Show brief catch-up summary only
+/recap full               # Show full detailed session history
 ```
+
+## Default Output: Handoff Document
+
+When invoked without arguments, `/recap` produces a **handoff document** suitable for another LLM, PM, or developer picking up where the session left off. This is the default behavior — no flags needed.
+
+### Handoff Template
+
+```markdown
+# Session Handoff
+
+## Context
+- **Project**: {project.project_root}
+- **Terminal**: {project.terminal_id}
+- **Sessions in chain**: {session_count}
+- **Time span**: {earliest_session} → {latest_session}
+- **Current session**: {current_session_id}
+
+## Completed
+{completed_section}
+
+## In Progress
+{in_progress_section}
+
+## Blocked
+{blocked_section}
+
+## Next Actions
+{next_actions_rns}
+
+## Risks
+{risks_section}
+
+## Decisions Made
+{decisions_section}
+
+## Enrichment Signals
+
+### GTO Findings
+{gto_findings_section}
+
+### Friction Patterns
+{friction_patterns_section}
+
+### Behave Hypotheses
+{behave_hypotheses_section}
+
+### Trace Findings
+{trace_findings_section}
+
+## Key Files
+{key_files_section}
+```
+
+The handoff format replaces the per-session narrative as the **default output**. Use `/recap full` for the detailed session-by-session view with origin tags and confidence labels. Use `/recap brief` for a quick one-paragraph catch-up.
+
+### Handoff Synthesis Rules
+
+1. **Completed** section: only items with VERIFIED evidence (tests passing, files written, commands succeeded). Infer nothing — if completion is uncertain, put it in In Progress.
+2. **In Progress** section: include current state (file paths, what's left, what's next). Must be actionable — a new developer should know exactly where to pick up.
+3. **Blocked** section: external blockers only (missing API access, unanswered questions, upstream dependencies). Internal uncertainty goes in Risks.
+4. **Next Actions**: ordered by impact. Each action must be a concrete command or file edit, not a vague suggestion.
+5. **Risks**: surface assumptions, failure modes, and inversion prompts. If the handoff consumer does nothing else, they should read this section.
+6. **Decisions Made**: architectural or design decisions that constrain future work. Include reversal triggers.
+7. **Key Files**: files that appear across multiple sessions or carry important state. Limit to 10.
+
+### Multi-Terminal Context
+
+When session data spans multiple terminals (discovered via session registry or handoff chain), include a `## Multi-Terminal Context` section:
+
+```markdown
+## Multi-Terminal Context
+- **Terminal A** ({id}): {summary of work}
+- **Terminal B** ({id}): {summary of work}
+- **Cross-terminal dependencies**: {what depends on what}
+```
+
+This section is omitted when all sessions belong to the same terminal.
 
 ## Routing Behavior
 

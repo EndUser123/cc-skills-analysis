@@ -1,6 +1,6 @@
 ---
 name: retro
-description: "Identify what went wrong, what went right, and what to do differently next time. Chains 6 skills: recap → gap analysis → friction → pre-mortem → actions."
+description: "Identify what went wrong, what went right, and what to do differently next time. Chains 5 skills: recap → gap+friction analysis → pre-mortem → actions."
 version: 1.2.0
 category: orchestration
 triggers:
@@ -15,15 +15,14 @@ aliases:
   - /self-contrast
 suggest:
   - /friction
-depends_on_skills: [recap, gto, friction, pre-mortem, rns]
+depends_on_skills: [recap, gto, pre-mortem, rns]
 workflow_steps:
   - step_1: Call /recap — get session summary with problem/optimal contrast
-  - step_2: Call /gto gap — extract top gaps from session evidence
-  - step_3: Call /friction — identify workflow friction and automation opportunities
-  - step_4: Call /pre-mortem — adversarial validation of approach
-  - step_5: Evaluate SCORES — rate completeness/optimality/satisfaction 0-10; invoke red-team if any axis < 8
-  - step_6: Aggregate ALL findings from all chained skills
-  - step_7: Render RNS output — domain grouping, gap coverage, Do ALL footer; every finding must have a next step or explicit disposition
+  - step_2: Call /gto gap — extract top gaps from session evidence (includes friction)
+  - step_3: Call /pre-mortem — adversarial validation of approach
+  - step_4: Evaluate SCORES — rate completeness/optimality/satisfaction 0-10; invoke red-team if any axis < 8
+  - step_5: Aggregate ALL findings from all chained skills
+  - step_6: Render RNS output — domain grouping, gap coverage, Do ALL footer; every finding must have a next step or explicit disposition
 enforcement: strict
 workflow_binding: exclusive
 workflow_enforcement: hard
@@ -33,7 +32,6 @@ layer1_enforcement: true
 required_phase_artifacts:
   - /recap
   - /gto
-  - /friction
   - /pre-mortem
   - /rns
 usage_markers:
@@ -49,7 +47,7 @@ usage_markers:
 
 ## Purpose
 
-Run the full SELF-CONTRAST protocol in sequence: retrospective → gap analysis → friction detection → adversarial validation → prioritized actions. Produces a structured output with named score axes.
+Run the full SELF-CONTRAST protocol in sequence: retrospective → gap+friction analysis → adversarial validation → prioritized actions. Produces a structured output with named score axes.
 
 ## When to Use
 
@@ -61,10 +59,9 @@ Run the full SELF-CONTRAST protocol in sequence: retrospective → gap analysis 
 
 ```
 1. /recap          → Session retrospective (what happened, problem vs optimal)
-2. /gto            → Gap analysis (code/process gaps from session)
-3. /friction       → Friction analysis (what blocked progress, what could be automated)
-4. /pre-mortem     → Adversarial validation (what WILL fail)
-5. /rns            → Action extraction (recover/prevent/realize)
+2. /gto            → Gap + friction analysis (code/process gaps from session)
+3. /pre-mortem     → Adversarial validation (what WILL fail)
+4. /rns            → Action extraction (recover/prevent/realize)
 ```
 
 ### Red-Team Trigger

@@ -316,6 +316,7 @@ class ResumePacket:
     verification_status: str = "unverified"  # "unverified" | "partially_verified" | "verified"
     resume_risks: list[str] = field(default_factory=list)
     recommended_entry_points: list[dict[str, str]] = field(default_factory=list)
+    enrichment_signals: dict[str, Any] = field(default_factory=dict)  # GTO, friction, behave, trace
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -330,6 +331,7 @@ class ResumePacket:
             "verification_status": self.verification_status,
             "resume_risks": self.resume_risks,
             "recommended_entry_points": self.recommended_entry_points,
+            "enrichment_signals": self.enrichment_signals,
         }
 
 
@@ -1204,8 +1206,71 @@ def render_json(state: RecapV2State) -> str:
     return json.dumps(state.to_dict(), indent=2, ensure_ascii=False)
 
 
-def render_markdown(state: RecapV2State) -> str:
-    """Human-facing markdown rendered from the same schema data."""
+def _render_handoff_template(state: RecapV2State, handoff_dict: dict[str, Any]) -> str:
+    """Render handoff document using structured enrichment data.
+
+    Uses the SKILL.md handoff template format with enrichment sections.
+    """
+    lines = [
+        "# Session Handoff",
+        "",
+        "## Context",
+        f"- **Project**: {state.project.project_root}",
+        f"- **Terminal**: {state.project.terminal_id}",
+        f"- **Sessions in chain**: {len(state.sessions)}",
+        f"- **Current session**: {state.project.current_session_id}",
+        "",
+        "## Completed",
+        handoff_dict["completed_section"],
+        "",
+        "## In Progress",
+        handoff_dict["in_progress_section"],
+        "",
+        "## Blocked",
+        handoff_dict["blocked_section"],
+        "",
+        "## Next Actions",
+        handoff_dict["next_actions_rns"],
+        "",
+        "## Risks",
+        handoff_dict["risks_section"],
+        "",
+        "## Decisions Made",
+        handoff_dict["decisions_section"],
+        "",
+        "## Enrichment Signals",
+        "",
+        "### GTO Findings",
+        handoff_dict["gto_findings_section"],
+        "",
+        "### Friction Patterns",
+        handoff_dict["friction_patterns_section"],
+        "",
+        "### Behave Hypotheses",
+        handoff_dict["behave_hypotheses_section"],
+        "",
+        "### Trace Findings",
+        handoff_dict["trace_findings_section"],
+        "",
+        "## Key Files",
+        handoff_dict["key_files_section"],
+    ]
+    return "\n".join(lines)
+
+
+def render_markdown(state: RecapV2State, export_handoff: bool = False) -> str:
+    """Human-facing markdown rendered from the same schema data.
+
+    Args:
+        state: RecapV2State with enriched resume_packet
+        export_handoff: If True, returns handoff template format; otherwise returns detailed v2 format
+    """
+    # If handoff export requested, use structured template format
+    if export_handoff:
+        handoff_dict = _export_for_handoff(state)
+        return _render_handoff_template(state, handoff_dict)
+
+    # Otherwise, use original detailed v2 format
     lines: list[str] = []
     rp = state.resume_packet
     meta = state.meta
@@ -1356,7 +1421,214 @@ def build_recap_v2(
     # stage 6: resume packet
     state = build_resume_packet(state)
 
+    # stage 7: enrichment (external artifacts)
+    # NOTE: No existing enrichment functions found — these are NEW integrations
+    # with GTO/friction/behave/trace artifacts to provide cross-skill signals
+    state = _enrich_from_artifacts(state)
+
     return state
+
+
+def _enrich_from_artifacts(state: RecapV2State) -> RecapV2State:
+    """Stage 7: Enrich resume packet with external skill artifacts.
+
+    Reads from:
+    - GTO: .claude/.artifacts/{terminal_id}/gto/outputs/artifact.json
+    - Friction: .claude/.artifacts/{terminal_id}/friction/outputs/
+    - Behave: .claude/.artifacts/{terminal_id}/behave/outputs/
+    - Trace: .claude/.artifacts/{terminal_id}/trace/outputs/
+
+    Adds findings to resume_packet.enrichment_signals dict.
+    """
+    from pathlib import Path
+
+    terminal_id = state.project.terminal_id
+    artifacts_root = Path(".claude/.artifacts") / terminal_id
+
+    # Initialize enrichment dict if not present
+    if not hasattr(state.resume_packet, "enrichment_signals"):
+        state.resume_packet.enrichment_signals = {}
+
+    # GTO enrichment
+    # NOTE: GTO overwrites outputs/artifact.json each run — this is the fresh artifact
+    gto_artifact = artifacts_root / "gto/outputs/artifact.json"
+    if gto_artifact.exists():
+        try:
+            gto_data = json.loads(gto_artifact.read_text(encoding="utf-8"))
+            state.resume_packet.enrichment_signals["gto"] = gto_data.get("findings", [])
+        except (json.JSONDecodeError, OSError):
+            state.resume_packet.enrichment_signals["gto"] = []
+
+    # Friction, Behave, Trace — check their output structures
+    # Each skill may have outputs/ directories with fresh artifacts
+    for skill_name, subdir in [("friction", "friction"), ("behave", "behave"), ("trace", "trace")]:
+        skill_output = artifacts_root / subdir / "outputs"
+        if skill_output.exists():
+            try:
+                for f in skill_output.glob("*.json"):
+                    data = json.loads(f.read_text(encoding="utf-8"))
+                    if subdir not in state.resume_packet.enrichment_signals:
+                        state.resume_packet.enrichment_signals[subdir] = []
+                    state.resume_packet.enrichment_signals[subdir].append(data)
+            except (json.JSONDecodeError, OSError):
+                pass
+
+    return state
+
+
+def _to_rns_actions(state: RecapV2State) -> list[dict[str, Any]]:
+    """Convert verification queue and workstreams to RNS CrossSessionAction format.
+
+    Returns a list of dicts compatible with rns.render_actions() input format.
+    Each dict has: domain, action, priority, description, file_ref, effort
+    """
+    # NOTE: No existing RNS converter found — this is NEW integration
+    # Maps RecapV2State verification_queue + workstreams to CrossSessionAction schema
+    actions = []
+    action_id = 1
+
+    # Convert verification queue to actions
+    for v in state.verification_queue:
+        actions.append({
+            "id": f"{action_id}a",
+            "domain": "verification",
+            "action": "recover",  # verification is about recovering correctness
+            "priority": v.priority.lower(),
+            "description": v.suggested_action or v.target,
+            "file_ref": v.target,
+            "effort": "~5min",
+        })
+        action_id += 1
+
+    # Convert workstreams to actions
+    for w in state.workstreams:
+        if w.status == WorkstreamStatus.ACTIVE:
+            actions.append({
+                "id": f"{action_id}a",
+                "domain": "workstream",
+                "action": "realize",  # active workstreams are realizing goals
+                "priority": "medium",
+                "description": w.title or f"Complete {w.workstream_id}",
+                "file_ref": w.file_paths[0] if w.file_paths else None,
+                "effort": "~15min",
+            })
+            action_id += 1
+
+    return actions
+
+
+def _export_for_handoff(state: RecapV2State) -> dict[str, Any]:
+    """Export RecapV2State as a flat dict for SKILL.md template substitution.
+
+    Returns a dict with keys matching the handoff template placeholders:
+    - completed_section, in_progress_section, blocked_section
+    - next_actions_rns, risks_section, decisions_section
+    - gto_findings_section, friction_patterns_section, behave_hypotheses_section, trace_findings_section
+    - key_files_section
+    """
+    # NOTE: No existing handoff exporter found — this is NEW for template integration
+    rp = state.resume_packet
+
+    # Build Completed section
+    completed_lines = []
+    if rp.current_status == "done":
+        completed_lines.append(f"- Completed: {rp.current_goal}")
+    for w in state.workstreams:
+        if w.status == WorkstreamStatus.DONE:
+            completed_lines.append(f"- {w.title} (workstream {w.workstream_id})")
+    completed_section = "\n".join(completed_lines) if completed_lines else "No completed items in this session chain."
+
+    # Build In Progress section
+    in_progress_lines = []
+    if rp.current_status == "active":
+        in_progress_lines.append(f"**Currently Working On**: {rp.current_goal}")
+        in_progress_lines.append(f"  - **Current Status**: {rp.current_status}")
+        in_progress_lines.append(f"  - **Active Files**: {', '.join(rp.active_files) if rp.active_files else 'None'}")
+        in_progress_lines.append(f"  - **Next**: {rp.exact_next_action}")
+    for w in state.workstreams:
+        if w.status == WorkstreamStatus.ACTIVE:
+            in_progress_lines.append(f"- **Workstream {w.workstream_id}**: {w.title}")
+            in_progress_lines.append(f"  - Files: {', '.join(w.file_paths)}")
+    in_progress_section = "\n".join(in_progress_lines) if in_progress_lines else "No active work in progress."
+
+    # Build Blocked section
+    blocked_section = "\n".join(f"- {issue}" for issue in rp.blocking_issues) if rp.blocking_issues else "No blockers."
+
+    # Build Next Actions (RNS format via render_actions)
+    try:
+        import sys
+        from pathlib import Path
+        rns_scripts = Path("P:/packages/cc-skills-analysis/skills/rns/scripts")
+        if str(rns_scripts) not in sys.path:
+            sys.path.insert(0, str(rns_scripts))
+        from core.render import render_actions, RenderOptions
+
+        actions = _to_rns_actions(state)
+        next_actions_rns = render_actions(actions, RenderOptions(show_effort=True, show_file_ref=True))
+    except Exception:
+        next_actions_rns = "RNS rendering unavailable — show verification_queue directly:\n" + "\n".join(
+            f"- [{v.priority}] {v.suggested_action or v.target}" for v in state.verification_queue[:5]
+        )
+
+    # Build Risks section
+    risks_lines = []
+    for r in state.risks:
+        risks_lines.append(f"- **{r.title}** ({r.severity})")
+        risks_lines.append(f"  {r.description}")
+    risks_section = "\n".join(risks_lines) if risks_lines else "No risks identified."
+
+    # Build Decisions section
+    decisions_lines = []
+    for d in state.decisions:
+        decisions_lines.append(f"- **{d.statement}**")
+        decisions_lines.append(f"  - *Rationale*: {d.rationale}")
+        decisions_lines.append(f"  - *Impact*: {d.impact}")
+    decisions_section = "\n".join(decisions_lines) if decisions_lines else "No decisions recorded."
+
+    # Build Enrichment sections
+    gto_findings = rp.enrichment_signals.get("gto", [])
+    gto_findings_section = "\n".join(
+        f"- [{f.get('severity', 'unknown')}] {f.get('title', 'Unnamed')}: {f.get('description', '')[:80]}"
+        for f in gto_findings[:5]
+    ) if gto_findings else "No GTO findings."
+
+    friction_patterns = rp.enrichment_signals.get("friction", [])
+    friction_patterns_section = "\n".join(
+        f"- {f.get('pattern', 'Unknown pattern')}: {f.get('description', '')[:80]}"
+        for f in friction_patterns[:5]
+    ) if friction_patterns else "No friction patterns detected."
+
+    behave_hypotheses = rp.enrichment_signals.get("behave", [])
+    behave_hypotheses_section = "\n".join(
+        f"- {h.get('hypothesis', 'Unknown')}: {h.get('description', '')[:80]}"
+        for h in behave_hypotheses[:5]
+    ) if behave_hypotheses else "No behavioral hypotheses."
+
+    trace_findings = rp.enrichment_signals.get("trace", [])
+    trace_findings_section = "\n".join(
+        f"- {t.get('file', 'Unknown')}: {t.get('issue', '')[:80]}"
+        for t in trace_findings[:5]
+    ) if trace_findings else "No trace findings."
+
+    # Build Key Files section (from workstreams)
+    key_files = set()
+    for w in state.workstreams:
+        key_files.update(w.file_paths)
+    key_files_section = "\n".join(f"- `{f}`" for f in sorted(key_files)[:10]) if key_files else "No key files."
+
+    return {
+        "completed_section": completed_section,
+        "in_progress_section": in_progress_section,
+        "blocked_section": blocked_section,
+        "next_actions_rns": next_actions_rns,
+        "risks_section": risks_section,
+        "decisions_section": decisions_section,
+        "gto_findings_section": gto_findings_section,
+        "friction_patterns_section": friction_patterns_section,
+        "behave_hypotheses_section": behave_hypotheses_section,
+        "trace_findings_section": trace_findings_section,
+        "key_files_section": key_files_section,
+    }
 
 
 def main() -> None:
@@ -1374,6 +1646,16 @@ def main() -> None:
         action="store_true",
         help="Brief mode (resume packet only)",
     )
+    parser.add_argument(
+        "--no-enrichment",
+        action="store_true",
+        help="Skip Stage 7 enrichment (GTO/friction/behave/trace artifacts)",
+    )
+    parser.add_argument(
+        "--export-handoff",
+        action="store_true",
+        help="Export handoff template format (structured sections with enrichment)",
+    )
     args = parser.parse_args()
 
     # Fix sys.path so 'recap' package resolves when running as a module
@@ -1390,10 +1672,18 @@ def main() -> None:
     terminal_id = resolve_terminal_key(None)
     session_id = ""  # resolved inside discover_evidence if needed
 
+    # Build recap state (optionally skip enrichment)
     state = build_recap_v2(project_root, terminal_id, session_id)
+    if not args.no_enrichment:
+        state = _enrich_from_artifacts(state)
 
     if args.json:
         print(render_json(state))
+    elif args.export_handoff:
+        handoff_dict = _export_for_handoff(state)
+        print(_render_handoff_template(state, handoff_dict))
+    elif args.brief:
+        print(render_markdown_brief(state))
     else:
         print(render_markdown(state))
 

@@ -109,6 +109,8 @@ The handoff JSON contains:
 
 Produce a JSON object with two fields and write it to: $ARTIFACTS_ROOT/$WT_SESSION/gto/gap_reviewer_result.json
 
+IMPORTANT: Use the Write tool to write the result file. Do NOT use `python -c` with inline JSON — nested quoting breaks on Windows/bash.
+
 1. "review": an object with these sections:
    - "facts": list of concrete observations grounded in the detector evidence. Each entry is {"claim": "...", "source": "detector_name or file:line"}
    - "inferences": list of hypotheses about failure modes or friction points. Each entry is {"hypothesis": "...", "confidence": "low|medium|high", "evidence": "what supports this"}
@@ -155,9 +157,9 @@ If any optional agents run, re-run with `--merge-only` afterward to merge their 
 
 **WAIT for Gap Reviewer before displaying.** Do NOT render RNS output until Step 1.5 (Gap Reviewer) has completed and the orchestrator has merged its results. The "0 — Do ALL Recommended Next Actions (N items)" footer must be the LAST line shown — predicted opportunities come BEFORE it, not after.
 
-Read the artifact:
-```bash
-cat ".claude/.artifacts/{terminal_id}/gto/outputs/artifact.json"
+Read the artifact with the **Read tool** (not `cat` or `python -c`):
+```
+Read file: .claude/.artifacts/{terminal_id}/gto/outputs/artifact.json
 ```
 
 Render the findings using the **RNS display format**. Read the canonical format spec before rendering:
@@ -291,6 +293,7 @@ The stop hook verifies completion by checking:
 - The gap reviewer agent is mandatory — it provides reasoning beyond deterministic detectors
 - Other agents (domain_analyzer, findings_reviewer, action_normalizer, session_reviewer) are optional enrichment
 - Agent results are merged on the next orchestrator run, not inline
+- Do NOT use `python -c` for artifact I/O — nested JSON quoting breaks on Windows/bash. Use the Read tool to read JSON artifacts and Write tool to write JSON results. Use pre-written scripts in `__lib/` for rendering.
 
 ## Phase Gates
 

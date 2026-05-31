@@ -68,7 +68,7 @@ You receive a handoff JSON with:
 
 Your job is to produce a structured review in this exact format:
 
-Return a JSON object with two fields:
+Return a JSON object with two fields and write it using the Write tool (NOT python -c — nested JSON quoting breaks on Windows):
 
 1. "review": an object with these sections:
    - "facts": list of concrete observations grounded in the detector evidence. Each entry is {"claim": "...", "source": "detector_name or file:line"}
