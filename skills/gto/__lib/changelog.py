@@ -77,7 +77,7 @@ def map_changed_files_to_skills(
     skill_files: dict[str, list[tuple[str, str]]] = {}
     for fp in changed_files:
         for prefix, extension, skill, reason in FILE_SKILL_MAP:
-            if _matches_entry(fp, prefix, extension):
+            if _matches_entry(str(fp), prefix, extension):
                 skill_files.setdefault(skill, []).append((fp, reason))
     return skill_files
 
@@ -152,14 +152,14 @@ def detect_changelog_findings(
     # Unmatched files
     unmatched = [
         fp for fp in unique_files
-        if not any(_matches_entry(fp, prefix, ext) for prefix, ext, _, _ in FILE_SKILL_MAP)
+        if not any(_matches_entry(str(fp), prefix, ext) for prefix, ext, _, _ in FILE_SKILL_MAP)
     ]
     if unmatched and len(unmatched) <= 10:
         findings.append(
             Finding(
                 id="CHANGELOG-UNMATCHED-001",
                 title=f"{len(unmatched)} edited files not covered by skill patterns",
-                description=f"Files not mapping to known skill patterns: {', '.join(unmatched[:10])}",
+                description=f"Files not mapping to known skill patterns: {', '.join(str(fp) for fp in unmatched[:10])}",
                 source_type="detector",
                 source_name="changelog_detector",
                 domain=CHANGELOG_DOMAIN,

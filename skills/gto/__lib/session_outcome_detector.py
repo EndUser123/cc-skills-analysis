@@ -132,18 +132,28 @@ class SessionOutcomeDetector:
         (r"(?:need to|should)\s+(?:check|verify|look at|investigate)\s+([^\.]{10,60})", 0.75),
     ]
 
-    # Deferred patterns (high confidence — kept as deterministic findings)
+    # Deferred patterns (high confidence — technical deferrals only)
     DEFERRED_PATTERNS = [
         (r"(?:for now|for the moment|temporarily)\s+([^\.]{10,60})", 0.6),
         (r"(?:come back to|defer|postpone)\s+([^\.]{10,60})", 0.65),
         (r"skip(?:ping|ped)?\s+(?:this|that|it)\s+([^\.]{10,50})", 0.5),
     ]
 
+    # User correction patterns — conversational rejections, not technical deferrals.
+    # These route to friction, NOT deferred_item. User corrections like "not in scope"
+    # or "skip for now" are user rejections of bad analysis, not deferred work.
+    # Must run BEFORE CANDIDATE_PATTERNS to prevent misclassification.
+    USER_CORRECTION_PATTERNS = [
+        (r"not\s+in\s+scope", 0.7),
+        (r"skip(?:ping|ped)?\s+(?:for\s+now|it(?:\s+is)?\s+not)", 0.7),
+        (r"(?:that's?\s+)?not\s+(?:right|correct|accurate)", 0.65),
+        (r"(?:you're?\s+)?conflated?|混湊|错误", 0.6),  # common correction phrases
+        (r"that\s+doesn't\s+(?:seem\s+right|look\s+right|match)", 0.65),
+    ]
+
     # Candidate patterns (low confidence — flagged for LLM session reviewer)
     # Intentionally over-sensitive; the subagent filters noise.
     CANDIDATE_PATTERNS = [
-        (r"\bcan\s+(?:be\s+)?(?:deleted|removed|cleaned?\s*up?)\s+later\b", 0.4),
-        (r"\bnot\s+in\s+scope\b", 0.4),
         (r"\b(?:shelve|park|table|put\s+on\s+hold)\b", 0.45),
         (r"\b(?:can|could)\s+(?:wait|stay)\s+[^\.]{0,20}(?:later|after|until)\b", 0.4),
         (r"\b(?:revisit|come\s+back)\s+[^\.]{0,30}?(?:after|later|next)\b", 0.45),
@@ -316,28 +326,37 @@ class SessionOutcomeDetector:
             if len(content.strip()) < 20:
                 continue
 
+            # User correction guard: conversational corrections like "not in scope"
+            # or "that's not right" are user rejections, not technical deferrals.
+            # Skip CANDIDATE_PATTERNS when a correction pattern fires.
+            has_correction = any(
+                re.search(p, content, re.IGNORECASE) for p, _ in self.USER_CORRECTION_PATTERNS
+            )
+
             # Detect candidate patterns FIRST — low-confidence, sent to LLM reviewer.
             # These run before the completion-signal skip because candidates like
             # "revisit X after Y is done" contain "done" but are genuine deferrals.
-            for pattern, confidence in self.CANDIDATE_PATTERNS:
-                match = re.search(pattern, content, re.IGNORECASE)
-                if match:
-                    candidate_content = match.group(0).strip()
-                    # Use surrounding sentence context when group(1) unavailable
-                    if len(candidate_content) < 10:
-                        start = max(0, match.start() - 40)
-                        end = min(len(content), match.end() + 40)
-                        candidate_content = content[start:end].strip()
-                    items.append(
-                        SessionOutcomeItem(
-                            category="deferred_item",
-                            content=candidate_content,
-                            turn_number=turn.turn_number,
-                            session_age=session_age,
-                            confidence=confidence,
-                            source="transcript",
+            # BLOCKED by user correction guard above.
+            if not has_correction:
+                for pattern, confidence in self.CANDIDATE_PATTERNS:
+                    match = re.search(pattern, content, re.IGNORECASE)
+                    if match:
+                        candidate_content = match.group(0).strip()
+                        # Use surrounding sentence context when group(1) unavailable
+                        if len(candidate_content) < 10:
+                            start = max(0, match.start() - 40)
+                            end = min(len(content), match.end() + 40)
+                            candidate_content = content[start:end].strip()
+                        items.append(
+                            SessionOutcomeItem(
+                                category="deferred_item",
+                                content=candidate_content,
+                                turn_number=turn.turn_number,
+                                session_age=session_age,
+                                confidence=confidence,
+                                source="transcript",
+                            )
                         )
-                    )
 
             # Skip remaining high-confidence scans if the turn signals completion
             if completion_re.search(content):

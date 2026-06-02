@@ -26,7 +26,7 @@ def detect_workflow_hygiene(
         return []
 
     unique_files = sorted(set(edited_files))
-    file_list = ", ".join(unique_files[:_MAX_FINDINGS])
+    file_list = ", ".join(str(f) for f in unique_files[:_MAX_FINDINGS])
     extra = f" (+{len(unique_files) - _MAX_FINDINGS} more)" if len(unique_files) > _MAX_FINDINGS else ""
 
     return [

@@ -109,7 +109,7 @@ The handoff JSON contains:
 
 Produce a JSON object with two fields and write it to: $ARTIFACTS_ROOT/$WT_SESSION/gto/gap_reviewer_result.json
 
-IMPORTANT: Use the Write tool to write the result file. Do NOT use `python -c` with inline JSON — nested quoting breaks on Windows/bash.
+IMPORTANT: Use the Write tool to write the result file. Do NOT use `python -c` with inline JSON — nested quoting breaks on Windows/bash. If the Write tool reports a CROSS-WORKTREE error, use Bash instead: write content to a temp variable and call `python -c "from pathlib import Path; Path('$ARTIFACTS_ROOT/$WT_SESSION/gto/gap_reviewer_result.json').write_text(content, encoding='utf-8')"`.
 
 1. "review": an object with these sections:
    - "facts": list of concrete observations grounded in the detector evidence. Each entry is {"claim": "...", "source": "detector_name or file:line"}

@@ -1,0 +1,39 @@
+import json
+d={
+  "review": {
+    "facts": [
+      {"claim": "session_outcome_detector captured 4 deferred items with titles truncated at essions suggesting transcript parsing corruption", "source": "detected_facts session_outcome_detector lines 5-18"},
+      {"claim": "2 of 4 deferred items have recurrence=2 SESSION-DEFE-003 SESSION-DEFE-004 and high severity yet remain unacknowledged", "source": "findings"},
+      {"claim": "correction_patterns detected one verified pattern_mismatch friction event FRIC-COR-001 with evidence from transcript line 108", "source": "findings evidence_level=verified"},
+      {"claim": "7 detectors ran and returned no findings: session_goal context_boundary stuckness hook_health workflow_hygiene verification_debt invocation_tracker", "source": "signals_absent"},
+      {"claim": "The session contains 5 findings but no files_edited in session_context", "source": "session_context git_sha present files_edited absent"},
+      {"claim": "detected_facts references probe_model vs run_simple call patterns and governance_model_parameters table - real content truncated", "source": "detected_facts finding SESSION-DEFE-001 title truncated"}
+    ],
+    "inferences": [
+      {"hypothesis": "The transcript reader has a truncation bug cutting lines at approximately 32 characters", "confidence": "high", "evidence": "essions from sessions governance_model_parameters table cut mid-word probe_model intact - fixed-width buffer overwrite pattern"},
+      {"hypothesis": "The recover action for deferred items is not wired to any active mechanism - high-recurrence items persist without remediation", "confidence": "medium", "evidence": "SESSION-DEFE-003 SESSION-DEFE-004 have recurrence=2 severity=high action=recover with no mechanism visible No detector flagged as stuck pattern"},
+      {"hypothesis": "7 zero-finding detectors indicate either session was clean or detector thresholds are miscalibrated", "confidence": "medium", "evidence": "signals_absent has 7 detectors Given FRIC-COR-001 exists the absence of stuckness verification_debt findings is anomalous"},
+      {"hypothesis": "Gap between verified FRIC-COR-001 and unverified session_outcome items suggests epistemic validator works but session_outcome detector lacks verification pipeline", "confidence": "low", "evidence": "correction_patterns produced verified session_outcome produced unverified at confidence 0.4-0.6 No cross-validation between them"}
+    ],
+    "unknowns": [
+      {"question": "What technical work was in flight? Deferred items suggest probe_model run_simple governance but substance is unreadable", "why_it_matters": "Cannot assess if high-severity deferred items are blockers or low-priority skips without actual content"},
+      {"question": "Why did session_goal_detector stuckness_detector verification_debt_detector return no findings when 4 deferred items and 1 friction exist", "why_it_matters": "These should trigger on deferred_item patterns Their absence suggests threshold mismatch or different signal routing"},
+      {"question": "Was files_edited intentionally omitted or was it a capture failure", "why_it_matters": "Without file change evidence root-cause analysis is impossible for deferred items"},
+      {"question": "What caused the pattern_mismatch correction? User-initiated or system-detected", "why_it_matters": "FRIC-COR-001 is only verified finding but has no resolution context"}
+    ],
+    "recommendations": [
+      {"action": "Inspect transcript file at path referenced by FRIC-COR-001 line 108 to recover actual deferred-item content", "goal": "Restore truncated technical content for proper categorization", "assumption": "Transcript file exists and truncation is in detector output not source", "rationale": "4 of 5 findings are unreadable Without recovery all downstream actions are blind"},
+      {"action": "Add recurrence=2 threshold enforcement to session_outcome_detector - auto-escalate to flag not just severity=high", "goal": "Ensure high-recurrence deferred items trigger active remediation", "assumption": "recover action is intended to be automated but threshold escalation is missing", "rationale": "SESSION-DEFE-003 004 have recurrence=2 severity=high but no evidence of remediation Detector captured pattern but not escalation"},
+      {"action": "Run each of the 7 signals_absent detectors in isolation on this session to confirm threshold calibration", "goal": "Determine if zero-finding results are accurate session clean or misconfiguration", "assumption": "Detectors should produce output given deferred friction evidence present", "rationale": "7 detectors with no findings in a session with 5 documented issues suggests threshold drift or signal routing failure"},
+      {"action": "Add transcript_path validation to session_context capture - ensure files_edited always populated", "goal": "Enable root-cause analysis for future gap reviews", "assumption": "files_edited capture was intended but failed silently", "rationale": "gap_reviewer cannot trace deferred items to originating changes without edit evidence This limits all downstream diagnosis"}
+    ]
+  },
+  "findings": [
+    {"id": "GARP-PARSER-001", "title": "Transcript reader truncates technical terms at fixed-width boundary", "description": "detected_facts entries show truncation patterns - essions instead of sessions governance_model_parameters cut mid-word This corrupts deferred item substance making them non-actionable Consistent with fixed-width buffer overwrite at 32-64 chars", "domain": "detector", "gap_type": "data_loss", "severity": "high", "action": "realize", "priority": "high", "evidence": [{"kind": "detected_facts", "value": "essions and governance_model_parameters table", "detail": "should be sessions truncation at char 1"}, {"kind": "detected_facts", "value": "probe_model vs run_simple call pat", "detail": "should be call patterns truncation at char 28"}, {"kind": "finding_title", "value": "SESSION-DEFE-001 title truncated", "detail": "title corrupted"}]},
+    {"id": "GARP-DETECT-001", "title": "Recurrence=2 deferred items not escalated despite high severity", "description": "SESSION-DEFE-003 SESSION-DEFE-004 have recurrence=2 severity=high but no escalation fires Detector captures pattern but no remediation results Indicates recover action not wired to handler or recurrence thresholds misconfigured", "domain": "session", "gap_type": "detector_escalation_failure", "severity": "medium", "action": "realize", "priority": "medium", "evidence": [{"kind": "finding", "value": "SESSION-DEFE-003", "detail": "recurrence=2 severity=high action=recover"}, {"kind": "finding", "value": "SESSION-DEFE-004", "detail": "recurrence=2 severity=high action=recover"}, {"kind": "signals_absent", "value": "stuckness_detector", "detail": "no findings should have caught recurring deferrals"}]},
+    {"id": "GARP-DETECT-002", "title": "7 detectors returning no findings in session with documented friction suggests threshold miscalibration", "description": "session_goal_detector context_boundary_detector stuckness_detector hook_health_detector workflow_hygiene_detector verification_debt_detector invocation_tracker all returned zero Given 4 deferred items and 1 verified friction event complete absence from 7 detectors is anomalous Either session was clean unlikely given FRIC-COR-001 or thresholds too high", "domain": "detector", "gap_type": "calibration_drift", "severity": "low", "action": "realize", "priority": "low", "evidence": [{"kind": "signals_absent", "value": "7 detectors", "detail": "all returned no findings"}, {"kind": "finding", "value": "FRIC-COR-001", "detail": "verified friction contradicts clean-signal hypothesis"}, {"kind": "signals_absent", "value": "verification_debt_detector", "detail": "should trigger on unverified low-confidence items"}]}
+  ]
+}
+with open("gap_reviewer_result.json", "w") as f:
+    json.dump(d, f, indent=2)
+print("written")

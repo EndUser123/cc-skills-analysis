@@ -54,6 +54,10 @@ from .__lib.structural_analysis import write_structural_summary
 from .__lib import friction
 from .__lib.stale_detector import detect_stale_docs
 
+# Session registry access for session resolution
+sys.path.insert(0, "P:/packages/.claude-marketplace/plugins/snapshot/scripts/hooks/__lib")
+from session_registry import query_registry
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="GTO Gap Analysis Orchestrator")
@@ -65,46 +69,98 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _resolve_session_id_from_identity(terminal_id: str) -> str:
-    """Extract session_id from identity.json when CLI arg is empty."""
-    artifacts_root = Path(os.environ.get("CLAUDE_ARTIFACTS_ROOT", "P:\\\\\\.claude/.artifacts"))
-    identity_file = artifacts_root / terminal_id / "identity.json"
-    if not identity_file.exists():
-        return ""
+def _resolve_session_id_from_registry(terminal_id: str) -> str:
+    """Extract session_id from session_registry for this terminal (most recent entry)."""
     try:
-        data = json.loads(identity_file.read_text(encoding="utf-8"))
-        return data.get("claude", {}).get("session_id", "")
-    except (json.JSONDecodeError, OSError):
-        return ""
+        entries = query_registry(terminal_id=terminal_id, limit=1)
+        if entries:
+            return entries[-1].get("session_id", "")
+    except Exception:
+        pass
+    return ""
 
 
-def _resolve_transcript_from_identity(terminal_id: str) -> Path | None:
-    """Resolve transcript path from identity.json (hook-captured, no scanning)."""
-    artifacts_root = Path(os.environ.get("CLAUDE_ARTIFACTS_ROOT", "P:\\\\\\.claude/.artifacts"))
-    identity_file = artifacts_root / terminal_id / "identity.json"
-    if not identity_file.exists():
-        return None
+def _resolve_transcript_from_registry(terminal_id: str) -> Path | None:
+    """Resolve transcript path from session_registry (most recent entry for terminal)."""
     try:
-        data = json.loads(identity_file.read_text(encoding="utf-8"))
-        tp = data.get("claude", {}).get("transcript_path", "")
-        if tp and Path(tp).exists():
-            return Path(tp)
-    except (json.JSONDecodeError, OSError):
+        entries = query_registry(terminal_id=terminal_id, limit=1)
+        if entries:
+            tp = entries[-1].get("transcript_path", "")
+            if tp and Path(tp).exists():
+                return Path(tp)
+    except Exception:
         pass
     return None
 
 
+def _session_resolution_status(terminal_id: str) -> str:
+    """Classify whether a real session was resolved for this terminal_id.
+
+    Uses session_registry.jsonl as the primary source of truth. If entries
+    exist for this terminal_id with a valid transcript_path, the session is
+    "resolved". Falls back to identity.json only for supplemental data like
+    transcript_chain (not yet used by GTO).
+
+    Returns: "unresolved" (no registry entries, no identity.json),
+             "stale" (identity.json exists but transcript gone),
+             or "resolved" (registry has entries with transcript_path).
+    """
+    if not terminal_id or terminal_id == "default":
+        return "unresolved"
+
+    # Primary: check registry for entries with transcript_path
+    try:
+        entries = query_registry(terminal_id=terminal_id, limit=1)
+        if entries:
+            latest = entries[-1]
+            if latest.get("transcript_path") and Path(latest["transcript_path"]).exists():
+                return "resolved"
+    except Exception:
+        pass
+
+    # Fallback: identity.json (only for supplemental data)
+    artifacts_root = Path(os.environ.get("CLAUDE_ARTIFACTS_ROOT", "P:/.claude/.artifacts"))
+    identity_file = artifacts_root / terminal_id / "identity.json"
+    if not identity_file.exists():
+        return "unresolved"
+    if _resolve_transcript_from_registry(terminal_id) is None:
+        return "stale"
+    return "resolved"
+
+def _make_unresolved_finding(terminal_id: str, session_id: str, git_sha: str) -> Finding:
+    """HIGH finding emitted when GTO could not resolve a real session.
+
+    Replaces the silent "0 findings" hollow success with an explicit, actionable
+    failure: nothing was analyzed, and the operator must resolve the REAL
+    terminal-id instead of inventing one.
+    """
+    return Finding(
+        id="GTO-SESSION-UNRESOLVED",
+        title="GTO analyzed NO session -- terminal-id did not resolve",
+        description=(
+            f"terminal-id {terminal_id!r} has no session_registry entry, "
+            "so no session transcript was resolved and every session-aware "
+            "detector was skipped. A low/zero finding count here is NOT a clean bill "
+            "of health -- it means nothing was analyzed. Resolve the REAL terminal-id "
+            "and re-run. Do not pass fabricated IDs like 'local', 'default', or 'test'."
+        ),
+        source_type="detector",
+        source_name="session_resolution_guard",
+        domain="other",
+        gap_type="session_unresolved",
+        severity="high",
+        evidence_level="verified",
+        action="recover",
+        priority="high",
+        status="open",
+        terminal_id=terminal_id,
+        session_id=session_id,
+        git_sha=git_sha,
+    )
+
+
 def _load_session_chain(terminal_id: str) -> list[str]:
     """Load session transcript paths from session registry for this terminal."""
-    registry_path = Path("P:\\\\\\.claude/.artifacts/session_registry.jsonl")
-    if not registry_path.exists():
-        return []
-    try:
-        import sys as _sys
-        sys.path.insert(0, "P:\\\\\\packages/snapshot/scripts/hooks/__lib")
-        from session_registry import query_registry
-    except ImportError:
-        return []
     entries = query_registry(terminal_id=terminal_id, limit=20)
     # Deduplicate by session_id, keep most recent per session, oldest-first order
     seen: set[str] = set()
@@ -316,9 +372,12 @@ def run(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     root = args.root.resolve()
 
-    # Resolve session_id: CLI arg → identity.json fallback
+    # Resolve session_id: CLI arg → registry fallback
     if not args.session_id:
-        args.session_id = _resolve_session_id_from_identity(args.terminal_id)
+        args.session_id = _resolve_session_id_from_registry(args.terminal_id)
+
+    # Session resolution guard: detect a fabricated/empty terminal-id up front.
+    session_status = _session_resolution_status(args.terminal_id)
 
     settings = GTOSettings(
         terminal_id=args.terminal_id,
@@ -352,6 +411,13 @@ def run(argv: list[str] | None = None) -> int:
     # Phase 1: Deterministic detectors
     findings = run_basic_detectors(root, args.terminal_id, args.session_id, settings.git_sha)
 
+    # Session resolution guard: an unresolved terminal-id means every
+    # session-aware detector below is skipped, so a "0 findings" result would be
+    # a hollow success. Surface it as a HIGH finding instead.
+    if session_status == "unresolved":
+        findings.append(_make_unresolved_finding(
+            args.terminal_id, args.session_id, settings.git_sha))
+
     # Phase 1.2: Marker staleness — detect stale session markers from prior runs
     from .__lib.detectors import detect_marker_staleness, detect_missing_verification_evidence
     marker_findings = detect_marker_staleness(root, args.terminal_id, args.session_id, settings.git_sha)
@@ -361,8 +427,8 @@ def run(argv: list[str] | None = None) -> int:
     verification_findings = detect_missing_verification_evidence(root, args.terminal_id, args.session_id, settings.git_sha)
     findings.extend(verification_findings)
 
-    # Phase 1.5: Resolve transcript from identity.json (hook-captured, no scanning)
-    transcript_path = _resolve_transcript_from_identity(args.terminal_id)
+    # Phase 1.5: Resolve transcript from registry (hook-captured, no scanning)
+    transcript_path = _resolve_transcript_from_registry(args.terminal_id)
 
     # Phase 1.6: Extract files edited this session from transcript tool calls
     session_edited_files = extract_edited_files(transcript_path, root) if transcript_path else []
@@ -711,10 +777,21 @@ def run(argv: list[str] | None = None) -> int:
     sync_to_execution_state(state, paths.artifacts_dir)
 
     # Output summary
+    if session_status == "unresolved":
+        print(
+            "GTO SESSION UNRESOLVED: terminal-id "
+            f"{args.terminal_id!r} resolved no session_registry entry -- NO session was "
+            "analyzed. The findings are NOT a clean bill of health. Resolve the "
+            "real terminal-id and re-run. Never pass "
+            "fabricated IDs like 'local'/'default'/'test'.",
+            file=sys.stderr,
+        )
     print(f"GTO complete: {len(all_findings)} findings", file=sys.stderr)
     print(f"Artifact: {artifact_path}", file=sys.stderr)
     print(f"Freshness: {freshness}", file=sys.stderr)
 
+    if session_status == "unresolved":
+        return 3  # distinct from 0 (ok) and 1 (verification fail)
     return 0 if verification["valid"] else 1
 
 
