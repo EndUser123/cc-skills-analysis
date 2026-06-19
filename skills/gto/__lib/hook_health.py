@@ -7,6 +7,9 @@ What it detects:
 - Hook executions with non-zero exit codes (errors, warnings)
 - Hooks that consistently fail across sessions (via carryover)
 - SessionStart hook failures that may affect session setup
+- Freshness: hook errors are timestamped from the transcript entry so the
+  operator can distinguish a live failure from a historical one. Errors
+  older than 24h are downgraded to "low" severity and tagged "stale".
 
 What it does NOT detect:
 - PreToolUse exit(2) blocks (these are intentional, not errors)
@@ -15,6 +18,7 @@ What it does NOT detect:
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +32,32 @@ _EXPECTED_NONZERO_HOOKS = frozenset({
     "PreToolUse:edit", "PreToolUse:write", "PreToolUse:bash",
     "PreToolUse:read", "PreToolUse:agent", "PreToolUse:skill",
 })
+
+# Errors older than this are considered stale — downgraded to low severity
+_STALE_HOOK_ERROR_HOURS = 24.0
+
+
+def _parse_entry_timestamp(entry: dict[str, Any]) -> datetime | None:
+    """Parse a transcript entry's ISO timestamp into a tz-aware datetime."""
+    ts = entry.get("timestamp")
+    if not ts or not isinstance(ts, str):
+        return None
+    try:
+        # Format: 2026-06-05T17:15:12.196948+00:00 or 2026-06-05T17:15:12.196Z
+        cleaned = ts.replace("Z", "+00:00") if ts.endswith("Z") else ts
+        return datetime.fromisoformat(cleaned)
+    except (ValueError, TypeError):
+        return None
+
+
+def _age_hours(timestamp: datetime | None) -> float | None:
+    """Hours between `timestamp` and now (UTC). Returns None if timestamp is missing."""
+    if not timestamp:
+        return None
+    now = datetime.now(timezone.utc)
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    return (now - timestamp).total_seconds() / 3600.0
 
 
 def detect_hook_errors(
@@ -81,12 +111,15 @@ def detect_hook_errors(
 
                 # Only flag actual errors (non-zero, non-2 exit codes)
                 if exit_code not in (0, 2):
+                    ts = _parse_entry_timestamp(entry)
                     errors.append({
                         "hook_name": hook_name,
                         "exit_code": exit_code,
                         "stderr": stderr[:300],
                         "type": att_type,
                         "duration_ms": att.get("durationMs"),
+                        "timestamp": ts,
+                        "age_hours": _age_hours(ts),
                     })
     except (OSError, PermissionError):
         return []
@@ -101,16 +134,28 @@ def detect_hook_errors(
 
     findings: list[Finding] = []
     for idx, (hook_name, err) in enumerate(seen_hooks.items()):
-        # Classify severity by hook type
-        severity = "high" if "SessionStart" in hook_name else "medium"
+        # Classify severity by hook type AND freshness:
+        # - SessionStart errors are high (affect session setup) but only when live
+        # - Stale errors (>= _STALE_HOOK_ERROR_HOURS old) are downgraded to low
+        # - Live errors keep their default severity
+        base_severity = "high" if "SessionStart" in hook_name else "medium"
+        age_h = err.get("age_hours")
+        if age_h is not None and age_h >= _STALE_HOOK_ERROR_HOURS:
+            severity = "low"
+            staleness_tag = f" (stale, ~{age_h:.0f}h old)"
+        else:
+            severity = base_severity
+            staleness_tag = ""
 
         stderr_preview = err["stderr"][:150] if err["stderr"] else "no stderr output"
+        ts_str = err["timestamp"].isoformat() if err.get("timestamp") else "unknown"
         findings.append(
             Finding(
                 id=f"HOOK-{idx + 1:03d}",
-                title=f"Hook error: {hook_name}",
+                title=f"Hook error: {hook_name}{staleness_tag}",
                 description=(
-                    f"Hook '{hook_name}' exited with code {err['exit_code']}. "
+                    f"Hook '{hook_name}' exited with code {err['exit_code']} "
+                    f"at {ts_str}{staleness_tag}. "
                     f"stderr: {stderr_preview}"
                 ),
                 source_type="detector",
@@ -129,7 +174,12 @@ def detect_hook_errors(
                     EvidenceRef(
                         kind="hook_error",
                         value=hook_name,
-                        detail=f"exit_code={err['exit_code']}, stderr={stderr_preview[:100]}",
+                        detail=(
+                            f"exit_code={err['exit_code']}, "
+                            f"timestamp={ts_str}, "
+                            f"age_hours={age_h if age_h is not None else 'unknown'}, "
+                            f"stderr={stderr_preview[:100]}"
+                        ),
                     ),
                 ],
             )

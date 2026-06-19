@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from ..models import Finding
+from .scoring import get_score
 
 SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+EVIDENCE_RANK = {"verified": 0, "derived": 1, "unverified": 2}
 DOMAIN_RANK = {
     "security": 0,
     "quality": 1,
@@ -40,11 +42,22 @@ def _skill_order_rank(skill: str | None) -> int:
 
 
 def order_findings(findings: list[Finding]) -> list[Finding]:
-    """Order findings by severity, domain, and skill dependency."""
+    """Order findings by leverage score, then severity, evidence, domain, deps.
+
+    Primary key is the composite leverage score (value ÷ effort) from
+    scoring.py — higher first — so a cheap high-impact fix is not buried under
+    an expensive critical. Severity, evidence level, domain, and skill
+    dependency remain as deterministic tiebreakers, and `id` keeps the order
+    stable across runs. Both human_output (render_findings) and machine_output
+    (render_machine_format) consume this list order, so this single sort fixes
+    display ordering everywhere.
+    """
     return sorted(
         findings,
         key=lambda f: (
+            -get_score(f),
             SEVERITY_RANK.get(f.severity, 99),
+            EVIDENCE_RANK.get(f.evidence_level, 99),
             DOMAIN_RANK.get(f.domain, 99),
             _skill_order_rank(f.owner_skill),
             f.id,

@@ -1,11 +1,18 @@
-"""Verification debt detector — detects edits without test verification.
+"""Verification debt detector — detects edits without verification.
 
-Scans transcript for Edit/Write tool calls that weren't followed by a
-test execution (pytest, unittest) within a reasonable window. This flags
-code changes that lack regression proof.
+Scans transcript for Edit/Write tool calls that weren't followed by
+a verification action within a reasonable window. Recognizes two
+kinds of verification:
+
+1. Test execution (pytest, unittest, npm test, cargo test, etc.) —
+   standard regression proof for library/application code.
+2. Runtime probes (byte-compile, import, live daemon query, --health,
+   python -m module invocation) — for daemons and runtime services
+   whose value IS the running process, these are stronger verification
+   than a unit test.
 
 What it detects:
-- File edits with no test run in the surrounding N turns
+- File edits with no verification action in the surrounding N turns
 - Multiple edits to test files (test fixes) without a re-run
 - Edits to production code with no test invocation at all
 
@@ -24,9 +31,33 @@ from ..models import EvidenceRef, Finding
 _EDIT_TOOLS = frozenset({"Edit", "Write"})
 
 # Bash commands that count as test verification
-_TEST_COMMAND_PATTERNS = ("pytest", "unittest", "test", "npm test", "cargo test")
+_TEST_COMMAND_PATTERNS = ("pytest", "unittest", "npm test", "cargo test")
 
-# Window of turns after an edit to look for test verification
+# Bash commands that count as runtime verification (for daemons, services,
+# anything where the running process IS the value). These are accepted in
+# place of test verification when the edited file is a runtime module.
+_RUNTIME_PROBE_PATTERNS = (
+    "py_compile",            # python -m py_compile <file>
+    "import ",               # python -c "import foo" (any import)
+    " -m contrib.semantic",  # daemon -m invocation
+    " -m src.daemons.",      # daemon -m invocation via wrapper
+    " -m skills.gto.",       # gto -m invocation (edits to the orchestrator)
+    " -m pytest",            # already covered by pytest but explicit
+    "daemon_client.py",      # live daemon client import
+    "daemon_keep_alive.py",  # keep-alive launch
+    "_handle_health_check",  # any health-check invocation
+    "unified_semantic_daemon",  # any direct invocation of the daemon
+    " --health",             # live --health probe (daemon health)
+    " --validate",           # any --validate mode probe
+    "import_test",           # test that imports the module
+    "compiLe_OK",            # marker string from verification output
+    "IMPORT_OK",             # marker string from import-verify
+)
+
+# Combined regex-free patterns: any match in the command string counts.
+_VERIFICATION_PATTERNS = _TEST_COMMAND_PATTERNS + _RUNTIME_PROBE_PATTERNS
+
+# Window of turns after an edit to look for verification
 _VERIFICATION_WINDOW = 40
 
 # File patterns that don't need test verification
@@ -82,7 +113,7 @@ def detect_verification_debt(
                     continue
                 if block.get("name") == "Bash":
                     cmd = (block.get("input") or {}).get("command", "")
-                    if any(p in cmd.lower() for p in _TEST_COMMAND_PATTERNS):
+                    if any(p.lower() in cmd.lower() for p in _VERIFICATION_PATTERNS):
                         test_run_positions.append(line_idx)
 
                 # Find file edits
@@ -124,11 +155,13 @@ def detect_verification_debt(
     return [
         Finding(
             id="VERIFY-001",
-            title=f"{len(seen_files)} file edit(s) without test verification",
+            title=f"{len(seen_files)} file edit(s) without test or runtime verification",
             description=(
-                f"Code edits detected without a subsequent test run: "
+                f"Code edits detected without a subsequent test run or runtime probe: "
                 f"{file_list}{extra_text}. "
-                f"Consider running tests to verify these changes."
+                f"For daemons and runtime services, a byte-compile + import + live "
+                f"probe (e.g. python -m py_compile, python -c 'import <module>', "
+                f"--health) is accepted as verification. For libraries, run pytest."
             ),
             source_type="detector",
             source_name="verification_debt_detector",

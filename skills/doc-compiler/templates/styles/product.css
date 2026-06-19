@@ -1,0 +1,43 @@
+/* product style: polished hero, examples-first, generous whitespace */
+
+:root {
+  --doc-font-scale: 1.0;
+  --doc-card-padding: 1.25rem;
+  --doc-section-gap: 2.5rem;
+  --doc-hero-sub-max: 65ch;
+  --doc-proof-display: inline-block;
+  --doc-diagram-weight: 1.0;
+  --doc-whitespace: 1;
+}
+
+.section-card {
+  padding: var(--doc-card-padding);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+.hero { margin-bottom: 2.5rem; }
+.hero-sub { max-width: var(--doc-hero-sub-max); }
+.hero-badges { gap: 0.625rem; }
+.badge { padding: 0.3rem 0.75rem; font-size: 0.75rem; }
+.stages-grid {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+.what-it-does-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.diagram-shell { min-height: 520px; border-radius: 14px; }
+.workflow-step-content { padding: 1.25rem; border-radius: 10px; }
+.accordion-header { padding: 1rem 1.25rem; font-size: 0.875rem; }
+.accordion-body { padding: 1.25rem; }
+.proof-summary {
+  padding: 1.5rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+}
+.filemap-group h4 { margin-bottom: 0.75rem; }
+.artifact-grid { gap: 1rem; }
+.artifact-card { padding: 1.25rem; border-radius: 10px; }
+ .toc-body li a { padding: 0.5rem 1rem; font-size: 0.8rem; }
+ .toc-header { padding: 1.25rem 1rem 1rem; }

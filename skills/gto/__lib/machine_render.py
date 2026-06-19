@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..models import Finding
+from .scoring import get_score
 
 # Domain definitions matching RNS render.py DOMAIN_MAP
 DOMAIN_MAP: dict[str, tuple[str, str]] = {
@@ -56,23 +57,17 @@ def _get_domain_def(domain: str) -> tuple[str, str]:
     return DOMAIN_MAP.get(domain, ("📌", domain.upper()))
 
 
-def _domain_sort_key(domain: str, findings: list[Finding]) -> tuple[int, str]:
-    """Sort domains: explicit order first, then by count descending."""
-    explicit_order = {
-        "quality": 0, "code_quality": 0,
-        "tests": 1, "testing": 1,
-        "docs": 2, "documentation": 2,
-        "security": 3,
-        "performance": 4,
-        "git": 5,
-        "knowledge": 6,
-        "deps": 7, "dependencies": 7,
-        "workflow": 8,
-        "friction": 8,
-        "session": 9,
-        "other": 10,
-    }
-    return (explicit_order.get(domain, 99), -len(findings), domain)
+def _domain_sort_key(domain: str, findings: list[Finding]) -> tuple[float, int, str]:
+    """Sort domains by highest-leverage finding first.
+
+    Previously used a hardcoded domain table that ranked quality/tests/docs
+    above security, burying a critical security finding in the 4th block. Now
+    domains are ordered by the max leverage score they contain (descending), so
+    the domain holding the single most important action renders first. Count
+    descending and domain name are deterministic tiebreakers.
+    """
+    max_score = max((get_score(f) for f in findings), default=0.0)
+    return (-max_score, -len(findings), domain)
 
 
 # ---------------------------------------------------------------------------
@@ -88,9 +83,54 @@ class RenderOptions:
     show_done: bool = True
     unverified_marker: str = "[UNVERIFIED]"
     max_description_chars: int | None = None
+    # Top-N leverage triage block rendered above the "Do ALL" footer.
+    # 0 disables the block; the "Do ALL" footer is always shown regardless.
+    top_n: int = 3
+    show_triage: bool = True
 
 
 DEFAULT_OPTIONS = RenderOptions()
+
+
+def build_triage(findings: list[Finding], top_n: int) -> list[str]:
+    """Build the Top-N leverage triage lines, collapsing shared root causes.
+
+    Orders pending findings by leverage score. When 2+ of them share a
+    non-'unknown' root_cause, they collapse into a single triage entry
+    ("Fix root cause X → resolves N findings"), so the triage recommends the
+    one upstream fix instead of N symptoms. Returns at most top_n entry lines.
+    No existing helper does score-ordered, root-cause-collapsed triage —
+    render_actions/render_findings only group by domain.
+    """
+    if top_n <= 0:
+        return []
+    pending = [f for f in findings if f.status != "resolved"]
+    ordered = sorted(pending, key=lambda f: -get_score(f))
+
+    rc_groups: dict[str, list[Finding]] = {}
+    for f in ordered:
+        if f.root_cause and f.root_cause != "unknown":
+            rc_groups.setdefault(f.root_cause, []).append(f)
+
+    used: set[str] = set()
+    entries: list[str] = []
+    for f in ordered:
+        if f.id in used:
+            continue
+        group = rc_groups.get(f.root_cause, [])
+        if f.root_cause and f.root_cause != "unknown" and len(group) >= 2:
+            ids = [g.id for g in group]
+            used.update(ids)
+            shown = ", ".join(ids[:4]) + ("…" if len(ids) > 4 else "")
+            entries.append(
+                f"Fix root cause [{f.root_cause}] → resolves {len(group)} findings ({shown})"
+            )
+        else:
+            used.add(f.id)
+            entries.append(f.title or f.description[:80])
+        if len(entries) >= top_n:
+            break
+    return entries
 
 
 def _finding_file_ref(f: Finding) -> str:
@@ -215,6 +255,16 @@ def render_actions(
             lines.append(f"  {done_num}{sub} {line}")
         lines.append("")
 
+    # Top-N leverage triage — highest value/effort first, root causes collapsed.
+    # Appears ABOVE the Do-ALL footer; the footer is always retained.
+    if opts.show_triage and opts.top_n > 0:
+        triage = build_triage(pending, opts.top_n)
+        if triage:
+            lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            lines.append(f"TOP {len(triage)} BY LEVERAGE (do these first)")
+            for i, entry in enumerate(triage, start=1):
+                lines.append(f"  {i}. {entry}")
+
     # Do-all footer
     total = len(pending) + len(carryover)
     if total > 0:
@@ -241,6 +291,14 @@ def render_machine_format(findings: list[Finding]) -> str:
     """
     lines: list[str] = ["<!-- format: machine -->"]
 
+    # Build the reverse dependency map once: which findings are blocked by f.
+    # f.depends_on lists prerequisite ids → f is blocked by them; inversely,
+    # each prerequisite "blocks" every finding that depends on it.
+    blocked_by: dict[str, list[str]] = {}
+    for f in findings:
+        for prereq in f.depends_on:
+            blocked_by.setdefault(prereq, []).append(f.id)
+
     # Group findings by domain
     groups: dict[str, list[Finding]] = {}
     for f in findings:
@@ -259,17 +317,20 @@ def render_machine_format(findings: list[Finding]) -> str:
             file_ref = _finding_file_ref(f)
             owner = f.owner_skill or ""
             done = "1" if f.status == "resolved" else "0"
-            caused_by = ""
-            blocks = ""
+            # caused_by = prerequisites this finding waits on; blocks = findings
+            # that wait on this one. Previously hardcoded empty (dead fields).
+            caused_by = ";".join(f.depends_on)
+            blocks = ";".join(blocked_by.get(f.id, []))
             unverified = "1" if f.unverified else "0"
             root_cause = f.root_cause or "unknown"
             suggested_rule = f.metadata.get("suggested_rule", "").replace("|", "\\|") if f.metadata.get("suggested_rule") else ""
+            score = f.metadata.get("score", "")
             lines.append(
                 f"RNS|A|{domain_num}{sub}|{f.domain}|"
                 f"E:{effort}|{f.action}/{f.priority}|"
                 f"{desc}|{file_ref}|owner={owner}|done={done}|"
                 f"caused_by={caused_by}|blocks={blocks}|unverified={unverified}|"
-                f"root_cause={root_cause}|rule={suggested_rule}"
+                f"root_cause={root_cause}|rule={suggested_rule}|score={score}"
             )
 
     lines.append("RNS|Z|0|NONE")

@@ -38,12 +38,18 @@ def detect_correction_patterns(
 
     for line_num, line in enumerate(lines, 1):
         for category, pattern in PATTERN_MARKERS.items():
-            if pattern.search(line):
+            match = pattern.search(line)
+            if match:
+                matched_substring = match.group(0)
                 findings.append(
                     Finding(
                         id=f"FRIC-COR-{len(findings) + 1:03d}",
                         title=f"Correction pattern: {category}",
-                        description=f"Interaction friction detected: {category}",
+                        description=(
+                            f"Interaction friction detected: {category}. "
+                            f"Matched pattern '{pattern.pattern}' against "
+                            f"substring '{matched_substring}' at line {line_num}."
+                        ),
                         source_type="detector",
                         source_name="correction_patterns",
                         domain="friction",
@@ -61,9 +67,22 @@ def detect_correction_patterns(
                                 detail=f"line:{line_num}",
                             ),
                             EvidenceRef(
+                                kind="pattern_definition",
+                                value=pattern.pattern,
+                                detail=f"regex for category={category}, flags={pattern.flags}",
+                            ),
+                            EvidenceRef(
+                                kind="match_substring",
+                                value=matched_substring,
+                                detail=(
+                                    f"line {line_num} char {match.start()}-{match.end()}: "
+                                    f"...{line[max(0, match.start()-30):match.end()+30]}..."
+                                ),
+                            ),
+                            EvidenceRef(
                                 kind="quote",
                                 value=line.strip(),
-                                detail=f"{category} marker",
+                                detail=f"{category} marker (full line)",
                             ),
                         ],
                     )

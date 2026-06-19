@@ -1558,7 +1558,10 @@ def _export_for_handoff(state: RecapV2State) -> dict[str, Any]:
     try:
         import sys
         from pathlib import Path
-        rns_scripts = Path("P:/packages/cc-skills-analysis/skills/rns/scripts")
+        # Sibling skill: resolve relative to this file so it works from either
+        # the marketplace source or the installed plugin cache (no hardcoded
+        # absolute path, no dependency on $CLAUDE_PLUGIN_ROOT in a .py process).
+        rns_scripts = Path(__file__).resolve().parent.parent / "rns" / "scripts"
         if str(rns_scripts) not in sys.path:
             sys.path.insert(0, str(rns_scripts))
         from core.render import render_actions, RenderOptions

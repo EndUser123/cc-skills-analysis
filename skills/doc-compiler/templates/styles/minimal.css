@@ -1,0 +1,47 @@
+/* minimal style: compact, reference-oriented, reduced ornamentation */
+
+:root {
+  --doc-font-scale: 0.85;
+  --doc-card-padding: 0.5rem;
+  --doc-section-gap: 1rem;
+  --doc-hero-sub-max: 45ch;
+  --doc-proof-display: none;
+  --doc-diagram-weight: 0.85;
+  --doc-whitespace: 0;
+}
+
+.section-card {
+  padding: var(--doc-card-padding);
+  border-radius: 6px;
+  border-color: var(--border);
+}
+.section { margin-bottom: var(--doc-section-gap); }
+.hero { margin-bottom: 1.5rem; padding-bottom: 1.25rem; }
+.hero h1 { font-size: calc(1.75rem * var(--doc-font-scale)); }
+.hero-sub { font-size: calc(0.875rem * var(--doc-font-scale)); max-width: var(--doc-hero-sub-max); }
+.hero-badges { gap: 0.35rem; }
+.badge { padding: 0.15rem 0.5rem; font-size: 0.65rem; }
+.stages-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.5rem;
+}
+.what-it-does-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem;
+}
+.val-card, .stage-card { padding: 0.625rem; }
+.accordion-header { padding: 0.5rem 0.75rem; font-size: calc(0.775rem * var(--doc-font-scale)); }
+.accordion-body { padding: 0.625rem; }
+.diagram-shell { min-height: 240px; border-radius: 6px; }
+.diagram-controls { padding: 0.4rem 0.5rem; }
+.func-table { font-size: calc(0.7rem * var(--doc-font-scale)); }
+.func-table th { padding: 0.4rem 0.5rem; }
+.func-table td { padding: 0.4rem 0.5rem; }
+.workflow-step-content { padding: 0.625rem; }
+.workflow-step-num { width: 1.5rem; height: 1.5rem; font-size: 0.65rem; }
+.artifact-card { padding: 0.5rem; }
+.artifact-icon { width: 1.5rem; height: 1.5rem; font-size: 0.7rem; }
+.filemap-group { margin-bottom: 0.75rem; }
+.filemap-group h4 { font-size: 0.65rem; }
+ .toc-body li a { padding: 0.25rem 1rem; font-size: 0.7rem; }
+ .toc-header h2 { font-size: 0.65rem; }

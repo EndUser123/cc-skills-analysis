@@ -43,15 +43,40 @@ def compute_coverage(findings: list[Finding]) -> dict[str, Any]:
     }
 
 
-def compute_health_score(findings: list[Finding], freshness: str = "fresh") -> dict[str, Any]:
+def _trend_fields(score: int, prev_score: int | None) -> dict[str, Any]:
+    """Compute run-over-run delta and trend label from the previous score.
+
+    Returns an empty dict when no previous score is available (first run), so
+    callers and the artifact schema are unaffected when there is no history.
+    """
+    if prev_score is None:
+        return {}
+    delta = score - prev_score
+    if delta > 0:
+        trend = "improving"
+    elif delta < 0:
+        trend = "declining"
+    else:
+        trend = "flat"
+    return {"prev_score": prev_score, "delta": delta, "trend": trend}
+
+
+def compute_health_score(
+    findings: list[Finding],
+    freshness: str = "fresh",
+    prev_score: int | None = None,
+) -> dict[str, Any]:
     """Compute a session health score from findings and freshness.
 
     Score: 0-100 where 100 = no open findings, fresh artifact.
-    Tracks resolved vs open to show improvement trajectory.
+    Tracks resolved vs open to show improvement trajectory. When prev_score is
+    given, also reports delta and a trend label ('improving'/'declining'/'flat')
+    so the user sees whether the session is getting healthier across runs.
     """
     total = len(findings)
     if total == 0:
-        return {"score": 100, "grade": "A", "freshness": freshness, "total": 0}
+        return {"score": 100, "grade": "A", "freshness": freshness, "total": 0,
+                **_trend_fields(100, prev_score)}
 
     resolved = sum(1 for f in findings if f.status == "resolved")
     open_count = sum(1 for f in findings if f.status == "open")
@@ -82,4 +107,5 @@ def compute_health_score(findings: list[Finding], freshness: str = "fresh") -> d
         "open": open_count,
         "critical_open": critical,
         "resolution_rate": round(resolution_rate, 2),
+        **_trend_fields(score, prev_score),
     }

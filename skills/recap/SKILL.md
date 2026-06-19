@@ -138,7 +138,7 @@ Use `render_actions()` from `skills/rns/scripts/core/render.py` (same plugin) to
 
 ```python
 import sys
-sys.path.insert(0, 'P:/packages/cc-skills-analysis/skills/rns/scripts')
+sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/rns/scripts')
 from core.render import render_actions, RenderOptions
 
 actions = [

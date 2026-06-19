@@ -1,0 +1,71 @@
+:root {
+      --font-body: "Inter", system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+      --timing-snap: 140ms ease;   /* hover, focus, small changes */
+      --timing-smooth: 180ms ease; /* layout: width, margin, position */
+      --timing-slow: 200ms ease;   /* transforms, opacity, emphasis */
+
+      --bg: #0f1115;
+      --surface: #151922;
+      --surface-2: #1b2130;
+      --surface-3: #222a3a;
+      --text: #e8edf5;
+      --text-muted: #a8b3c7;
+      --text-faint: #7e889b;
+      --border: rgba(255,255,255,0.10);
+      --border-strong: rgba(255,255,255,0.16);
+      --accent: #66b3ff;
+      --accent-soft: rgba(102,179,255,0.14);
+      --shadow: 0 10px 30px rgba(0,0,0,0.22);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+
+      --toc-width: 18rem;
+    }
+
+@media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface-2: #f1f5f9;
+        --surface-3: #e2e8f0;
+        --text: #0f172a;
+        --text-muted: #475569;
+        --text-faint: #94a3b8;
+        --border: rgba(0,0,0,0.10);
+        --border-strong: rgba(0,0,0,0.16);
+        --accent: #0369a1;
+        --accent-soft: rgba(3,105,161,0.12);
+        --shadow: 0 8px 24px rgba(0,0,0,0.10);
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { overflow-x: hidden; }
+    body {
+      font-family: var(--font-body);
+      color: var(--text);
+      background: radial-gradient(circle at top, rgba(102,179,255,0.06), transparent 28%), var(--bg);
+      line-height: 1.55;
+      letter-spacing: -0.01em;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+::selection { background-color: var(--accent); color: var(--bg); }
+
+button, input, select, textarea {
+      line-height: 1.2;
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+h1 { font-size: clamp(1.9rem, 2.5vw, 2.4rem); font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; }
+    h2 { font-size: clamp(1rem, 1.4vw, 1.25rem); font-weight: 650; letter-spacing: -0.02em; line-height: 1.2; }
+    h3, h4 { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; }
+    h2 { text-transform: uppercase; letter-spacing: 0.07em; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin: 1.75rem 0 0.6rem; }
+    h2:first-of-type { margin-top: 0; }
+    p, li { color: var(--text-muted); font-size: 0.875rem; line-height: 1.6; }
+    code, pre, .mono { font-family: var(--font-mono); font-size: 0.875em; font-variant-ligatures: none; }

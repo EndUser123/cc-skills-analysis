@@ -233,6 +233,8 @@ See `references/flags.md` for `--diff` procedure (including regression detection
 
 Write to `P://.claude/.artifacts/{terminal_id}/top-problems/top-problems_<YYYYMMDD>.md`.
 
+Read artifact files using the **Read tool** (not `cat` or `python -c`) — nested quoting breaks on Windows/bash.
+
 ### Output Format
 
 **Markdown table** (default):
@@ -366,3 +368,19 @@ Prohibited:
 ## Version
 
 3.4.0 (2026-04-02) - Added systemic contract/stale-data clustering
+
+## Artifact I/O — Bash Fallback
+
+When writing the top-problems result file, use the **Write tool**. If the Write tool reports a CROSS-WORKTREE error, fall back to Bash with `python -c` using a temp variable for content (NOT inline JSON — nested quoting breaks on Windows/bash):
+
+```bash
+CONTENT='[the JSON content as a string]'
+python -c "
+from pathlib import Path
+Path('P:/.claude/.artifacts/${TERMINAL_ID}/top-problems/result.json').write_text('''$CONTENT''', encoding='utf-8')
+"
+```
+
+`${TERMINAL_ID}` is a stable per-terminal identifier resolved by `P:/packages/search-research/core/terminal_id.py:canonical_terminal_id()` from the `WT_SESSION` env var (with a hostname+pid fallback). The same value is the directory name under `P:/.claude/.artifacts/` where the top-problems cache file lives. Use the literal `${TERMINAL_ID}` — do not substitute; the cache lookup keys on this exact name.
+
+Read artifact files using the **Read tool** (not `cat` or `python -c`). For pre-written helper scripts, use the scripts in `__lib/`.

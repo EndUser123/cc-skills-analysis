@@ -61,8 +61,22 @@ GTO analyzes the current session's work — what was discussed, what was attempt
 ### Step 1: Run Session-Aware Analysis
 
 ```bash
-cd "P://packages/cc-skills-analysis" && python -m skills.gto.orchestrator --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
+cd "${CLAUDE_PLUGIN_ROOT}" && python -m skills.gto.orchestrator --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
 ```
+
+**Optional: analyze an explicit transcript file** (bypasses registry lookup — use for archived sessions, cross-machine sessions, or any JSONL not in the session registry):
+
+```bash
+cd "${CLAUDE_PLUGIN_ROOT}" && python -m skills.gto.orchestrator --transcript "/path/to/session.jsonl" --terminal-id "$WT_SESSION" --root .
+```
+
+`--transcript` accepts a Claude Code **JSONL** transcript only — one JSON object per line. The session-unresolved guard is suppressed when this flag is set. `--terminal-id` is still required to scope artifact output. `--session-id` is optional (used only as metadata in findings).
+
+> **Wrong file type?** `/chs export` produces **markdown** by default, which GTO cannot parse (it will error with a clear message and the fix). To get JSONL from chs, run:
+> ```bash
+> python .../chs_cli.py --export --format jsonl --output session.jsonl
+> ```
+> Then pass `--transcript session.jsonl`.
 
 This runs:
 1. **Deterministic detectors** — .git presence, README existence
@@ -133,7 +147,7 @@ Rules:
 After the subagent completes, run a **merge-only** pass (skips all detectors, just merges agent results into the artifact):
 
 ```bash
-cd "P://packages/cc-skills-analysis" && python -m skills.gto.orchestrator --merge-only --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
+cd "${CLAUDE_PLUGIN_ROOT}" && python -m skills.gto.orchestrator --merge-only --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
 ```
 
 The merge-only pass reads `gap_reviewer_result.json` and incorporates its findings without re-running detectors.
@@ -142,7 +156,7 @@ The merge-only pass reads `gap_reviewer_result.json` and incorporates its findin
 
 The gap reviewer is the only mandatory agent. The remaining agents are optional enrichment — spawn them only if the user requests deeper analysis or if the gap reviewer identifies gaps that need further validation.
 
-**Optional agents** (spawn sequentially if needed):
+**Optional agents:**
 
 | Agent | Handoff | Result | Purpose |
 |-------|---------|--------|---------|
@@ -151,7 +165,26 @@ The gap reviewer is the only mandatory agent. The remaining agents are optional 
 | Action Normalizer | `action_normalizer_handoff.json` | `action_normalizer_result.json` | Normalize into canonical RNS actions |
 | Session Reviewer | `session_reviewer_handoff.json` | `session_reviewer_result.json` | Classify ambiguous session outcomes |
 
-If any optional agents run, re-run with `--merge-only` afterward to merge their results.
+**Dispatch these in parallel, not sequentially.** Each agent only reads its own
+`*_handoff.json` and writes its own `*_result.json` — there is no shared state and no
+ordering dependency between them, so running them one-at-a-time wastes wall-clock time.
+For whichever subset you decide to run, emit all their `Agent` calls in a **single
+message** (one batch). Use `model="haiku"` for each, consistent with the gap reviewer.
+
+Only dispatch agents whose handoff file exists — skip any whose
+`*_handoff.json` is absent (the orchestrator writes a handoff only when that agent has
+work to do).
+
+After the **entire batch** completes, run **one** `--merge-only` pass to fold all
+results into the artifact at once (do not run a merge per agent):
+
+```bash
+cd "${CLAUDE_PLUGIN_ROOT}" && python -m skills.gto.orchestrator --merge-only --terminal-id "$WT_SESSION" --session-id "$CLAUDE_SESSION_ID" --root .
+```
+
+The merge is idempotent and order-independent: it reads each `*_result.json` present
+and dedupes against existing findings, so a single pass after the parallel batch
+produces the same artifact a sequence of per-agent merges would — faster.
 
 ### Step 2: Display Results
 
@@ -204,10 +237,15 @@ After rendering the deterministic findings, produce a structured gap-to-opportun
 4. **Implementation vs capability**: *Is the current implementation telling us the true capability, or just one way it was built?* Challenge assumed limits that are actually just current-impl constraints.
 
 Display order:
-1. **RNS findings block** — domain-grouped, action-sorted, priority-sorted
+1. **RNS findings block** — domain-grouped, ordered by leverage score (highest-value/effort first; security is no longer buried)
 2. **Gap Reviewer synthesis** (if available) — facts, inferences, unknowns, recommendations
 3. **Predicted opportunities** — HIGH/MEDIUM/LOW confidence next actions derived from session evidence
-4. **"0 — Do ALL Recommended Next Actions (N items)"** — final footer line
+4. **TOP N BY LEVERAGE** — the `summary.triage` list from the artifact (highest value/effort first, shared root causes collapsed). Render this verbatim above the footer.
+5. **"0 — Do ALL Recommended Next Actions (N items)"** — final footer line
+
+**Health trend:** if `summary.health` contains a `trend` field (`improving`/`declining`/`flat`) and `delta`, show it in the header line, e.g. `Health: 71 (B) ▲ +9 improving`. Absent on the first run.
+
+**Leverage scoring:** ordering and the triage list are driven by `metadata.score` on each finding — a composite of severity × action × confidence × impact-radius ÷ effort (see `__lib/scoring.py`). The machine format carries `score=`, `caused_by=` (prerequisite finding ids), and `blocks=` (ids waiting on this finding) on every `RNS|A|` line.
 
 Rules:
 - Do NOT surface predictions that duplicate existing findings (those already appear as gaps)
@@ -224,6 +262,7 @@ GTO reads from session-scoped sources (not global git state):
 | `identity.json` | Hook-captured session_id, transcript_path, cwd |
 | `session_registry.jsonl` | Terminal-scoped session chain history |
 | `~/.claude/projects/*.jsonl` | Chat transcripts (tool call extraction, goal/outcome detection) |
+| `--transcript <path.jsonl>` | Explicit transcript override — bypasses registry; use for archived/cross-machine sessions |
 | `.claude/.artifacts/{terminal_id}/gto/carryover.json` | Persisted findings across runs |
 | `.claude/.artifacts/{terminal_id}/gto/*_handoff.json` | Agent input files |
 | `.claude/.artifacts/{terminal_id}/gto/*_result.json` | Agent output files |

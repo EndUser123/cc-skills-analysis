@@ -33,7 +33,13 @@ def run_basic_detectors(
         )
 
     readme = root / "README.md"
-    if not readme.exists():
+    # Suppress DOC-001 when CLAUDE.md is present at the project root: the
+    # project's documented convention is CLAUDE.md (not README.md), and emitting
+    # a false-positive README-missing finding for every run pollutes the artifact.
+    # The orchestrator convention proof: every Claude Code project in this monorepo
+    # uses CLAUDE.md as its canonical project doc (see /packages/CLAUDE.md).
+    has_project_doc = (root / "CLAUDE.md").exists()
+    if not readme.exists() and not has_project_doc:
         findings.append(
             Finding(
                 id="DOC-001",

@@ -1,0 +1,82 @@
+/* deepwiki shared CSS: dense, architecture-first, diagram-prominent */
+:root {
+  --doc-font-scale: 0.9;
+  --doc-card-padding: 0.75rem;
+  --doc-section-gap: 1.5rem;
+  --doc-hero-sub-max: 55ch;
+  --doc-proof-display: flex;
+  --doc-diagram-weight: 1.1;
+  --doc-whitespace: 0;
+}
+
+body {
+  background: radial-gradient(circle at top, rgba(99,110,180,0.06), transparent 28%), #0c0f14;
+}
+
+.section-card {
+  padding: var(--doc-card-padding);
+  gap: 0.5rem;
+}
+.hero-sub {
+  max-width: var(--doc-hero-sub-max);
+  font-size: calc(1rem * var(--doc-font-scale));
+}
+.stages-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.625rem;
+}
+.what-it-does-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.625rem;
+}
+.val-card, .stage-card {
+  padding: 0.875rem;
+  font-size: calc(0.875rem * var(--doc-font-scale));
+}
+.accordion-header {
+  padding: 0.625rem 0.875rem;
+  font-size: calc(0.8rem * var(--doc-font-scale));
+}
+.accordion-body {
+  padding: 0.75rem;
+}
+.diagram-shell {
+  min-height: 380px;
+}
+.func-table {
+  font-size: calc(0.775rem * var(--doc-font-scale));
+}
+.workflow-step-content {
+  padding: 0.75rem;
+}
+.artifact-card {
+  padding: 0.75rem;
+}
+.proof-summary {
+  padding: 1rem;
+}
+.proof-stat {
+  padding: 0.5rem;
+}
+.filemap-group {
+  margin-bottom: 1rem;
+}
+.toc-body li a { padding: 0.3rem 1rem; font-size: 0.7rem; }
+.toc-header { padding: 1rem 1rem 0.75rem; }
+.toc-body { padding: 0.5rem 0.75rem 0.75rem; }
+
+.badge {
+  font-size: 0.62rem;
+  padding: 0.15rem 0.45rem;
+}
+
+.hero {
+  background: linear-gradient(135deg, #131820 0%, #0c0f14 100%);
+  border: 1px solid rgba(99,110,180,0.18);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 0.875rem;
+}
+.hero::before {
+  background: radial-gradient(circle at top right, rgba(99,110,180,0.10), transparent 60%);
+}

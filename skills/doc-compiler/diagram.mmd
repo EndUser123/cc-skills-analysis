@@ -1,0 +1,44 @@
+%%{ init: { 'theme': 'dark', 'flowchart': { 'curve': 'basis', 'nodeSpacing': 60, 'rankSpacing': 80 }, 'htmlLabels': true } }%%
+flowchart TD
+classDef step     fill:#1e40af,stroke:#60a5fa,stroke-width:2.5px,color:#ffffff,font-size:13px,font-weight:600
+classDef gate     fill:#92400e,stroke:#fbbf24,stroke-width:3px,color:#fef3c7,font-weight:700
+classDef terminal fill:#059669,stroke:#10b981,stroke-width:3px,color:#ffffff,font-weight:700
+classDef routeout fill:#7c3aed,stroke:#c084fc,stroke-width:2px,color:#ede9fe,font-style:italic
+classDef start    fill:#1e1b4b,stroke:#818cf8,stroke-width:3px,color:#c7d2fe,font-weight:700
+  START([Start])
+  step-1["stage_a_source_extractor"]
+  class step-1 step
+  START --> step-1
+  step-2["stage_b_artifact_plan_builder"]
+  class step-2 step
+  step-1 --> step-2
+  step-3["stage_c_mermaid_design"]
+  class step-3 step
+  step-2 --> step-3
+  step-4["stage_d_mermaid_critic_review"]
+  class step-4 step
+  step-3 --> step-4
+  step-5["stage_e1_loader"]
+  class step-5 step
+  step-4 --> step-5
+  step-6["stage_e2_binder"]
+  class step-6 step
+  step-5 --> step-6
+  step-7["stage_e3_assembler"]
+  class step-7 step
+  step-6 --> step-7
+  step-8["stage_e4_writer"]
+  class step-8 step
+  step-7 --> step-8
+  step-9["stage_f_static_validator"]
+  class step-9 step
+  step-8 --> step-9
+  step-10["stage_g_artifact_proof"]
+  class step-10 step
+  step-9 --> step-10
+  step-11["stage_h_external_critic"]
+  class step-11 step
+  step-10 --> step-11
+  step-12["stage_i_emit_proof_metadata"]
+  class step-12 step
+  step-11 --> step-12
