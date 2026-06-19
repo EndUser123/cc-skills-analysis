@@ -8,7 +8,7 @@ import html
 import json, re, sys
 from pathlib import Path
 
-BASE  = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE  = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 TPL   = BASE / "templates"
 E1_OUT = BASE / "e1-output.json"
 PLAN   = BASE / "artifact-plan.json"

@@ -7,7 +7,7 @@ Output: diagram.mmd
 import json, subprocess, sys, re
 from pathlib import Path
 
-BASE   = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE   = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 SOURCE = BASE / "source-model.json"
 OUT    = BASE / "diagram.mmd"
 

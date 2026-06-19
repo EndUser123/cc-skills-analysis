@@ -16,7 +16,7 @@ import json, os, sys, subprocess
 from pathlib import Path
 from datetime import datetime
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 RUNTIME = BASE / "runtime"
 
 STAGES = [

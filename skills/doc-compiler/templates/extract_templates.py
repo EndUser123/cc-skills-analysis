@@ -2,7 +2,7 @@
 """Extract index.html into named template skeleton files."""
 import re, os
 
-BASE = "P:/packages/cc-skills-meta/skills/doc-compiler"
+BASE = "P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler"
 TPL = f"{BASE}/templates"
 os.makedirs(TPL, exist_ok=True)
 

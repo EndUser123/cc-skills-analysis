@@ -8,7 +8,7 @@ Emits artifact-plan.json.
 import configparser, json, os, sys
 from pathlib import Path
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 TPL  = BASE / "templates"
 STYLES_DIR = TPL / "styles"
 SOURCE = BASE / "source-model.json"

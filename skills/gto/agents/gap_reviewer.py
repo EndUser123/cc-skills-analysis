@@ -36,6 +36,7 @@ def write_handoff(
     detectors_ran: list[str] | None = None,
     detectors_empty: list[str] | None = None,
     structural_patterns: dict | None = None,
+    chat_history_patterns: dict | None = None,
 ) -> None:
     """Write context-enriched handoff for the gap reviewer agent.
 
@@ -84,6 +85,7 @@ def write_handoff(
         "findings": [f.to_dict() for f in findings],
         "detectors_ran": detectors_ran or [],
         "structural_patterns": structural_patterns or {},
+        "chat_history_patterns": chat_history_patterns or {},
         "output_path": str(path.parent / "gap_reviewer_result.json"),
     }
     path.parent.mkdir(parents=True, exist_ok=True)

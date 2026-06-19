@@ -2,7 +2,7 @@
 """Rebuild index.html from extracted template files."""
 import os
 
-BASE = "P:/packages/cc-skills-meta/skills/doc-compiler"
+BASE = "P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler"
 TPL = f"{BASE}/templates"
 
 def read(name):

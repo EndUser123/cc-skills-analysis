@@ -15,7 +15,7 @@ This stage verifies that:
 import json, re, subprocess, sys, textwrap
 from pathlib import Path
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 INDEX = BASE / "index.html"
 SOURCE = BASE / "source-model.json"
 PLAN   = BASE / "doc-model.json"

@@ -8,7 +8,7 @@ Gate: crossings==0 AND syntax_errors==[] AND legibility_score>=0.8
 import json, subprocess, sys, re
 from pathlib import Path
 
-BASE       = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE       = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 DIAGRAM     = BASE / "diagram.mmd"
 SOURCE      = BASE / "source-model.json"
 PLAN        = BASE / "artifact-plan.json"

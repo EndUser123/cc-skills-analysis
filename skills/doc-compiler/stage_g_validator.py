@@ -11,7 +11,7 @@ Results where harness limitations prevented accurate testing are marked
 import json, subprocess, sys, time
 from pathlib import Path
 
-BASE  = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE  = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 HTML  = BASE / "index.html"
 PROOF = BASE / "artifact-proof.json"
 SHOTS = BASE / ".stage_g_screenshots"

@@ -9,7 +9,7 @@ import json, re, sys
 from pathlib import Path
 from datetime import datetime
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 TPL  = BASE / "templates"
 SHARED = TPL / "shared"
 PLAN = BASE / "artifact-plan.json"

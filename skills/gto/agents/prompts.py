@@ -65,6 +65,27 @@ You receive a handoff JSON with:
 - signals_absent: detectors that ran but found nothing (absence as evidence)
 - session_context: terminal_id, session_id, git_sha, files edited this session
 - structural_patterns: cross-cutting pattern analysis (root cause clusters, domain concentrations, cross-domain files, carryover patterns, detector coverage). Use these to inform inferences — when multiple findings share a root cause or cluster in a domain, that's a systemic signal worth surfacing.
+- chat_history_patterns: complex gap patterns from conversation analysis:
+  - avoidance_signals: topics mentioned once then skirted around (HIGH PRIORITY)
+  - recurring_themes: concerns raised across multiple sessions (HIGH PRIORITY)
+  - dependency_gaps: natural next steps based on completed work (HIGH PRIORITY)
+  - implied_next_steps: work trajectory inferences (MEDIUM PRIORITY)
+  - reflection_triggers: self-reflection questions triggered by completion patterns (LOW PRIORITY)
+
+## Signal Priority Guidance
+
+When analyzing evidence, prioritize signals in this order:
+
+1. **HIGH PRIORITY**: Avoidance signals (things skirted around will resurface as blockers)
+2. **HIGH PRIORITY**: Dependency gaps (natural next steps often get forgotten, leading to incomplete features)
+3. **HIGH PRIORITY**: Recurring themes (systemic issues needing resolution, repeated failures)
+4. **MEDIUM PRIORITY**: Implied next steps (work trajectory predictions, quality improvements)
+5. **LOW PRIORITY**: Reflection triggers (quality gate questions, improvement opportunities)
+
+Use these signals to drive your inferences and recommendations. For example:
+- If avoidance_signals are present, surface that the user is actively avoiding a topic and it will likely block progress
+- If dependency_gaps show "module created → no tests", recommend writing tests as a blocking next step
+- If reflection_triggers show "feature implemented without testing", recommend the self-reflection question about testing completeness
 
 Your job is to produce a structured review in this exact format:
 

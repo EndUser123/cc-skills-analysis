@@ -9,7 +9,7 @@ import json, re, sys, os, subprocess, time
 from pathlib import Path
 from datetime import datetime
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 INDEX = BASE / "index.html"
 SOURCE = BASE / "source-model.json"
 OUT = BASE / "artifact-proof.json"
@@ -28,8 +28,8 @@ if BH_DIR not in sys.path:
 from helpers import *
 from admin import *
 
-INDEX_PATH = "file:///P:/packages/cc-skills-meta/skills/doc-compiler/index.html"
-SNAP_DIR = "P:/packages/cc-skills-meta/skills/doc-compiler/_snapshots"
+INDEX_PATH = "file:///P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler/index.html"
+SNAP_DIR = "P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler/_snapshots"
 
 ensure_daemon()
 new_tab(INDEX_PATH)

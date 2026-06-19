@@ -46,42 +46,74 @@ class TestNormalizeTerminalIdForRegistry:
         # Try bare first, then each prefix (registry might have prefixed ID).
         assert _normalize_terminal_id_for_registry("abc-123") == (
             "abc-123",
-            "console_abc-123",
             "env_abc-123",
+            "console_abc-123",
             "wt_abc-123",
             "tmux_abc-123",
         )
 
     def test_console_prefix_strips_to_bare(self):
         # SessionRegistry convention: console_<uuid> for console-originated sessions.
+        # Function returns exact match, then stripped, then all prefix variants.
         assert _normalize_terminal_id_for_registry("console_abc-123") == (
             "console_abc-123",
             "abc-123",
+            "env_console_abc-123",
+            "console_console_abc-123",
+            "wt_console_abc-123",
+            "tmux_console_abc-123",
         )
 
     def test_env_prefix_strips_to_bare(self):
         # env_ prefix for env-var-injected session_ids.
-        assert _normalize_terminal_id_for_registry("env_xyz") == ("env_xyz", "xyz")
+        assert _normalize_terminal_id_for_registry("env_xyz") == (
+            "env_xyz",
+            "xyz",
+            "env_env_xyz",
+            "console_env_xyz",
+            "wt_env_xyz",
+            "tmux_env_xyz",
+        )
 
     def test_tmux_prefix_strips_to_bare(self):
-        assert _normalize_terminal_id_for_registry("tmux_xyz") == ("tmux_xyz", "xyz")
+        assert _normalize_terminal_id_for_registry("tmux_xyz") == (
+            "tmux_xyz",
+            "xyz",
+            "env_tmux_xyz",
+            "console_tmux_xyz",
+            "wt_tmux_xyz",
+            "tmux_tmux_xyz",
+        )
 
     def test_wt_prefix_strips_to_bare(self):
-        assert _normalize_terminal_id_for_registry("wt_xyz") == ("wt_xyz", "xyz")
+        assert _normalize_terminal_id_for_registry("wt_xyz") == (
+            "wt_xyz",
+            "xyz",
+            "env_wt_xyz",
+            "console_wt_xyz",
+            "wt_wt_xyz",
+            "tmux_wt_xyz",
+        )
 
     def test_empty_after_strip_does_not_emit_bare_empty(self):
         # Defensive: "console_" (prefix with nothing after) should NOT emit "".
         result = _normalize_terminal_id_for_registry("console_")
         assert "" not in result
-        assert result == ("console_",)
+        assert result == (
+            "console_",
+            "env_console_",
+            "console_console_",
+            "wt_console_",
+            "tmux_console_",
+        )
 
     def test_unknown_prefix_returns_candidates_with_prefixes(self):
         # No prefix in our set -> try bare first, then each prefix (registry might have prefixed ID).
         # Same behavior as bare UUID case.
         assert _normalize_terminal_id_for_registry("foo_bar") == (
             "foo_bar",
-            "console_foo_bar",
             "env_foo_bar",
+            "console_foo_bar",
             "wt_foo_bar",
             "tmux_foo_bar",
         )

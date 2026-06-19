@@ -8,7 +8,7 @@ import json, re, sys, os
 from pathlib import Path
 from typing import Any
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 OUT  = BASE / "source-model.json"
 
 # Input: CLI arg (primary) or DOCC_TARGET env var (fallback)

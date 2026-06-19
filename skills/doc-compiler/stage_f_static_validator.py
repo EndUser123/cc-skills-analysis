@@ -8,7 +8,7 @@ Emits: validation-report.json (partial, static-only)
 import json, re, sys
 from pathlib import Path
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 INDEX = BASE / "index.html"
 OUT   = BASE / "validation-report.json"
 

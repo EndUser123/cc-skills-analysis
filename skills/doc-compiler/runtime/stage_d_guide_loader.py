@@ -9,7 +9,7 @@ import json, re, sys
 from pathlib import Path
 from typing import Any
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 GUIDES_PLAN = BASE / "diagram-guides.json"
 OUT = BASE / "guides-loaded.json"
 GUIDES_DIR = BASE / "references" / "guides"

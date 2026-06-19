@@ -8,7 +8,7 @@ Emits static-validation.json.
 import json, re, sys
 from pathlib import Path
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 HTML = BASE / "index.html"
 OUT  = BASE / "static-validation.json"
 

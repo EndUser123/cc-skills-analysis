@@ -10,7 +10,7 @@ Writes e1-output.json.
 import json, sys
 from pathlib import Path
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 TPL  = BASE / "templates"
 STYLES_DIR = TPL / "styles"
 OUT = BASE / "e1-output.json"

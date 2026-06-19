@@ -3,8 +3,8 @@ sys.path.insert(0, r'P:/packages/.github_repos/browser-harness')
 from helpers import *
 from admin import *
 
-INDEX_PATH = 'file:///P:/packages/cc-skills-meta/skills/doc-compiler/index.html'
-SNAP_DIR = r'P:/packages/cc-skills-meta/skills/doc-compiler/_snapshots'
+INDEX_PATH = 'file:///P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler/index.html'
+SNAP_DIR = r'P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler/_snapshots'
 
 os.makedirs(SNAP_DIR, exist_ok=True)
 

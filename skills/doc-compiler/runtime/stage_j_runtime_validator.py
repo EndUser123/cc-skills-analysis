@@ -40,8 +40,8 @@ from helpers import *
 restart_daemon()
 ensure_daemon()
 
-INDEX_PATH = "file:///P:/packages/cc-skills-meta/skills/doc-compiler/index.html"
-SNAP_DIR = r"P:/packages/cc-skills-meta/skills/doc-compiler/_snapshots"
+INDEX_PATH = "file:///P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler/index.html"
+SNAP_DIR = r"P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler/_snapshots"
 
 os.makedirs(SNAP_DIR, exist_ok=True)
 new_tab(INDEX_PATH)

@@ -4,8 +4,8 @@ BH_DIR = "P:/packages/.github_repos/browser-harness"
 if BH_DIR not in sys.path: sys.path.insert(0, BH_DIR)
 from helpers import *
 from admin import *
-INDEX_PATH = "file:///P:/packages/cc-skills-meta/skills/doc-compiler/index.html"
-SNAP_DIR = "P:/packages/cc-skills-meta/skills/doc-compiler/_snapshots"
+INDEX_PATH = "file:///P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler/index.html"
+SNAP_DIR = "P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler/_snapshots"
 os.makedirs(SNAP_DIR, exist_ok=True)
 ensure_daemon()
 new_tab(INDEX_PATH)

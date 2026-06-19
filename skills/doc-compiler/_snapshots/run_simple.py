@@ -5,7 +5,7 @@ from helpers import *
 from admin import *
 
 ensure_daemon()
-new_tab("file:///P:/packages/cc-skills-meta/skills/doc-compiler/index.html")
+new_tab("file:///P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler/index.html")
 wait_for_load()
 time.sleep(1)
 

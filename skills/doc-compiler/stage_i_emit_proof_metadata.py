@@ -9,7 +9,7 @@ import json, sys
 from pathlib import Path
 from datetime import datetime
 
-BASE = Path("P:/packages/cc-skills-meta/skills/doc-compiler")
+BASE = Path("P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/doc-compiler")
 PROOF       = BASE / "artifact-proof.json"
 VAL_REPORT  = BASE / "validation-report.json"
 SOURCE      = BASE / "source-model.json"
