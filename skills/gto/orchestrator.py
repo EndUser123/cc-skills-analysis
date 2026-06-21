@@ -111,10 +111,14 @@ def _normalize_terminal_id_for_registry(terminal_id: str) -> tuple[str, ...]:
 
     candidates = []
 
-    # 1. Try exact match first (most likely for new UUID format)
+    # 1. Add console_ prefix to bare UUID (most common case)
+    if "-" in terminal_id and not terminal_id.startswith(("console_", "env_")):
+        candidates.append(f"console_{terminal_id}")
+
+    # 2. Try exact match
     candidates.append(terminal_id)
 
-    # 2. Try stripping any known prefix (env_, console_, wt_, tmux_)
+    # 3. Strip known prefixes
     for prefix in ("console_", "env_", "wt_", "tmux_"):
         if terminal_id.startswith(prefix):
             stripped = terminal_id[len(prefix):]
@@ -122,11 +126,12 @@ def _normalize_terminal_id_for_registry(terminal_id: str) -> tuple[str, ...]:
                 candidates.append(stripped)
             break
 
-    # 3. Try adding each prefix (old format registry, new format terminal_id)
-    for prefix in ("env_", "console_", "wt_", "tmux_"):
-        prefixed = f"{prefix}{terminal_id}"
-        if prefixed not in candidates:
-            candidates.append(prefixed)
+    # 4. Add prefixes to stripped form (reverse of step 3)
+    for prefix in ("console_", "env_"):
+        if terminal_id and "-" in terminal_id and not terminal_id.startswith(prefix):
+            prefixed = f"{prefix}{terminal_id}"
+            if prefixed not in candidates:
+                candidates.append(prefixed)
 
     return tuple(candidates)
 
