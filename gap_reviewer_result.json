@@ -1,0 +1,210 @@
+{
+  "review": {
+    "facts": [
+      {
+        "claim": "Session edited 12 files in cc-skills-sdlc/go skill",
+        "source": "changelog_detector"
+      },
+      {
+        "claim": "10 file edits occurred without test or runtime verification (90.9% of edits)",
+        "source": "verification_debt_detector"
+      },
+      {
+        "claim": "Two correction patterns triggered: pattern_mismatch and path_issues",
+        "source": "correction_patterns"
+      },
+      {
+        "claim": "Session had 6 loose ends: 3 deferred items, 2 uncompleted goals, 1 open question",
+        "source": "session_outcome_detector"
+      },
+      {
+        "claim": "1 file affects /docs (README.md)",
+        "source": "changelog_detector"
+      },
+      {
+        "claim": "10 files not covered by skill patterns (untracked changes)",
+        "source": "changelog_detector"
+      },
+      {
+        "claim": "Five detectors produced no findings",
+        "source": "signals_absent"
+      }
+    ],
+    "inferences": [
+      {
+        "hypothesis": "Session performed coordinated multi-file changes without documented plan",
+        "confidence": "medium",
+        "evidence": "12 files edited, no session_goal_detector findings"
+      },
+      {
+        "hypothesis": "Test infrastructure changed but not verified",
+        "confidence": "high",
+        "evidence": "10 edits without verification, test files edited"
+      },
+      {
+        "hypothesis": "Correction patterns suggest guidance ambiguity",
+        "confidence": "medium",
+        "evidence": "Two corrections on hook constraint lines"
+      },
+      {
+        "hypothesis": "Documentation change may have been missed by /docs pattern",
+        "confidence": "low",
+        "evidence": "1 file affects /docs but wave shows 4 skills not needed"
+      },
+      {
+        "hypothesis": "Session instrumentation may be incomplete",
+        "confidence": "low",
+        "evidence": "Friction found but other detectors silent"
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "What was the original session intent?",
+        "why_it_matters": "Cannot determine if verification debt is acceptable"
+      },
+      {
+        "question": "Did the session achieve its outcome?",
+        "why_it_matters": "6 loose ends suggest partial completion"
+      },
+      {
+        "question": "What functionality was added or modified?",
+        "why_it_matters": "Cannot assess technical risk"
+      },
+      {
+        "question": "Why did session_goal_detector produce no findings?",
+        "why_it_matters": "May indicate detector failure"
+      },
+      {
+        "question": "Are untracked changes intentional or missed patterns?",
+        "why_it_matters": "Determines if patterns need updating"
+      },
+      {
+        "question": "What did the wrong directory correction refer to?",
+        "why_it_matters": "May indicate path confusion"
+      },
+      {
+        "question": "Did test execution fail or was it skipped?",
+        "why_it_matters": "Impacts verification debt severity"
+      }
+    ],
+    "recommendations": [
+      {
+        "action": "Run pytest on edited skill to verify changes",
+        "goal": "Close verification debt",
+        "assumption": "Test infrastructure should be exercised",
+        "rationale": "90.9% unverified edits create risk"
+      },
+      {
+        "action": "Clarify guidance on enterprise bloat and wrong directory",
+        "goal": "Reduce friction",
+        "assumption": "Corrections on constraint lines",
+        "rationale": "Two corrections suggest ambiguity"
+      },
+      {
+        "action": "Check untracked files against skill patterns",
+        "goal": "Fix pattern coverage",
+        "assumption": "Files are legitimate changes",
+        "rationale": "Future changes need tracking"
+      },
+      {
+        "action": "Investigate session_goal_detector failure",
+        "goal": "Ensure detector reliability",
+        "assumption": "Detector may be broken",
+        "rationale": "Missing signals reduce coverage"
+      },
+      {
+        "action": "Review 6 loose ends for recovery action",
+        "goal": "Reduce technical debt",
+        "assumption": "At least one needs attention",
+        "rationale": "Recurring goals indicate blockers"
+      },
+      {
+        "action": "Commit edited files or stage for review",
+        "goal": "Prevent session loss",
+        "assumption": "Changes are intended",
+        "rationale": "Unpersisted edits flagged by hygiene detector"
+      },
+      {
+        "action": "Verify /docs pattern coverage",
+        "goal": "Ensure doc monitoring",
+        "assumption": "Pattern may have missed update",
+        "rationale": "Doc consistency is high-severity"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "id": "GAPR-COORD-001",
+      "title": "Coordinated multi-file refactoring without documented plan",
+      "description": "Session edited 12 files in same skill including test infrastructure but no goal detected and no planning intent evident. Scope and risks unclear.",
+      "domain": "session",
+      "gap_type": "planning_gap",
+      "severity": "medium",
+      "action": "realize",
+      "priority": "medium",
+      "evidence": [
+        {
+          "kind": "transcript_edits",
+          "value": "12 files",
+          "detail": "cc-skills-sdlc/go"
+        },
+        {
+          "kind": "detector_absence",
+          "value": "session_goal_detector",
+          "detail": "No goal statement detected"
+        }
+      ]
+    },
+    {
+      "id": "GAPR-PATTERN-001",
+      "title": "Skill pattern coverage gap: 10 files not covered",
+      "description": "10 of 12 edited files do not match any skill pattern, indicating pattern definitions may not cover new locations. Future changes will not be tracked.",
+      "domain": "changelog",
+      "gap_type": "pattern_coverage",
+      "severity": "low",
+      "action": "realize",
+      "priority": "low",
+      "evidence": [
+        {
+          "kind": "transcript_edits",
+          "value": "10 unmatched files",
+          "detail": "Change wave moderate"
+        }
+      ]
+    },
+    {
+      "id": "GAPR-INSTR-002",
+      "title": "Session instrumentation silent despite friction",
+      "description": "session_outcome_detector found loose ends and correction_patterns found friction but hook_health_detector and invocation_tracker produced no findings. May indicate detector failures.",
+      "domain": "instrumentation",
+      "gap_type": "detector_reliability",
+      "severity": "low",
+      "action": "monitor",
+      "priority": "low",
+      "evidence": [
+        {
+          "kind": "detector_absence",
+          "value": "hook_health_detector",
+          "detail": "No signals despite friction"
+        }
+      ]
+    },
+    {
+      "id": "GAPR-LOOSE-001",
+      "title": "Recurring uncompleted goals with recurrence > 1",
+      "description": "Session has 2 uncompleted goals with recurrence > 1: be professional and refactor to be efficient effective and DRY. Recurring goals suggest persistent blockers.",
+      "domain": "session",
+      "gap_type": "recurring_blocker",
+      "severity": "medium",
+      "action": "recover",
+      "priority": "medium",
+      "evidence": [
+        {
+          "kind": "session_outcome",
+          "value": "recurrence > 1",
+          "detail": "refactor goal recurrence=2"
+        }
+      ]
+    }
+  ]
+}
