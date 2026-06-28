@@ -6,6 +6,16 @@ triggers:
   - "/gto"
 category: analysis
 contract_type: workflow-execution
+enforcement: strict
+workflow_steps:
+  - name: run_orchestrator
+    description: "Run deterministic detectors and write initial artifact"
+  - name: gap_reviewer
+    description: "Spawn mandatory gap reviewer subagent (haiku) to add findings"
+  - name: merge
+    description: "Merge-only pass to fold reviewer results into artifact"
+  - name: render
+    description: "Display canonical RNS output via render_actions() + footer"
 
 # Hard gate: Bash is the first tool to invoke the orchestrator.
 # All other tools are blocked until the orchestrator runs.
@@ -212,46 +222,34 @@ The display must follow the `/rns` output format:
 
 ### Step 2.5: Forward-Looking Opportunity Analysis + Self-Reflection
 
-**This section appears BEFORE the final "0 — Do ALL" footer.**
+**Recommendations belong IN the RNS section, not as a separate block after the findings.** The Gap Reviewer (Step 1.5) and any optional enrichment agents produce **new findings** that the merge-only pass folds into the same artifact. The RNS section already displays those findings with their priority dots, owner annotations, and per-finding `suggested_rule` recommendations. Do NOT render a separate "Gap Reviewer synthesis" section, "Predicted opportunities" section, or self-reflection narrative after the RNS block — that duplicates the findings and breaks the "footer is the LAST line" rule.
 
-After rendering the deterministic findings, produce a structured gap-to-opportunity review. This is now partially automated via the **Gap Reviewer** (Step 1.5) which receives pre-populated detector evidence and produces a FACT/INFERENCE/UNKNOWN/RECOMMENDATION review plus any new findings.
+Display order (must match what `render_actions()` produces):
 
-**If the Gap Reviewer ran successfully** (check `gap_reviewer_result.json`), incorporate its review into the display. The review appears as a structured section between the RNS findings and the predicted opportunities.
+1. **RNS findings block** — domain-grouped, ordered by leverage score. Includes findings added by the Gap Reviewer and any other agent. Each finding line is the canonical renderer output: priority dot, description, `[RC:...]` if root_cause known, `[UNVERIFIED]` if unverified, `{owner_skill}` if set, and any `└─ target: suggested_rule` recommendation that came back from the agent.
+2. **TOP N BY LEVERAGE** — the `summary.triage` list from the artifact. Render this verbatim above the footer.
+3. **"0 — Do ALL Recommended Next Actions (N items)"** — final footer line. ALWAYS last.
 
-**If the Gap Reviewer did not run** (first pass, no agent results yet), perform the analysis manually based on these signals:
+How Gap Reviewer and optional agents contribute:
 
-| Signal | What to notice |
-|--------|----------------|
-| **Incomplete work** | Features half-implemented, functions with TODO bodies, tests commented out, branches unmerged |
-| **Dependency chains** | A was completed but B depends on A and wasn't started — B is the natural next step |
-| **Deferred decisions** | "We'll deal with that later", "skip for now", "not in scope" — these are future work queued by the user |
-| **Work trajectory** | The pattern of what was done implies what comes next (wired agents → test them; created module → document it) |
-| **Avoidance signals** | Something mentioned once then skirted around — usually the hard or uncertain parts that will surface again |
-| **Recurring themes** | Same concern raised across multiple turns or sessions — high-confidence prediction it will come up again |
+- **Gap Reviewer (mandatory)**: writes `gap_reviewer_result.json` containing `review.{facts,inferences,unknowns,recommendations}` and a `findings` array. The orchestrator's merge-only pass converts each new finding into the artifact, so they appear inline in the RNS block (domain-grouped, with priority dots and owner annotations) rather than as a separate narrative section.
+- **Optional agents** (Domain Analyzer, Findings Reviewer, Action Normalizer, Session Reviewer): same pattern — they add new findings to the artifact, not prose blocks.
+- **Per-finding recommendations** are carried via `metadata.suggested_rule` (target: `metadata.rule_target`, default `CLAUDE.md`). The renderer emits these as `└─ target: rule` sub-lines under the finding.
 
-**Self-reflection prompts (open-ended)** — use when the session involved building, fixing, or documenting a feature, system, or workflow:
+If the Gap Reviewer did NOT run (first pass with trivial findings):
 
-1. **Goals / Functions / Outcomes audit**: For any documented capability, stated goal, or expected outcome: *Is it tested? How would we test for it? Is this reflected in unit, regression, and integration tests?* If testing is missing or partial: surface as a `realize` finding.
-2. **Boundary uncertainty**: *What is the smallest discriminating check that would resolve remaining uncertainty?* Name the falsification condition — the specific counterexample or signal that would prove the recommendation wrong.
-3. **Failure mode first**: *Before celebrating a fix, ask: what is the likely failure mode? What discriminating test would falsify it? Could this overfire?*
-4. **Implementation vs capability**: *Is the current implementation telling us the true capability, or just one way it was built?* Challenge assumed limits that are actually just current-impl constraints.
+- Skip the Gap Reviewer per the Step 1.5 trivial-findings gate; do not produce a manual FACT/INFERENCE/UNKNOWN section to compensate
+- The RNS block stands on its own; the renderer output is the complete display
 
-Display order:
-1. **RNS findings block** — domain-grouped, ordered by leverage score (highest-value/effort first; security is no longer buried)
-2. **Gap Reviewer synthesis** (if available) — facts, inferences, unknowns, recommendations
-3. **Predicted opportunities** — HIGH/MEDIUM/LOW confidence next actions derived from session evidence
-4. **TOP N BY LEVERAGE** — the `summary.triage` list from the artifact (highest value/effort first, shared root causes collapsed). Render this verbatim above the footer.
-5. **"0 — Do ALL Recommended Next Actions (N items)"** — final footer line
-
-**Health trend:** if `summary.health` contains a `trend` field (`improving`/`declining`/`flat`) and `delta`, show it in the header line, e.g. `Health: 71 (B) ▲ +9 improving`. Absent on the first run.
+**Health trend:** if `summary.health` contains a `trend` field (`improving`/`declining`/`flat`) and `delta`, show it in the header line above the RNS block, e.g. `Health: 71 (B) ▲ +9 improving`. Absent on the first run.
 
 **Leverage scoring:** ordering and the triage list are driven by `metadata.score` on each finding — a composite of severity × action × confidence × impact-radius ÷ effort (see `__lib/scoring.py`). The machine format carries `score=`, `caused_by=` (prerequisite finding ids), and `blocks=` (ids waiting on this finding) on every `RNS|A|` line.
 
 Rules:
-- Do NOT surface predictions that duplicate existing findings (those already appear as gaps)
-- Prefer 3-5 high-specificity predictions over 10 generic ones
-- If the session was exploratory with no clear trajectory, say so rather than forcing predictions
-- Frame predictions as opportunities the user can act on, not obligations
+- Display = exactly what `render_actions(findings, carryover, opts)` returns, plus the health-trend header line. Nothing else.
+- Do NOT add a "synthesis", "opportunities", or "self-reflection" prose block between the RNS findings and the footer
+- Do NOT re-narrate findings the Gap Reviewer already produced — they are already in the RNS section
+- The footer is always the LAST line
 
 ## Session Data Sources
 
