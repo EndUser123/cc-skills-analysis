@@ -1,14 +1,12 @@
-"""Canonical terminal_id for multi-terminal isolation.
+"""Canonical terminal_id for multi-terminal isolation.  (CANONICAL SOURCE)
 
-Single authoritative algorithm. Identical copies must live in every package
-that needs a terminal_id (cross-package sharing without coupling plugins).
-The invariant test ``tests/test_terminal_id_invariants.py`` globs the monorepo
-for every file defining ``canonical_terminal_id`` and fails if their source
-hashes diverge — so drift is caught at CI, and the failure lists every copy.
+Single authoritative algorithm. Identical byte-copies live in every plugin
+that derives a terminal_id (plugins stay independent; no cross-plugin import).
+The generator ``scripts/sync_terminal_id.py`` regenerates every copy from this
+file, and ``tests/test_terminal_id_invariants.py`` auto-discovers every copy in
+the monorepo and fails on hash drift — listing each path + the sync command.
 
-KNOWN COPIES (update all in one commit, or the invariant test fails):
-  - search-research/core/terminal_id.py                 (CANONICAL)
-  - cc-skills-analysis/__lib/terminal_id.py
+DO NOT hand-edit copies. Edit THIS file, then run sync_terminal_id.py.
 
 Algorithm priority:
     1. CLAUDE_TERMINAL_ID env var (explicit override)
@@ -48,6 +46,20 @@ def canonical_terminal_id() -> str:
         Identifier prefixed with ``console_`` for artifact-path compatibility.
         Example: ``console_081c35fc-2c20-42d8-90ee-fc271a305b8c``
     """
+    return canonical_terminal_id_from_env() or _derived_fallback_id()
+
+
+def canonical_terminal_id_from_env() -> str | None:
+    """Env-signal detection only (no derived fallback).
+
+    Returns the ``console_<id>`` from CLAUDE_TERMINAL_ID, a per-terminal session
+    env var, or ConEmuServerPID. Returns ``None`` when no terminal env signal is
+    present, so a caller can interpose its own recovery (e.g. a registry lookup
+    for resumed sessions) before falling back to the derived ppid-hash.
+
+    Like :func:`canonical_terminal_id`, this NEVER returns a static constant —
+    ``None`` simply means "no env signal; caller decides the fallback."
+    """
     # Priority 1: explicit env override (also used for testing)
     if env_id := os.environ.get("CLAUDE_TERMINAL_ID", "").strip():
         return env_id if env_id.startswith("console_") else f"console_{env_id}"
@@ -61,7 +73,13 @@ def canonical_terminal_id() -> str:
     if conemu_pid := os.environ.get("ConEmuServerPID", "").strip():
         return f"console_conemu_{conemu_pid}"
 
-    # Priority 4: derived fallback — NEVER static.
-    # os.getppid() is the parent process (Claude Code itself for hooks), stable
-    # across every invocation in one session and unique per terminal window.
+    return None
+
+
+def _derived_fallback_id() -> str:
+    """Derived fallback — NEVER static.
+
+    os.getppid() is the parent process (Claude Code itself for hooks), stable
+    across every invocation in one session and unique per terminal window.
+    """
     return f"console_{hashlib.sha1(str(os.getppid()).encode()).hexdigest()[:16]}"

@@ -18,30 +18,22 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Shared canonical terminal_id algorithm (byte-identical copy in package __lib).
+_GTO_PKG_ROOT = Path(__file__).resolve().parents[3]
+if str(_GTO_PKG_ROOT / "__lib") not in sys.path:
+    sys.path.insert(0, str(_GTO_PKG_ROOT / "__lib"))
+from terminal_id import canonical_terminal_id  # noqa: E402
+
 
 def get_terminal_id() -> str:
-    """Get the current terminal ID using canonical resolution.
+    """Current terminal ID via the shared canonical algorithm.
 
-    Priority matches /id skill and recap skill:
-    1. CLAUDE_TERMINAL_ID (set by SessionStart hook)
-    2. WT_SESSION (Windows Terminal UUID, normalized to console_ prefix)
-    3. PID+timestamp hash fallback
+    Delegates to ``terminal_id.canonical_terminal_id`` (byte-identical copy in
+    package __lib) so gto derives the same key the writer and every other reader
+    derives. Replaces the former local PID+timestamp hash, which was unstable
+    across calls (timestamp changed per second) and unprefixed.
     """
-    # Priority 1: explicit env override
-    value = os.environ.get("CLAUDE_TERMINAL_ID", "").strip()
-    if value:
-        return value
-
-    # Priority 2: Windows Terminal session UUID
-    wt_session = os.environ.get("WT_SESSION", "").strip()
-    if wt_session:
-        return f"console_{wt_session}"
-
-    # Priority 3: PID+timestamp hash (stable within session)
-    pid = os.getpid()
-    ts = int(datetime.now(timezone.utc).timestamp())
-    unique = f"{pid}_{ts}".encode()
-    return hashlib.sha1(unique).hexdigest()[:12]
+    return canonical_terminal_id()
 
 
 def get_project_root() -> Path:

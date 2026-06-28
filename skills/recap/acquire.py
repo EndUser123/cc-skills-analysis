@@ -25,6 +25,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# Shared canonical terminal_id algorithm (byte-identical copy in package __lib).
+_RECAP_PKG_ROOT = Path(__file__).resolve().parents[2]
+if str(_RECAP_PKG_ROOT / "__lib") not in sys.path:
+    sys.path.insert(0, str(_RECAP_PKG_ROOT / "__lib"))
+from terminal_id import canonical_terminal_id  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ───────────────────────────────────────────────────────────────────
@@ -71,23 +77,16 @@ def _read_identity_json() -> dict | None:
 
 
 def resolve_terminal_key(terminal_id: str | None = None) -> str:
-    """Resolve terminal ID from parameter, environment, or system detection.
+    """Resolve terminal ID from parameter or the shared canonical algorithm.
 
     Priority:
-    1. Explicit terminal_id parameter
-    2. CLAUDE_TERMINAL_ID env var (set by SessionStart hook)
-    3. WT_SESSION env var (Windows Terminal session UUID)
-    4. Empty string if no detection succeeds
+    1. Explicit terminal_id parameter (caller-supplied override)
+    2. canonical_terminal_id() — CLAUDE_TERMINAL_ID, WT_SESSION, ..., sha1(ppid).
+       Never returns "" (derived fallback guarantees a stable unique console_<id>).
     """
     if terminal_id:
         return terminal_id
-    env_terminal = os.environ.get("CLAUDE_TERMINAL_ID")
-    if env_terminal:
-        return env_terminal
-    wt_session = os.environ.get("WT_SESSION")
-    if wt_session:
-        return f"console_{wt_session}"
-    return ""
+    return canonical_terminal_id()
 
 
 def get_project_root(cwd: Path | None = None) -> Path:
