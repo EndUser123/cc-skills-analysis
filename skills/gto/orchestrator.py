@@ -22,7 +22,7 @@ from .settings import GTOSettings
 from .__lib.context import get_git_sha
 from .__lib.detectors import run_basic_detectors
 from .__lib.carryover import load_carryover_open_only, save_carryover, prune_carryover, apply_carryover_enrichment
-from .__lib.resolve import resolve_findings
+from .__lib.resolve import ResolveCtx, resolve_findings
 from .__lib.session_goal_detector import SessionGoalDetector
 from .__lib.session_outcome_detector import SessionOutcomeDetector, SessionOutcomeResult
 from .__lib.chat_history_patterns import ChatHistoryPatterns
@@ -98,6 +98,18 @@ def _read_prev_health_score(artifact_path: Path) -> int | None:
         return int(score) if score is not None else None
     except (OSError, ValueError, json.JSONDecodeError, AttributeError):
         return None
+
+
+def _is_trivial_run(findings: list[Finding]) -> bool:
+    """A trivial run has fewer than 3 findings, all low severity.
+
+    Trivial runs skip the reviewer/normalizer/gap handoff writes (CHANGE-005)
+    and are exempt from the findings_reviewer FP gate marker (CHANGE-006).
+    Boundary: exactly 3 findings, or any non-low severity, is non-trivial.
+    """
+    if len(findings) >= 3:
+        return False
+    return all((f.severity or "").lower() == "low" for f in findings)
 
 
 def _normalize_terminal_id_for_registry(terminal_id: str) -> tuple[str, ...]:
@@ -784,7 +796,13 @@ def run(argv: list[str] | None = None) -> int:
             edited_file_set.add(str(fp.relative_to(root)).replace("\\", "/"))
         except ValueError:
             edited_file_set.add(str(fp).replace("\\", "/"))
-    all_findings = resolve_findings(all_findings, edited_file_set, root)
+    resolve_ctx = ResolveCtx(
+        edited_file_set=edited_file_set,
+        root=root,
+        transcript_explicit=bool(explicit_transcript),
+        session_id=args.session_id,
+    )
+    all_findings = resolve_findings(all_findings, resolve_ctx)
 
     # Split: display excludes resolved, carryover includes them
     carryover_findings = list(all_findings)
@@ -804,6 +822,19 @@ def run(argv: list[str] | None = None) -> int:
     rejected_ids, _ = read_verdicts(paths.artifacts_dir / "findings_reviewer_result.json")
     if rejected_ids:
         all_findings = [f for f in all_findings if f.id not in rejected_ids]
+
+    # CHANGE-006: advisory FP gate — a non-trivial run should have a findings_reviewer
+    # result. read_verdicts silently returns empty on absent files, so test existence
+    # explicitly. Advisory only (GTO is never blocking); trivial runs are exempt.
+    if (
+        not _is_trivial_run(all_findings)
+        and not (paths.artifacts_dir / "findings_reviewer_result.json").exists()
+    ):
+        print(
+            "GTO: GAP_REVIEW_FP_GATE_FAILED non-trivial run produced no "
+            "findings_reviewer_result.json",
+            file=sys.stderr,
+        )
 
     normalizer_result = read_normalizer(paths.artifacts_dir / "action_normalizer_result.json")
     if normalizer_result.success and normalizer_result.findings:
@@ -830,8 +861,10 @@ def run(argv: list[str] | None = None) -> int:
             for _aq_v in validate_prompt_output(_aq_name, _aq_dicts):
                 print(f"PROMPT_QUALITY: {_aq_v}", file=sys.stderr)
 
-    # Write findings_reviewer and action_normalizer handoffs for next agent pass
-    if all_findings:
+    # Write findings_reviewer and action_normalizer handoffs for next agent pass.
+    # CHANGE-005: skip handoffs for trivial runs (<3 findings, all low) — nothing
+    # worth reviewing. Non-trivial runs always write so the agent pass can fire.
+    if all_findings and not _is_trivial_run(all_findings):
         from .agents.findings_reviewer import write_handoff as write_reviewer_handoff
         from .agents.action_normalizer import write_handoff as write_normalizer_handoff
         from .agents.gap_reviewer import write_handoff as write_gap_handoff

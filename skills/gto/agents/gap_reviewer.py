@@ -11,6 +11,7 @@ domain-specific prompt variants.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from . import parse_agent_result
@@ -18,13 +19,37 @@ from ._quality_gates import apply_quality_gates
 from ..models import AgentResult, EvidenceRef, Finding
 
 
+# Absence-signal entry key. Pinned as a constant so the read boundary stays in
+# sync with write_handoff's shape (signals_absent entries are {"detector": ...}).
+_DETECTOR_KEY = "detector"
+
+
 def _load_handoff_context(handoff_path: Path) -> tuple[list[str], list[str]]:
-    """Load signals_absent and detectors_ran from the handoff file for gate application."""
+    """Load signals_absent and detectors_ran from the handoff file for gate application.
+
+    Normalizes signals_absent to list[str] at the read boundary: write_handoff
+    emits list[dict] ({"detector": name, "result": "..."}), but the quality gate
+    checks `det in signals_absent` (str membership). Without normalization the
+    membership test is always False and Gate C is inert. Malformed entries are
+    dropped with a GATE_C_NORMALIZE_DROPPED warning rather than crashing the run.
+    """
     try:
         data = json.loads(handoff_path.read_text(encoding="utf-8"))
-        return data.get("signals_absent", []), data.get("detectors_ran", [])
     except (json.JSONDecodeError, OSError):
         return [], []
+
+    signals_absent: list[str] = []
+    for entry in data.get("signals_absent", []):
+        if isinstance(entry, str):
+            signals_absent.append(entry)
+        elif isinstance(entry, dict) and isinstance(entry.get(_DETECTOR_KEY), str):
+            signals_absent.append(entry[_DETECTOR_KEY])
+        else:
+            print(
+                f"GTO: GATE_C_NORMALIZE_DROPPED malformed absence signal: {entry!r}",
+                file=sys.stderr,
+            )
+    return signals_absent, data.get("detectors_ran", [])
 
 
 def write_handoff(

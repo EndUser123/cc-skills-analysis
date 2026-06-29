@@ -96,7 +96,7 @@ This runs:
 5. **Session goal detection** — extracts stated goals from user messages
 6. **Session outcome detection** — finds uncompleted goals, open questions, deferred items
 7. **Completion filtering** — removes outcomes that were actually completed
-8. **Carryover resolution** — marks findings as resolved if files were edited
+8. **Carryover resolution** — marks findings as resolved via the resolution-strategy registry in `__lib/resolve.py` (longest-prefix-wins dispatch on finding ID; DOC-/GIT-/GTO-SESSION- registered). Resolution signals, in order: terminal status, file-edit match, registered strategy. Terminal statuses (resolved/deferred/rejected/mapped) short-circuit and are never re-resolved — a deferred finding stays deferred even if its file is later edited (deferred-sticky). A pre-existing `GTO-SESSION-UNRESOLVED` carryover resolves on the next run that supplies `--transcript`.
 9. **Agent handoff writing** — writes handoff files for enrichment agents
 10. **Agent result reading** — merges any available agent enrichment results
 11. **Merge, dedupe, route** — combine all sources, route to owning skills
@@ -328,7 +328,7 @@ The stop hook verifies completion by checking:
 - Session findings come from transcript analysis, not codebase scanning
 - Heavy codebase analysis should be routed to /code, /test, /diagnose — not done by GTO
 - The gap reviewer agent is mandatory — it provides reasoning beyond deterministic detectors
-- Other agents (domain_analyzer, findings_reviewer, action_normalizer, session_reviewer) are optional enrichment
+- Other agents (domain_analyzer, action_normalizer, session_reviewer) are optional enrichment; findings_reviewer is expected on non-trivial runs (≥3 findings or any non-low severity). A non-trivial run missing `findings_reviewer_result.json` emits the advisory `GAP_REVIEW_FP_GATE_FAILED` marker. Trivial runs (<3 all-low findings) skip all reviewer handoffs.
 - Agent results are merged on the next orchestrator run, not inline
 - Do NOT use `python -c` for artifact I/O — nested JSON quoting breaks on Windows/bash. Use the Read tool to read JSON artifacts and Write tool to write JSON results. Use pre-written scripts in `__lib/` for rendering.
 
