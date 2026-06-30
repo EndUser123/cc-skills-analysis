@@ -1,24 +1,20 @@
 ---
 name: debrief
-description: "Mine a chat-history export or session-transcript FILE by recursively investigating it as a victim log. /debrief detects when the transcript is a victim log (multiple symptoms of the same kind), runs /friction to classify workflow friction, runs /truth to verify every claim, and walks the causal chain symptom → cause → origin until each finding is anchored at a code-level file:line. The deliverable is cold-start tasks written to the task tracker, with the source file tagged with the resulting task numbers. Use this whenever the user points at a transcript / chat-export / session-history file and wants the unfinished work captured as origin-anchored tasks, or asks to mine the chat history, find the open issues, or turn this session into tasks. Distinct from /recap (summarizes only) and /top-problems (lists only) — /debrief is the primary entry point for transcript → tasks, calls /friction and /truth from inside its loop, and demotes /retro to advanced chain mode for the multi-session case."
+description: "This skill is used when the user points at a transcript or chat-history file and asks to mine it for unfinished work, open issues, origin-anchored tasks, or to trace symptoms back to code. Trigger phrases include 'debrief this transcript', 'mine the chat history', 'transcript to tasks', 'turn this session into tasks', 'victim log', and 'why is this broken'. Recursively walks symptom → cause → origin chains, calls /friction and /truth from inside the loop, and writes cold-start tasks to the tracker with the source file tagged. Distinct from /recap (summarizes) and /top-problems (lists, never creates tasks); /retro is the multi-session chain mode."
 version: 1.0.0
 status: stable
 category: analysis
 enforcement: advisory
 triggers:
   - /debrief
-  - "transcript to tasks"
-  - "mine the chat history"
-  - "open issues and opportunities"
-  - "turn this session into tasks"
   - "debrief this transcript"
   - "victim log"
   - "why is this broken"
-suggest: []  # Empty: integration-verification hook insists on a bidirectional registry that doesn't resolve siblings correctly. The skill body names /friction and /retro inline.
+suggest: []
 do_not:
   - write a finding as a task without running /truth on it (UNVERIFIED claims don't ship)
   - state a verified fact without a file:line citation
-  - mark a task complete on the basis of a fix you could not run
+  - mark a task complete on the basis of a fix that could not be run
   - skip the source-file rename when the user gave a file path
 execution:
   directive: Read the source transcript, detect victim-log signature, dispatch parallel investigator subagents that call debrief_core.run() per finding-tree with /truth verification at every layer, then TaskCreate/Update and rename the source file.
@@ -77,77 +73,7 @@ So a task written by `/debrief` is a **memory-transfer device anchored at the co
 
 The skill's body is **a loop, not a pipeline**. Each finding is the unit of work; each iteration walks one layer closer to the origin. The bundled state machine `__lib__/debrief_core.py` enforces the discipline; the LLM supplies the human judgment (read files, classify, recurse).
 
-```
-Phase 0 — victim-log detection (debrief_core.detect_victim_log)
-  ≥1 symptom kind recurs ≥3 times OR ≥3 distinct symptom kinds each appear
-  → is_victim_log = True → bump recursion budget (max_layers 3→4, per-layer
-  8→12). The output explicitly notes when this fires.
-
-Phase 1 — Ingest + extract (parallel chunked if large)
-  python scripts/debrief.py plan --path <file>
-  Driver emits chunk plan + theme hints + paste-ready extraction prompts.
-  Dispatch one Explore subagent per chunk; each returns initial findings
-  with: title, symptom_text, transcript-line citation, named files/symbols.
-
-Phase 2 — Recursive investigation (the loop)
-  For each finding, run debrief_core.run() with:
-    source_tree_resolver — LLM reads the cited file:line, returns
-      (file, line, explanation) for the candidate origin.
-    layer_extractor      — for each LOCATED finding, asks the Agent tool to
-      "where else does this code smell appear / what explains it?" and
-      returns (texts, sources) for child findings.
-    truth_callable       — invokes /truth on every claim at every layer.
-  State machine per finding:
-    DISCOVERED → CLASSIFIED (via /friction category) → LOCATED → VERIFIED
-                → WRITTEN.  No skip.  UNVERIFIED → recursion_exhausted.
-  Recursion budget: default 3 layers, 8 findings/layer. Victim-log
-  transcripts get 4 layers, 12 findings/layer.
-
-Phase 3 — /friction classification (inside the loop)
-  When a finding is classified as workflow friction (vs code defect),
-  invoke /friction's category taxonomy so the task body carries the right
-  classification. The local classify_with_friction() in debrief_core does
-  the easy routing; /friction handles the ambiguous cases.
-
-Phase 4 — /truth verification (mandatory at every layer)
-  For every finding at LOCATED, invoke /truth with:
-    CLAIM:  <the finding's origin claim>
-    STATUS: VERIFIED | FALSE | PARTIAL | UNVERIFIED
-    EVIDENCE: <file:line, command output, or "none provided">
-  UNVERIFIED blocks advancement. FALSE rewrites the finding (correction
-  goes into MUST RE-VERIFY). FALSE on a top-level finding is rare; FALSE on
-  a deep recursion means we picked the wrong layer and the breadcrumb
-  flags it.
-
-Phase 5 — Gap-analyze against the existing task list
-  Call TaskList. For each WRITTEN finding from the loop:
-    1. PARENT_TASK pipeline? → CREATE new task, set PARENT_TASK: #<id>.
-    2. Existing task literally covers it?   → UPDATE (append, never over).
-    3. Otherwise → CREATE standalone.
-
-Phase 6 — Write tasks in the cold-start template
-  The template is in assets/task_template.md (9 fields, TLDR on top).
-  Every finding's task body carries the causal chain as evidence:
-    TLDR: <origin line — what changes>
-    VERIFIED FACTS: <chain of layer L1, L2, L3 evidence with citations>
-    DISCRIMINATING TEST: <read origin_file:origin_line and confirm>
-  The chain is the proof. Without it, the task is a symptom.
-
-Phase 7 — Validate BLOCKERS references
-  python scripts/debrief.py validate --existing-tasks <snap> --proposed X
-  Warns on dangling IDs and already-completed IDs.
-
-Phase 8 — Tag the source file
-  python scripts/rename_tag.py --themes "<theme>:<id>,..." --path <src>
-  The themes + IDs come from the WRITTEN findings' PARENT_TASKs and the
-  breadcrumb meta-task.
-
-Phase 9 — Report + breadcrumb
-  Output the victim-log verdict, the recursion tree per finding, the WRITTEN
-  tasks, and the rename. Always create one breadcrumb task recording
-  (source file, date, finding IDs) so the next /debrief on the same file
-  finds it via TaskList and emits UPDATE, not CREATE.
-```
+The full Phase 0 → Phase 9 diagram lives in [`references/loop-diagram.md`](references/loop-diagram.md). Read it before invoking the loop.
 
 ## Bundled components
 
