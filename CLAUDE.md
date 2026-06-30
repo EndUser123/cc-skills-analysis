@@ -25,6 +25,7 @@ Analyzing HOW the work is progressing.
 | /trace | Evidence provenance and workflow tracing | `trace/` |
 | /rns | Extrapolates structured findings from transcripts | `rns/` |
 | /recap | Intelligent session summarization | `recap/` |
+| /debrief | Mine a transcript export for open issues/opportunities → cold-start tasks + source-file tag | `debrief/` |
 | /retro | Full retrospective protocol and self-contrast | `retro/` |
 | /epistemic-check | Validates response quality against contract | `epistemic-check/` |
 | config-audit | Audits project configuration for drift | `config-audit/` |
