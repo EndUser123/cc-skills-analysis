@@ -120,7 +120,6 @@ class ChatHistoryPatterns:
     REFLECTION_PATTERNS = {
         "goals_audit": r"(?:implemented|built|created|added)\s+([^\.\n]{10,50})\s+(?:feature|capability|function)",
         "boundary_uncertainty": r"(?:not\s+sure|uncertain|could\s+be)\s+([^\.\n]{10,50})",
-        "failure_mode_first": r"(?:fixed|fixed\s+the|resolved)\s+([^\.\n]{10,50})",
         "implementation_vs_capability": r"(?:can't|unable|doesn't)\s+(?:handle|support|do)\s+([^\.\n]{10,50})",
     }
 
@@ -464,6 +463,31 @@ class ChatHistoryPatterns:
         turns = read_turns(transcript_path)
         conversation_text = "\n".join([t.content for t in turns])
 
+        # failure_mode_first is gated on a STRUCTURED task-close marker, not the
+        # broad prose regex. The prose pattern fired on meta-discussion of the
+        # word "resolved" (14/14 FP on real transcript 5cb99096...). Derive
+        # context from the marker so the reflection attaches to a real completion.
+        closed_tasks: set[str] = set()
+        for m in re.finditer(
+            r"#(\d+)\s*(?:resolved|done|completed|fixed|closed)",
+            conversation_text,
+            re.IGNORECASE,
+        ):
+            closed_tasks.add(m.group(1))
+        for task_num in sorted(closed_tasks):
+            triggers.append(
+                ReflectionTrigger(
+                    trigger_type="failure_mode_first",
+                    context=f"task #{task_num}",
+                    suggested_reflection=(
+                        f"Before celebrating the fix to task #{task_num}, ask: "
+                        f"what is the likely failure mode? What discriminating "
+                        f"test would falsify it? Could this overfire?"
+                    ),
+                    priority="high",
+                )
+            )
+
         for trigger_type, pattern in self.REFLECTION_PATTERNS.items():
             matches = list(re.finditer(pattern, conversation_text, re.IGNORECASE))
 
@@ -483,14 +507,6 @@ class ChatHistoryPatterns:
                         f"What is the smallest discriminating check that would "
                         f"resolve uncertainty about '{context}'? Name the "
                         f"falsification condition."
-                    )
-                    priority = "high"
-
-                elif trigger_type == "failure_mode_first":
-                    suggested = (
-                        f"Before celebrating the fix to '{context}', ask: what "
-                        f"is the likely failure mode? What discriminating test "
-                        f"would falsify it? Could this overfire?"
                     )
                     priority = "high"
 
