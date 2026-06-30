@@ -1,0 +1,35 @@
+{
+  "expectations": [
+    {
+      "text": "Every proposed task includes the 5 core fields",
+      "passed": false,
+      "evidence": "missing=['VERIFIED FACTS', 'DEAD ENDS', 'DISCRIMINATING TEST', 'DEFINITION OF DONE']"
+    },
+    {
+      "text": "Output demonstrates gap analysis: timestamp finding is UPDATE to #500",
+      "passed": true,
+      "evidence": "#500 + update wording"
+    },
+    {
+      "text": "Rename plan proposes a source filename containing a #NNN tag",
+      "passed": true,
+      "evidence": "tags=['#500', '#1', '#500', '#500', '#500', '#500'] rename_lines=3"
+    },
+    {
+      "text": "Output cites transcript line numbers or quoted evidence",
+      "passed": true,
+      "evidence": "line/quote markers present"
+    },
+    {
+      "text": "Open issues and opportunities are separated",
+      "passed": true,
+      "evidence": "both sections present"
+    }
+  ],
+  "summary": {
+    "pass_rate": 0.8,
+    "passed": 4,
+    "failed": 1,
+    "total": 5
+  }
+}

@@ -1,0 +1,236 @@
+{
+  "metadata": {
+    "skill_name": "debrief",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-06-30T20:13:33Z",
+    "evals_run": [
+      0,
+      1
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Every proposed task includes the 5 core fields",
+          "passed": true,
+          "evidence": "missing=[]"
+        },
+        {
+          "text": "Output demonstrates gap analysis: timestamp finding is UPDATE to #500",
+          "passed": true,
+          "evidence": "#500 + update wording"
+        },
+        {
+          "text": "Rename plan proposes a source filename containing a #NNN tag",
+          "passed": true,
+          "evidence": "tags=['#500', '#500', '#500', '#500', '#500', '#500'] rename_lines=8"
+        },
+        {
+          "text": "Output cites transcript line numbers or quoted evidence",
+          "passed": true,
+          "evidence": "line/quote markers present"
+        },
+        {
+          "text": "Open issues and opportunities are separated",
+          "passed": true,
+          "evidence": "both sections present"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Every proposed task includes the 5 core fields",
+          "passed": true,
+          "evidence": "missing=[]"
+        },
+        {
+          "text": "Resolved items are NOT listed as open issues",
+          "passed": true,
+          "evidence": "resolved/dead-end handling signaled"
+        },
+        {
+          "text": "Dead-end knowledge is captured (Option B ruled out)",
+          "passed": true,
+          "evidence": "dead-end knowledge present"
+        },
+        {
+          "text": "Rename plan proposes a source filename containing a #NNN tag",
+          "passed": false,
+          "evidence": "tags=[] rename_lines=8"
+        },
+        {
+          "text": "Output includes a dependency graph or blocker cross-references",
+          "passed": true,
+          "evidence": "dep representation present"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Every proposed task includes the 5 core fields",
+          "passed": false,
+          "evidence": "missing=['VERIFIED FACTS', 'DEAD ENDS', 'DISCRIMINATING TEST', 'DEFINITION OF DONE']"
+        },
+        {
+          "text": "Output demonstrates gap analysis: timestamp finding is UPDATE to #500",
+          "passed": true,
+          "evidence": "#500 + update wording"
+        },
+        {
+          "text": "Rename plan proposes a source filename containing a #NNN tag",
+          "passed": true,
+          "evidence": "tags=['#500', '#1', '#500', '#500', '#500', '#500'] rename_lines=3"
+        },
+        {
+          "text": "Output cites transcript line numbers or quoted evidence",
+          "passed": true,
+          "evidence": "line/quote markers present"
+        },
+        {
+          "text": "Open issues and opportunities are separated",
+          "passed": true,
+          "evidence": "both sections present"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.6,
+        "passed": 3,
+        "failed": 2,
+        "total": 5,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Every proposed task includes the 5 core fields",
+          "passed": false,
+          "evidence": "missing=['VERIFIED FACTS', 'DEAD ENDS', 'DISCRIMINATING TEST', 'DEFINITION OF DONE']"
+        },
+        {
+          "text": "Resolved items are NOT listed as open issues",
+          "passed": true,
+          "evidence": "resolved/dead-end handling signaled"
+        },
+        {
+          "text": "Dead-end knowledge is captured (Option B ruled out)",
+          "passed": true,
+          "evidence": "dead-end knowledge present"
+        },
+        {
+          "text": "Rename plan proposes a source filename containing a #NNN tag",
+          "passed": false,
+          "evidence": "tags=[] rename_lines=9"
+        },
+        {
+          "text": "Output includes a dependency graph or blocker cross-references",
+          "passed": true,
+          "evidence": "dep representation present"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.9,
+        "stddev": 0.1414,
+        "min": 0.8,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.7,
+        "stddev": 0.1414,
+        "min": 0.6,
+        "max": 0.8
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.20",
+      "time_seconds": "+0.0",
+      "tokens": "+0"
+    }
+  },
+  "notes": []
+}

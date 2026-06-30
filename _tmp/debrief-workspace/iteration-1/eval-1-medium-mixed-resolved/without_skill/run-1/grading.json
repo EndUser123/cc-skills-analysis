@@ -1,0 +1,35 @@
+{
+  "expectations": [
+    {
+      "text": "Every proposed task includes the 5 core fields",
+      "passed": false,
+      "evidence": "missing=['VERIFIED FACTS', 'DEAD ENDS', 'DISCRIMINATING TEST', 'DEFINITION OF DONE']"
+    },
+    {
+      "text": "Resolved items are NOT listed as open issues",
+      "passed": true,
+      "evidence": "resolved/dead-end handling signaled"
+    },
+    {
+      "text": "Dead-end knowledge is captured (Option B ruled out)",
+      "passed": true,
+      "evidence": "dead-end knowledge present"
+    },
+    {
+      "text": "Rename plan proposes a source filename containing a #NNN tag",
+      "passed": false,
+      "evidence": "tags=[] rename_lines=9"
+    },
+    {
+      "text": "Output includes a dependency graph or blocker cross-references",
+      "passed": true,
+      "evidence": "dep representation present"
+    }
+  ],
+  "summary": {
+    "pass_rate": 0.6,
+    "passed": 3,
+    "failed": 2,
+    "total": 5
+  }
+}

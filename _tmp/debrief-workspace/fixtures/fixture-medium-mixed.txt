@@ -1,0 +1,26 @@
+● Working on the snapshot handoff chain reconstruction.
+
+● Bash(python walk_handoff_chain.py a07ff025)
+  ⎿  newest handoff n_2=None → parent invisible
+
+● The single-handoff read discards ancestor edges. Session 754f0d6e's newest handoff has n_2=None, so the parent link (223e7922) is invisible. This is the defect — need a graph walk that recursively follows n_2 and unions across all handoffs. (open issue)
+
+● Resolved earlier: the registry bipartite matching also failed to bridge sessions, but that's the same root cause — no native parent edge. We ruled out Option B (native resume signal) by probe: 0 of 110 transcripts resolve parentUuid to another file. So that path is closed. (resolved — documented as a dead end)
+
+● Bug: the Git Bash wrapper is word-splitting path tokens — /c/Users becomes /c/Use. Broke the inline-python probe three times. Worked around with a temp file but the wrapper itself is the problem. (open issue)
+
+● pi hung for 8+ minutes on the long inline design prompt again; trivial smoke returns in seconds. (open issue, known)
+
+● Implemented CHANGE-001 (_resolve_chain_from_handoff) + CHANGE-002 (wire as Strategy 0). Tests 7/7 green on branch ai/chs-chain-export. Not merged to main yet. (open — needs merge + verify)
+
+● Compaction boundary note: compactMetadata.preservedSegment.headUuid references an earlier uuid, so line order ≠ message order across a boundary. A walker that assumes contiguous line ranges per cycle is wrong — must follow the preservedSegment uuids. (open correctness risk for the walker)
+
+● Opportunity: reuse the existing transcript_chain field in /chs export instead of adding a new registry field — ~10-line consumer change. The original design was re-inventing infrastructure that already exists.
+
+● Opportunity: copy the prior terminal's handoff chain forward at SessionStart resume to close the transient gap before the new session's first PreCompact.
+
+● Pre-deployment island sessions (no parent_session_id) are permanently unlinkable. Accept as islands — not recoverable.
+
+● Cleaned up the orphan worktree at .claude/worktrees/chs-chain-export — empty husk from an interrupted session, removed. (resolved)
+
+● Shipping for now. Still open: merge the branch, fix the wrapper, the walker uuid-following.

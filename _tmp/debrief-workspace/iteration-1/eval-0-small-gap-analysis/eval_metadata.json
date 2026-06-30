@@ -1,0 +1,22 @@
+{
+  "eval_id": 0,
+  "eval_name": "small-gap-analysis",
+  "prompt": "Mine this chat-history transcript for every open issue and opportunity, and turn them into tracker tasks. The transcript is small enough to read in one pass. IMPORTANT context for the gap-analysis step \u2014 here is the CURRENT existing task list you must check against before creating anything: [#500 pending 'Fix timestamp parsing in ingestion path' (covers the parse_claude_timestamp numeric-only bug)]; [#501 pending 'Unrelated docs work']. So one of the transcript's findings likely already has a task \u2014 update, don't duplicate. DRY-RUN: do NOT call TaskCreate/TaskUpdate, do NOT rename any file. Instead write everything to debrief.md in the outputs dir.",
+  "assertions": [
+    {
+      "text": "Every proposed task includes the 5 core fields: PROBLEM, VERIFIED FACTS, DEAD ENDS, DISCRIMINATING TEST, DEFINITION OF DONE"
+    },
+    {
+      "text": "Output demonstrates gap analysis: the timestamp-parser finding is an UPDATE to #500, not a new task"
+    },
+    {
+      "text": "Rename plan proposes a source filename containing a #NNN task-number tag"
+    },
+    {
+      "text": "Output cites transcript line numbers or quoted evidence for findings"
+    },
+    {
+      "text": "Open issues and opportunities are separated into distinct sections"
+    }
+  ]
+}

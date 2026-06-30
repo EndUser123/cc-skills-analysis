@@ -1,0 +1,22 @@
+{
+  "eval_id": 1,
+  "eval_name": "medium-mixed-resolved",
+  "prompt": "Mine this chat-history transcript for every open issue and opportunity, and turn them into tracker tasks. The transcript contains a mix of open issues, resolved items (which must NOT be listed as open), and opportunities. There is no existing task list \u2014 all findings are new. DRY-RUN: do NOT call TaskCreate/TaskUpdate, do NOT rename any file. Write everything to debrief.md in the outputs dir.",
+  "assertions": [
+    {
+      "text": "Every proposed task includes the 5 core fields: PROBLEM, VERIFIED FACTS, DEAD ENDS, DISCRIMINATING TEST, DEFINITION OF DONE"
+    },
+    {
+      "text": "Resolved items (Option B ruled out; orphan worktree cleanup; pytest ImportError fix) are NOT listed as open issues"
+    },
+    {
+      "text": "Dead-end knowledge is captured (e.g. Option B / native parent edge ruled out)"
+    },
+    {
+      "text": "Rename plan proposes a source filename containing a #NNN task-number tag"
+    },
+    {
+      "text": "Output includes a dependency graph or blocker cross-references between tasks"
+    }
+  ]
+}

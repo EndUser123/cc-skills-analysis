@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "debrief", "runs": [{"id": "eval-0-small-gap-analysis-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "debrief.md", "type": "text", "content": "# Debrief \u2014 fixture-small-logging.txt\n\nSource: `_tmp/debrief-workspace/fixtures/fixture-small-logging.txt`\nRun date: 2026-06-30 (DRY-RUN: no TaskCreate/TaskUpdate, no file rename)\n\n---\n\n## Open Issues\n\nGrouped by theme. Each item carries a transcript-line citation.\n\n### Ingestion & data quality\n\n**OI-1. Second, unfixed copy of `parse_claude_timestamp` in the reindex script.**\nThe session fixed the parser in `core/chs/parse.py` but a duplicate function in another file is still the old broken (numeric-only) version. Citation, fixture L17:\n> \"TODO: there's a second copy of parse_claude_timestamp in scripts/reindex_from_jsonl.py:132 that is still the old broken version. I didn't fix it yet because the worktree write gate blocked the cross-tree edit. This needs to be fixed or both copies will disagree.\"\n\nNamed symbol: `parse_claude_timestamp` at `scripts/reindex_from_jsonl.py:132`.\n\n### Data-integrity traps\n\n**OI-2. FK violations silently swallowed by `INSERT OR IGNORE`.**\n`PRAGMA foreign_keys=ON` is set, but the ingest path uses `INSERT OR IGNORE`, which treats orphan rows as dedup hits, making orphans indistinguishable from intentional skips. Citation, fixture L19:\n> \"Risk: PRAGMA foreign_keys=ON is set in db.py:35, but the ingest uses INSERT OR IGNORE which silently swallows FK violations. Orphan messages would look identical to dedup hits. Haven't hit it yet but it's a trap.\"\n\nNamed files: `db.py:35`, the ingest INSERT statement.\n\n---\n\n## Opportunities\n\n**OP-1. Regression test for the timestamp parser repair.**\nA cheap test that seeds a temp DB with `timestamp=0` rows and verifies the parser fix repairs them \u2014 surfaced but not actioned. Citation, fixture L21:\n> \"Opportunity: this whole pipeline could use a regression test that seeds a temp DB with timestamp=0 rows and verifies the parser fix repairs them. Not blocking, but cheap insurance.\"\n\n**OP-2. Consolidate the duplicate parser.**\nThe existence of two copies (OI-1) is itself the leverage point \u2014 the second copy should likely import from the first rather than be re-patched, eliminating the divergence permanently.\n\n---\n\n## Proposed Tasks\n\n### Task A \u2014 UPDATE-to-#500\n\nAppend to existing #500 \"Fix timestamp parsing in ingestion path\".\n\n```\nTITLE:          Fix the SECOND copy of parse_claude_timestamp in the reindex script (append to #500)\nPROBLEM:        The main parser is fixed, but the reindex script still has the old broken copy, so reindex and live ingest will disagree on timestamps.\nVERIFIED FACTS: - core/chs/parse.py fixed: ISO-8601 branch added, \"swap trailing Z -> +00:00\" (fixture L12-13)\n                - Second copy still old/numeric-only at scripts/reindex_from_jsonl.py:132 (fixture L17)\n                - Live records carry ISO-8601 strings e.g. \"2026-06-30T00:29:31.559Z\" (fixture L10)\n                - SELECT MAX(timestamp) FROM messages = 0 across all 384,105 rows (fixture L10)\n                - Original numeric-only body: int(raw) with except -> return 0 (fixture L4-8)\nMUST RE-VERIFY: - That scripts/reindex_from_jsonl.py:132 still hosts the stale copy (read the file before editing)\n                - That the worktree write gate that blocked the edit last session is not still blocking cross-tree edits\n                - Whether the reindex script's call signature/return-type contract matches core/chs/parse.py exactly\nDEAD ENDS:      - Could not fix the second copy last session: \"the worktree write gate blocked the cross-tree edit\" (fixture L17). Do NOT re-attempt from inside the same worktree scope that blocked it; edit from a scope that can write scripts/, or import the canonical function instead of duplicating.\nDISCRIMINATING TEST: grep -n \"def parse_claude_timestamp\" scripts/reindex_from_jsonl.py \u2192 returns at most the import (or the function is gone/imports from core/chs/parse.py); then run the reindex against a fixture row \"2026-06-30T00:29:31.559Z\" and assert the stored timestamp != 0.\nDEFINITION OF DONE: scripts/reindex_from_jsonl.py no longer defines a numeric-only parse_claude_timestamp (either imports from core/chs/parse.py or is patched identically); reindex over an ISO-8601 fixture row yields a non-zero timestamp; no second copy of the numeric-only body exists repo-wide (grep returns only the canonical one).\nBLOCKERS:       none (write-gate blocker was an environment condition, not a tracked task \u2014 resolve by editing from a writable scope)\nBLAST RADIUS:   scripts/reindex_from_jsonl.py only (single function). Reversible. Consolidating via import (vs re-patching) is the preferred, lower-divergence option \u2014 see OP-2. Safe: reindex is a re-run path, so a corrected parser only improves data, never destroys it.\nNEXT STEP:      Read scripts/reindex_from_jsonl.py around line 132 to confirm the stale copy and its callers.\n```\n\nAppended dated note for #500's existing record:\n\n```\n=== 2026-06-30 debrief update \u2014 fixture-small-logging.txt ===\nNew evidence this run:\n- A SECOND stale copy of parse_claude_timestamp exists at scripts/reindex_from_jsonl.py:132 and is still numeric-only (fixture L17). The #500 fix to core/chs/parse.py (ISO-8601 branch, fixture L12-13) does NOT cover it.\n- Quantified impact confirmed: SELECT MAX(timestamp) FROM messages = 0 across 384,105 rows (fixture L10); live records are ISO-8601 e.g. \"2026-06-30T00:29:31.559Z\" (fixture L10).\nDEAD END recorded: the original session was BLOCKED from fixing the second copy by the worktree write gate (fixture L17). Approach via a writable scope, or replace the duplicate with an import from the canonical function.\nRefined DISCRIMINATING TEST: see Task A above.\nGATED BY: none\n```\n\n---\n\n### Task B \u2014 CREATE\n\n```\nTITLE:          Surface FK violations in ingest instead of INSERT OR IGNORE swallowing them as dedup hits\nPROBLEM:        Orphan messages are indistinguishable from dedup hits because INSERT OR IGNORE silently swallows FK violations, masking data-integrity loss.\nVERIFIED FACTS: - PRAGMA foreign_keys=ON is set in db.py:35 (fixture L19)\n                - Ingest uses INSERT OR IGNORE (fixture L19)\n                - Author's own characterization: \"Orphan messages would look identical to dedup hits\" (fixture L19)\n                - Status: \"Haven't hit it yet but it's a trap\" \u2014 NOT yet observed failing (fixture L19)\nMUST RE-VERIFY: - The exact ingest INSERT statement(s) and which FKs they reference (read the ingest code + schema)\n                - Whether INSERT OR IGNORE is intentional for dedup (don't remove dedup behavior \u2014 add distinct FK surfacing)\n                - Whether any existing orphan rows already exist in the DB (count query against the FK relationships)\nDEAD ENDS:      - None recorded in the session \u2014 this is a flagged risk, not a previously-attempted fix. The author explicitly did NOT attempt a fix, so there is no wrong-cause to avoid; only the framing \"trap, not yet hit\" must be respected (don't over-engineer a migration before measuring whether orphans actually occur).\nDISCRIMINATING TEST: Insert a deliberately-orphan message row (FK that does not resolve) and confirm the ingest path now raises/surfaces it (or logs a count) rather than silently dropping it; separately insert a genuine duplicate PK and confirm dedup-ignore still behaves (i.e. FK-orphans and dedup-hits are distinguishable).\nDEFINITION OF DONE: An ingest run that hits an FK violation produces a distinct, observable signal (error, warning count, or log line) \u2014 NOT the same silent skip a dedup hit produces. A test demonstrates orphan vs dedup give different outcomes.\nBLOCKERS:       Consider gating behind a cheap decision-gate task first: \"measure whether any orphan rows currently exist / whether anyone consumes this DB\" \u2014 if zero orphans and no consumers, this is insurance work. (See Dependency Graph.)\nBLAST RADIUS:   db.py ingest path and the INSERT strategy. Medium caution: changing IGNORE behavior could turn previously-swallowed rows into hard errors and surface a backlog of orphans on the next ingest. Reversible (revert the statement). Do not run against the 384,105-row live DB without first measuring orphan count on a copy.\nNEXT STEP:      Read the ingest INSERT statements and the schema FK definitions to scope the change.\n```\n\n---\n\n### Task C \u2014 CREATE\n\n```\nTITLE:          Add timestamp-parser regression test (seed temp DB with timestamp=0 rows, assert repair)\nPROBLEM:        The parser fix has no regression test; a future edit to parse_claude_timestamp could silently reintroduce the numeric-only bug (all timestamps back to 0) with no signal.\nVERIFIED FACTS: - This is an explicit, unfunded opportunity: \"this whole pipeline could use a regression test that seeds a temp DB with timestamp=0 rows and verifies the parser fix repairs them. Not blocking, but cheap insurance.\" (fixture L21)\n                - The bug class it guards: numeric-only parse returns 0 for ISO-8601, silent across 384,105 rows (fixture L10)\nMUST RE-VERIFY: - Whether a test harness / temp-DB fixture pattern already exists in the repo (reuse it \u2014 do not invent one)\n                - That the conftest ImportError seen last session (\"build failed on pytest collection \u2014 ImportError on conftest. Fixed by pinning pytest version\", fixture L15) is actually resolved before relying on pytest to run the new test\nDEAD ENDS:      - pytest collection previously failed with ImportError on conftest; it was fixed by pinning pytest version (fixture L15). Do NOT assume the harness is healthy \u2014 verify collection runs clean before adding the test.\nDISCRIMINATING TEST: python -m pytest <new test> \u2192 the test seeds a row whose raw timestamp is an ISO-8601 string, runs the parser, asserts parsed value != 0 AND is a sane epoch-ms; then deliberately revert the ISO branch locally and confirm the test FAILS (proves it actually guards the fix).\nDEFINITION OF DONE: A committed test that passes with the ISO branch present and fails when it is removed; CI/pytest collection runs clean (no conftest ImportError).\nBLOCKERS:       Soft-blocked on confirming the pytest harness is healthy (conftest pinning held, fixture L15). No task-level blocker otherwise.\nBLAST RADIUS:   Test files only \u2014 no production code change. Additive and safe. Use the repo's existing temp-DB pattern if one exists; otherwise a single test function with a tmp_path fixture.\nNEXT STEP:      Glob the repo for existing timestamp/parse tests and temp-DB fixtures to reuse.\n```\n\n---\n\n## Dependency Graph\n\n```\n#500 (ingest parser fix \u2014 EXISTS)  \u2500\u2500 main copy fixed; Task A EXTENDS #500 to the second copy\n   \u2502\n   \u251c\u2500\u25ba Task A (UPDATE-to-#500): fix scripts/reindex_from_jsonl.py:132\n   \u2502      \u2514\u2500 verify with one test that both paths agree\n   \u2502\n   \u2514\u2500\u25ba Task C (CREATE, regression test): guards #500's fix against regression\n          \u2514\u2500 soft-gate: confirm pytest harness healthy (conftest pin held, fixture L15)\n\n[gate, optional]  measure-orphan-count / measure-DB-consumers  (decision gate \u2014 cheap)\n   \u2502\n   \u2514\u2500\u25ba Task B (CREATE, FK surfacing): only worth building if orphans exist OR the DB is consumed\n```\n\nAttack order: Task A first (closes the half-shipped #500; highest urgency \u2014 half a fix with two disagreeing copies is worse than one bug). Task C next (cheap insurance, locks in the fix). Task B only after the decision-gate confirms it's worth doing \u2014 it is the lowest-certainty, highest-blast-radius item (\"haven't hit it yet\", fixture L19).\n\n---\n\n## Source File Rename\n\n(DRY-RUN \u2014 file was NOT renamed. Proposed name below.)\n\n- **Old:** `fixture-small-logging.txt`\n- **New:** `fixture-small-logging [parser #500 \u00b7 FK #<Task-B-id> \u00b7 test #<Task-C-id>].txt`\n\nNotes:\n- #500 is the existing ingest-parser task (Task A appends to it). The two new CREATEs (Task B = FK surfacing, Task C = regression test) would receive fresh IDs in a real run; placeholders shown until TaskCreate assigns them.\n- Original name + extension preserved; only a tag bracket appended; uses only Windows-safe chars (`#`, spaces, brackets, `\u00b7`).\n- In a real run: rename, then `ls`/Read to confirm byte count unchanged.\n"}], "grading": {"expectations": [{"text": "Every proposed task includes the 5 core fields", "passed": true, "evidence": "missing=[]"}, {"text": "Output demonstrates gap analysis: timestamp finding is UPDATE to #500", "passed": true, "evidence": "#500 + update wording"}, {"text": "Rename plan proposes a source filename containing a #NNN tag", "passed": true, "evidence": "tags=['#500', '#500', '#500', '#500', '#500', '#500'] rename_lines=8"}, {"text": "Output cites transcript line numbers or quoted evidence", "passed": true, "evidence": "line/quote markers present"}, {"text": "Open issues and opportunities are separated", "passed": true, "evidence": "both sections present"}], "summary": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5}}}, {"id": "eval-0-small-gap-analysis-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "debrief.md", "type": "text", "content": "# Debrief \u2014 fixture-small-logging\n\nSource transcript: `fixture-small-logging.txt` (a timestamp-parser bugfix session in the CHS ingestion path)\n\n## Open Issues\n\n1. **Second broken copy of `parse_claude_timestamp`** \u2014 `scripts/reindex_from_jsonl.py:132` is still the old numeric-only version. The main copy in `core/chs/parse.py` was fixed (ISO-8601 branch added), but the duplicate was left untouched because a worktree write gate blocked the cross-tree edit. The two copies will now disagree.\n2. **Foreign-key violation silent-swallow trap** \u2014 `PRAGMA foreign_keys=ON` is set in `db.py:35`, but the ingest path uses `INSERT OR IGNORE`, which swallows FK violations. Orphan messages would look identical to dedup hits. Not yet triggered in the data, but it's a latent data-integrity trap.\n3. **(Resolved in-session, noted for completeness)** pytest-collection ImportError on conftest, fixed by pinning the pytest version. No open work.\n4. **(Already tracked)** The main `parse_claude_timestamp` numeric-only bug \u2014 covered by existing task #500.\n\n## Opportunities\n\n1. **Regression test for the parser repair** \u2014 seed a temp DB with `timestamp=0` rows, run the fixed parser, verify they are repaired. Cheap insurance against re-regression; explicitly called out by the author as non-blocking but cheap.\n2. **De-duplicate the parser** \u2014 the existence of two divergent copies of `parse_claude_timestamp` is the root structural defect that let issue #1 happen. Beyond fixing the second copy, the duplication itself should be collapsed (single source of truth) so the next caller can't silently re-introduce a third broken version.\n\n## Proposed Tasks\n\n### Task A \u2014 UPDATE existing #500: scope the parser fix to BOTH copies\n\n- **Title:** Fix timestamp parsing in ingestion path \u2014 cover both `parse_claude_timestamp` copies\n- **New or update:** **UPDATE** to existing **#500** (broadens its scope; the original #500 only names the numeric-only bug, not the second-copy duplicate).\n- **Problem:** #500's current description (\"covers the parse_claude_timestamp numeric-only bug\") implies a single fix site. The session shows the parser exists in two places and only one was repaired. If #500 closes after the main-copy fix, the second copy ships broken.\n- **Evidence:** Transcript lines 17 and 23 \u2014 \"there's a second copy of parse_claude_timestamp in scripts/reindex_from_jsonl.py:132 that is still the old broken version \u2026 This needs to be fixed or both copies will disagree\"; \"The main parser is fixed but the second copy \u2026 are still open.\"\n- **Done looks like:** Both `core/chs/parse.py` and `scripts/reindex_from_jsonl.py:132` accept ISO-8601 strings (trailing `Z` \u2192 `+00:00`); a test proves the two copies agree on the same inputs; `SELECT MAX(timestamp)` is non-zero against a known ISO-string fixture.\n- **Dependencies:** None (foundational; Task B depends on this).\n\n### Task B \u2014 NEW: collapse the duplicated parser into one source of truth\n\n- **Title:** De-duplicate `parse_claude_timestamp` (single canonical implementation)\n- **New or update:** **NEW** (no existing task covers the structural duplication).\n- **Problem:** Two copies of the same function in different trees is what let one copy get fixed while the other stayed broken. Fixing the second copy (Task A) repairs today's symptom; removing the duplication prevents the next one.\n- **Evidence:** Transcript line 17 \u2014 second copy at `scripts/reindex_from_jsonl.py:132`. Existence of two divergent copies is itself the defect.\n- **Done looks like:** One canonical `parse_claude_timestamp`; the reindex script imports it rather than redefining it; grep shows a single definition across the repo.\n- **Dependencies:** **Blocked by Task A** (fix both copies first, then collapse \u2014 collapsing a half-fixed duplicate risks propagating the bug into the canonical copy). Optional: could be folded into Task A as a second commit if the team prefers one PR.\n\n### Task C \u2014 NEW: close the FK silent-swallow trap in the ingest path\n\n- **Title:** Stop `INSERT OR IGNORE` from masking foreign-key violations during ingest\n- **New or update:** **NEW** (no existing task; #500/#501 don't touch it).\n- **Problem:** `PRAGMA foreign_keys=ON` (db.py:35) is meaningless for data integrity while the ingest path uses `INSERT OR IGNORE`, because FK violations are swallowed alongside genuine dedup conflicts. Orphan rows become indistinguishable from dedup hits.\n- **Evidence:** Transcript line 19 \u2014 \"PRAGMA foreign_keys=ON is set in db.py:35, but the ingest uses INSERT OR IGNORE which silently swallows FK violations. Orphan messages would look identical to dedup hits.\"\n- **Done looks like:** Either (a) drop `INSERT OR IGNORE` in favor of explicit dedup check + `INSERT` so FK errors surface, or (b) keep `INSERT OR IGNORE` but add a post-ingest reconciliation/audit that counts and reports orphaned rows; chosen approach documented with the tradeoff. A test seeds an orphan-parent row and asserts the violation is detectable (not silently dropped).\n- **Dependencies:** None (independent of the parser work).\n\n### Task D \u2014 NEW: regression test for the timestamp-parser repair\n\n- **Title:** Add regression test seeding `timestamp=0` rows and asserting the parser repair\n- **New or update:** **NEW** (no existing task).\n- **Problem:** The parser fix had no automated guard. If the ISO-8601 branch regresses (or a third copy reintroduces the numeric-only version), nothing catches it.\n- **Evidence:** Transcript line 21 \u2014 \"this whole pipeline could use a regression test that seeds a temp DB with timestamp=0 rows and verifies the parser fix repairs them. Not blocking, but cheap insurance.\"\n- **Done looks like:** A pytest that seeds a temp DB with `timestamp=0` rows, runs the parser, and asserts the rows are repaired to non-zero; CI runs it; it fails if the ISO branch is removed.\n- **Dependencies:** **Blocked by Task A** (the test asserts the fix is present everywhere; until both copies are fixed the test would fail against the second copy). Can be written alongside Task A.\n\n## Dependency summary\n\n- Task A (update #500) \u2014 foundational, no deps.\n- Task B (de-dup) \u2014 blocked by A.\n- Task C (FK trap) \u2014 independent.\n- Task D (regression test) \u2014 blocked by A.\n\n## Proposed file rename\n\nTag the source fixture with the task numbers it informs:\n\n- **Current:** `fixture-small-logging.txt`\n- **Proposed:** `fixture-small-logging__t500_tABC_tBCD_tD.txt`\n\nWhere the new tasks take the next available IDs (the three new tasks would be assigned consecutive IDs after #501). Using placeholder letters since this is a dry-run and no TaskCreate was called. Once real IDs are assigned, substitute them (e.g. `fixture-small-logging__t500_t502_t503_t504.txt`).\n\nMapping for the rename tag:\n- `t500` \u2014 Task A (update to #500, the parser fix covering both copies)\n- `tBCD` \u2014 Task B (de-dup, the new second-copy collapse)\n- `tCDE` \u2014 Task C (FK silent-swallow trap)\n- `tDEF` \u2014 Task D (regression test)\n"}], "grading": {"expectations": [{"text": "Every proposed task includes the 5 core fields", "passed": false, "evidence": "missing=['VERIFIED FACTS', 'DEAD ENDS', 'DISCRIMINATING TEST', 'DEFINITION OF DONE']"}, {"text": "Output demonstrates gap analysis: timestamp finding is UPDATE to #500", "passed": true, "evidence": "#500 + update wording"}, {"text": "Rename plan proposes a source filename containing a #NNN tag", "passed": true, "evidence": "tags=['#500', '#1', '#500', '#500', '#500', '#500'] rename_lines=3"}, {"text": "Output cites transcript line numbers or quoted evidence", "passed": true, "evidence": "line/quote markers present"}, {"text": "Open issues and opportunities are separated", "passed": true, "evidence": "both sections present"}], "summary": {"pass_rate": 0.8, "passed": 4, "failed": 1, "total": 5}}}, {"id": "eval-1-medium-mixed-resolved-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "debrief.md", "type": "text", "content": "# Debrief \u2014 Snapshot Handoff Chain Reconstruction (fixture-medium-mixed)\n\nSource transcript: `fixture-medium-mixed.txt` (26 lines)\nExisting task list at debrief time: **none** \u2192 all findings are CREATE (Phase 3).\nDRY-RUN: no TaskCreate/TaskUpdate invoked; no source file renamed. Task IDs below are provisional (`T1`\u2013`T6`) for graph wiring only.\n\n---\n\n## Open Issues\n\n### CHS handoff-chain / walker\n\n- **Single-handoff read discards ancestor edges.** \"The single-handoff read discards ancestor edges. Session 754f0d6e's newest handoff has n_2=None, so the parent link (223e7922) is invisible. This is the defect \u2014 need a graph walk that recursively follows n_2 and unions across all handoffs.\" (L6)\n- **Compaction-boundary uuid ordering breaks naive walkers.** \"compactMetadata.preservedSegment.headUuid references an earlier uuid, so line order \u2260 message order across a boundary. A walker that assumes contiguous line ranges per cycle is wrong \u2014 must follow the preservedSegment uuids.\" (L16)\n- **Implemented fix not merged.** \"Implemented CHANGE-001 (`_resolve_chain_from_handoff`) + CHANGE-002 (wire as Strategy 0). Tests 7/7 green on branch `ai/chs-chain-export`. Not merged to main yet.\" (L14) \u2014 needs merge + verify on main.\n- **Final session note confirms the open set.** \"Still open: merge the branch, fix the wrapper, the walker uuid-following.\" (L26)\n\n### Tooling friction\n\n- **Git Bash wrapper word-splits path tokens.** \"the Git Bash wrapper is word-splitting path tokens \u2014 /c/Users becomes /c/Use. Broke the inline-python probe three times. Worked around with a temp file but the wrapper itself is the problem.\" (L10)\n- **pi hangs on long inline prompts.** \"pi hung for 8+ minutes on the long inline design prompt again; trivial smoke returns in seconds.\" (L12) \u2014 known, recurring.\n\n### Excluded as resolved / out of scope (verified against source \u2014 NOT listed above as open)\n\n- Registry bipartite matching failure \u2014 same root cause as the handoff defect; **Option B (native resume signal) ruled out by probe (0 of 110 transcripts resolve parentUuid to another file)** \u2014 closed dead end, recorded in task DEAD ENDS. (L8)\n- Orphan worktree at `.claude/worktrees/chs-chain-export` \u2014 **cleaned up / resolved.** (L24)\n- Pre-deployment island sessions (no parent_session_id) permanently unlinkable \u2014 **accepted as islands, not recoverable** \u2014 constraint, not an open issue. (L22)\n\n---\n\n## Opportunities\n\n- **Reuse the existing `transcript_chain` field in `/chs` export** instead of adding a new registry field \u2014 \"~10-line consumer change. The original design was re-inventing infrastructure that already exists.\" (L18)\n- **Copy the prior terminal's handoff chain forward at SessionStart resume** to close the transient gap before the new session's first PreCompact. (L20)\n\n---\n\n## Proposed Tasks\n\nEach task below uses the 8-field cold-start template (TITLE, PROBLEM, VERIFIED FACTS, MUST RE-VERIFY, DEAD ENDS, DISCRIMINATING TEST, DEFINITION OF DONE, BLOCKERS, BLAST RADIUS).\n\n### T1 \u2014 Merge `ai/chs-chain-export` (CHANGE-001 + CHANGE-002) to main and verify\n\n```\nTITLE:          Merge the chs handoff-chain export branch to main and re-verify\nPROBLEM:        The handoff ancestor-edge defect is implemented and green on a branch but lives nowhere the next session can use it.\nVERIFIED FACTS: - \"Implemented CHANGE-001 (_resolve_chain_from_handoff) + CHANGE-002 (wire as Strategy 0). Tests 7/7 green on branch ai/chs-chain-export. Not merged to main yet.\" (transcript L14)\n                - Root defect the changes target: single-handoff read drops ancestor edges; session 754f0d6e newest handoff n_2=None hides parent 223e7922 (transcript L6)\n                - \"Still open: merge the branch, fix the wrapper, the walker uuid-following.\" (transcript L26)\nMUST RE-VERIFY: - 7/7 green claim is from the session, NOT re-run this debrief \u2014 re-run the suite on main after merge.\n                - That CHANGE-001 truly follows n_2 recursively and unions across all handoffs (the L6 requirement) \u2014 confirm against merged code, not the session narrative.\nDEAD ENDS:      - Do NOT pursue a native resume signal (Option B): probe showed 0 of 110 transcripts resolve parentUuid to another file \u2014 that path is closed (transcript L8).\n                - Registry bipartite matching does NOT bridge sessions \u2014 same missing-native-parent-edge root cause; do not re-attempt matching as the fix (transcript L8).\nDISCRIMINATING TEST: On main after merge, run `python walk_handoff_chain.py a07ff025` (and 754f0d6e) \u2014 the ancestor edge (e.g. 223e7922) must resolve, not return None.\nDEFINITION OF DONE: Branch merged to main; full test suite green on main (\u22657/7, no regressions); `walk_handoff_chain.py a07ff025` resolves the previously-invisible parent uuid.\nBLOCKERS:       none external (branch + tests reportedly ready).\nBLAST RADIUS:   Touches the CHS export + handoff-chain resolution path. Merge is reversible (revert commit). Verify on main before any downstream consumer depends on the new edge semantics.\nNEXT STEP:      diff `ai/chs-chain-export` vs main; re-run the 7 tests; merge.\n```\n\n### T2 \u2014 Make the chain walker follow `preservedSegment` uuids across compaction boundaries\n\n```\nTITLE:          Make the handoff-chain walker follow preservedSegment uuids instead of contiguous line ranges\nPROBLEM:        A chain walker that assumes contiguous line ranges per cycle produces wrong order across compaction boundaries, silently corrupting reconstructed history.\nVERIFIED FACTS: - \"compactMetadata.preservedSegment.headUuid references an earlier uuid, so line order \u2260 message order across a boundary. A walker that assumes contiguous line ranges per cycle is wrong \u2014 must follow the preservedSegment uuids.\" (transcript L16)\n                - This is a correctness risk ON the new walker introduced by CHANGE-001/002 (T1), flagged but not yet fixed. (transcript L14, L16, L26)\nMUST RE-VERIFY: - Whether CHANGE-001's current implementation already follows preservedSegment uuids or still assumes contiguous ranges \u2014 NOT confirmed this debrief; inspect the merged code from T1.\n                - Existence/shape of compactMetadata.preservedSegment in a real compacted transcript \u2014 pull one and confirm the field path.\nDEAD ENDS:      - Contiguous-line-range reconstruction across a boundary is the wrong premise \u2014 do not patch line offsets, follow the uuids (transcript L16).\nDISCRIMINATING TEST: Walk a session that spans a compaction boundary; assert the reconstructed message order matches compactMetadata.preservedSegment.headUuid chain, not raw line order.\nDEFINITION OF DONE: A regression test using a real compacted transcript passes: walker output order == preservedSegment-uuid order across the boundary. Fails on the contiguous-range assumption.\nBLOCKERS:       T1 (need the merged walker code to inspect/fix). Confirmed-only-after T1 so the fix lands on main, not the branch.\nBLAST RADIUS:   Same walker module as T1. Pure ordering logic \u2014 reversible by reverting the walker change. Low blast radius but high silent-correctness risk if skipped.\nNEXT STEP:      After T1 merges, read _resolve_chain_from_handoff and check whether it already follows preservedSegment uuids.\n```\n\n### T3 \u2014 Fix Git Bash wrapper word-splitting path tokens (`/c/Users` \u2192 `/c/Use`)\n\n```\nTITLE:          Fix Git Bash wrapper word-splitting on Windows path tokens\nPROBLEM:        Path tokens fed to the Git Bash wrapper are truncated (e.g. /c/Users \u2192 /c/Use), repeatedly breaking inline-python probes.\nVERIFIED FACTS: - \"the Git Bash wrapper is word-splitting path tokens \u2014 /c/Users becomes /c/Use. Broke the inline-python probe three times. Worked around with a temp file but the wrapper itself is the problem.\" (transcript L10)\nMUST RE-VERIFY: - The exact wrapper / invocation path (which \"Git Bash wrapper\" \u2014 the harness shell, a profile alias, or a plugin helper) \u2014 NOT identified this debrief; locate it before patching.\n                - Whether the split is tokenization or quoting \u2014 reproduce with a minimal echo of the offending path.\nDEAD ENDS:      - Temp-file workaround addresses symptoms, not the wrapper \u2014 do not ship the workaround as the fix (transcript L10).\nDISCRIMINATING TEST: Pass a path containing `/c/Users/...` through the wrapper; assert the receiver sees the full path verbatim (no truncation at `/c/Use`).\nDEFINITION OF DONE: Minimal repro command round-trips `/c/Users/...` untruncated through the wrapper; the original inline-python probe no longer breaks on path tokens.\nBLOCKERS:       none.\nBLAST RADIUS:   Shell/wrapper layer \u2014 affects every command routed through it. Fix is reversible. Test with a benign path before trusting it on real probes.\nNEXT STEP:      Identify the wrapper definition (profile / harness / plugin) and add a one-token path round-trip assertion.\n```\n\n### T4 \u2014 Investigate / mitigate pi hangs on long inline prompts\n\n```\nTITLE:          Stop pi from hanging 8+ minutes on long inline design prompts\nPROBLEM:        Long inline prompts to pi hang for 8+ minutes while trivial smoke calls return in seconds, blocking interactive work.\nVERIFIED FACTS: - \"pi hung for 8+ minutes on the long inline design prompt again; trivial smoke returns in seconds.\" (transcript L12) \u2014 flagged \"known, recurring\".\nMUST RE-VERIFY: - Reproduce deterministically: same long prompt \u2192 measure wall-clock; confirm the hang is prompt-length-dependent and not a transient network/provider stall.\n                - Whether a shorter / chunked prompt avoids the hang \u2014 not tested this debrief.\nDEAD ENDS:      - none recorded.\nDISCRIMINATING TEST: Time pi on the known long prompt before vs after mitigation; assert response in \u2264 N seconds (pick N from the smoke-call baseline, e.g. < 60s), not 8+ minutes.\nDEFINITION OF DONE: Long-prompt call returns within the chosen timeout on 3 consecutive runs; a fallback (chunk, or timeout + route elsewhere) is in place so the session never blocks 8 minutes again.\nBLOCKERS:       none.\nBLAST RADIUS:   pi invocation path / prompt-construction layer. Reversible. Do not mask a real provider outage as a \"fixed hang\" \u2014 distinguish length-triggered from outage-triggered before claiming done.\nNEXT STEP:      Capture the exact long prompt, time it cold, then test a chunked variant.\n```\n\n### T5 \u2014 Reuse `transcript_chain` field in `/chs` export instead of adding a new registry field  (OPPORTUNITY)\n\n```\nTITLE:          Reuse the existing transcript_chain field in /chs export (drop the new registry field)\nPROBLEM:        The handoff-chain work risks adding a new registry field when an existing export field already carries the chain \u2014 pure re-invention.\nVERIFIED FACTS: - \"reuse the existing transcript_chain field in /chs export instead of adding a new registry field \u2014 ~10-line consumer change. The original design was re-inventing infrastructure that already exists.\" (transcript L18)\nMUST RE-VERIFY: - That `transcript_chain` in the /chs export actually contains the chain the new consumers need (shape + completeness) \u2014 NOT inspected this debrief.\n                - Current count of consumers of the proposed new field \u2014 if zero, the new field is pure deletion.\nDEAD ENDS:      - Adding a parallel registry field duplicates existing infra \u2014 the session explicitly calls the original design re-invention (transcript L18).\nDISCRIMINATING TEST: Diff the consumer change (~10 lines) pointed at transcript_chain; assert the export's chain output is byte-identical to what the new-field path would have produced.\nDEFINITION OF DONE: No new registry field added; /chs export consumers read transcript_chain; existing export tests still green and a new test asserts the chain is populated end-to-end.\nBLOCKERS:       T1 (the change lands on the merged chain work; coordinate so the consumer points at the merged field semantics).\nBLAST RADIUS:   /chs export consumers only \u2014 ~10-line change, reversible. Confirm no consumer already depends on the would-be new field name before deleting it.\nNEXT STEP:      Grep /chs export for transcript_chain to confirm it holds the needed chain.\n```\n\n### T6 \u2014 Copy prior terminal's handoff chain forward at SessionStart resume  (OPPORTUNITY)\n\n```\nTITLE:          Forward-copy the prior terminal's handoff chain at SessionStart resume\nPROBLEM:        Between SessionStart resume and the new session's first PreCompact there is a transient gap where the chain is unavailable.\nVERIFIED FACTS: - \"copy the prior terminal's handoff chain forward at SessionStart resume to close the transient gap before the new session's first PreCompact.\" (transcript L20)\nMUST RE-VERIFY: - That the gap is real (not already closed by CHANGE-002 / Strategy 0 wiring from L14) \u2014 confirm against merged code from T1.\n                - Where the prior terminal's chain is persisted at resume time and whether SessionStart has read access \u2014 not inspected.\nDEAD ENDS:      - Pre-deployment island sessions (no parent_session_id) are permanently unlinkable \u2014 do NOT try to chain those; accept as islands (transcript L22).\nDISCRIMINATING TEST: Start a resume session; before its first PreCompact fires, assert the chain is already populated from the prior terminal (non-empty / resolves parent), with no wait-for-PreCompact window.\nDEFINITION OF DONE: A SessionStart resume test shows the handoff chain present immediately, independent of PreCompact timing; island sessions still degrade gracefully (no parent, no crash).\nBLOCKERS:       T1 (chain source must exist and be merged first). Likely T2 (correct uuid ordering should hold across the forward-copy too).\nBLAST RADIUS:   SessionStart hook / resume path \u2014 runs on every resume, so verify it degrades cleanly when there is no prior terminal. Reversible; guard against reading a stale/corrupt prior chain.\nNEXT STEP:      After T1 merges, locate where SessionStart resume can read the prior terminal's chain.\n```\n\n---\n\n## Dependency Graph\n\n```\nT1 (merge CHANGE-001/002 + verify)  \u2500\u2500\u252c\u2500\u2500\u25ba T2 (walker must follow preservedSegment uuids)\n                                       \u251c\u2500\u2500\u25ba T5 (reuse transcript_chain field)\n                                       \u2514\u2500\u2500\u25ba T6 (forward-copy chain at SessionStart)\nT3 (Git Bash wrapper path-split)       standalone\nT4 (pi hang on long prompts)           standalone\n```\n\nAttack order: **T1 first** (it unblocks the three CHS-chain follow-ons and is reportedly merge-ready). **T2** is the highest silent-correctness risk and should be confirmed immediately after T1 merges. **T3** and **T4** are independent tooling fixes \u2014 pick up anytime. **T5** and **T6** are opportunities gated on T1 (and T6 on T2's ordering correctness).\n\n---\n\n## Source File Rename\n\nDRY-RUN constraint in effect: **no file was renamed.** Proposed rename (would be applied in a real run), keeping original name + extension and appending a task-number tag bracket:\n\n- OLD: `fixture-medium-mixed.txt`\n- NEW: `fixture-medium-mixed [chs #T1 #T2 #T5 #T6 \u00b7 tooling #T3 #T4].txt`\n\nTasks grouped by theme: **chs** (chain/walker/export) = T1, T2, T5, T6; **tooling** (wrapper, pi) = T3, T4. Resolved items (L8 Option B dead end, L22 islands, L24 worktree cleanup) contributed to DEAD ENDS / scope notes but generated no open task and so carry no tag.\n\n---\n\n## Report Summary\n\n- **Open issues found:** 5 (3 CHS chain/walker, 2 tooling).\n- **Opportunities found:** 2.\n- **Resolved / out-of-scope items excluded from open list:** 3 (Option B dead end L8; island sessions L22; orphan worktree L24) \u2014 confirmed against source, NOT listed as open.\n- **Tasks proposed (all CREATE \u2014 no existing task list):** 6 \u2014 T1 (merge+verify), T2 (walker uuid-following), T3 (Git Bash wrapper), T4 (pi hang), T5 (reuse transcript_chain \u2014 opp), T6 (forward-copy at SessionStart \u2014 opp).\n- **Tasks updated:** 0.\n- **Dry-run:** no TaskCreate/TaskUpdate called; no source file renamed.\n"}], "grading": {"expectations": [{"text": "Every proposed task includes the 5 core fields", "passed": true, "evidence": "missing=[]"}, {"text": "Resolved items are NOT listed as open issues", "passed": true, "evidence": "resolved/dead-end handling signaled"}, {"text": "Dead-end knowledge is captured (Option B ruled out)", "passed": true, "evidence": "dead-end knowledge present"}, {"text": "Rename plan proposes a source filename containing a #NNN tag", "passed": false, "evidence": "tags=[] rename_lines=8"}, {"text": "Output includes a dependency graph or blocker cross-references", "passed": true, "evidence": "dep representation present"}], "summary": {"pass_rate": 0.8, "passed": 4, "failed": 1, "total": 5}}}, {"id": "eval-1-medium-mixed-resolved-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "debrief.md", "type": "text", "content": "# Debrief \u2014 snapshot handoff chain reconstruction\n\n**Source:** `fixture-medium-mixed.txt`\n**Mode:** dry-run (no tasks created, no file renamed)\n\n---\n\n## Open issues\n\n### O1 \u2014 Ancestor edges lost in single-handoff read (parent link invisible)\n**Problem:** Reading only the newest handoff discards ancestor edges. In session `754f0d6e` the newest handoff has `n_2=None`, so the parent link to `223e7922` is invisible. There is no native parent edge (verified: 0 of 110 transcripts resolve `parentUuid` to another file).\n**Evidence:** Lines 4\u20136: `walk_handoff_chain.py a07ff025` \u2192 \"newest handoff n_2=None \u2192 parent invisible\"; defect = need a graph walk that recursively follows `n_2` and unions across all handoffs.\n**Done looks like:** A graph walker that follows `n_2` recursively and unions across all handoffs reconstructs the full ancestor chain, including the `754f0d6e \u2192 223e7922` edge currently dropped.\n\n### O2 \u2014 Git Bash wrapper word-splits path tokens\n**Problem:** The wrapper is word-splitting path tokens \u2014 `/c/Users` becomes `/c/Use`. Broke the inline-python probe three times. A temp-file workaround exists, but the wrapper itself is the root problem.\n**Evidence:** Line 10 (explicitly tagged \"the wrapper itself is the problem\"); line 26 lists \"fix the wrapper\" as still open.\n**Done looks like:** Path tokens survive the wrapper un-split (`/c/Users` round-trips intact), so inline-python probes run without the temp-file workaround.\n\n### O3 \u2014 pi hangs on long inline design prompts (known)\n**Problem:** pi hangs 8+ minutes on long inline design prompts while trivial smoke calls return in seconds. The hangs are specifically on long prompts, not general slowness.\n**Evidence:** Line 12 (tagged \"open issue, known\").\n**Done looks like:** Long inline design prompts complete (or fail fast) within an expected bound; no 8+ min silent hangs. Likely needs either a prompt-size cap, a timeout+fallback, or confirming it is upstream pi behavior and documenting the workaround.\n\n### O4 \u2014 Branch `ai/chs-chain-export` not merged (CHANGE-001 + CHANGE-002)\n**Problem:** CHANGE-001 (`_resolve_chain_from_handoff`) and CHANGE-002 (wire as Strategy 0) are implemented and tests are 7/7 green on the branch, but the branch is **not merged to main** and not verified there.\n**Evidence:** Line 14 (tagged \"needs merge + verify\"); line 26 confirms merge still open.\n**Done looks like:** Branch merged to main, tests re-run green on main, and the chain export confirmed working from main (not just the branch).\n\n### O5 \u2014 Walker must follow `preservedSegment` uuids, not contiguous line ranges (correctness risk)\n**Problem:** Across a compaction boundary, `compactMetadata.preservedSegment.headUuid` references an earlier uuid, so **line order \u2260 message order**. A walker that assumes contiguous line ranges per cycle is wrong and will mis-order/reorder messages across boundaries.\n**Evidence:** Line 16 (tagged \"open correctness risk for the walker\").\n**Done looks like:** The walker follows `preservedSegment` uuids to order messages across compaction boundaries; a test exercises a non-contiguous boundary and asserts correct message ordering.\n\n---\n\n## Opportunities\n\n### OP1 \u2014 Reuse existing `transcript_chain` field instead of adding a registry field\n**Problem/Opportunity:** The original design re-invented infrastructure that already exists. The `transcript_chain` field is already present in `/chs export`; reusing it is a ~10-line consumer change rather than a new registry field.\n**Evidence:** Line 18.\n**Done looks like:** Consumer code reads the existing `transcript_chain` field; no new registry field is added.\n\n### OP2 \u2014 Copy prior terminal's handoff chain forward at SessionStart resume\n**Problem/Opportunity:** There is a transient gap between resume and the new session's first `PreCompact` where the chain is incomplete. Copying the prior terminal's handoff chain forward at `SessionStart` resume closes it.\n**Evidence:** Line 20.\n**Done looks like:** On `SessionStart` resume, the prior terminal's handoff chain is copied forward so the chain is complete immediately, before the first `PreCompact`.\n\n---\n\n## Items NOT converted to tasks\n\n- **Resolved (excluded from open):** Registry bipartite matching + Option B (native resume signal) \u2014 ruled out by probe, 0 of 110 transcripts resolve `parentUuid`; documented as a closed dead end (line 8).\n- **Resolved (excluded from open):** Orphan worktree at `.claude/worktrees/chs-chain-export` removed (line 24).\n- **Accepted as-is (not recoverable):** Pre-deployment island sessions (no `parent_session_id`) are permanently unlinkable; treated as islands, not a task (line 22).\n\n---\n\n## Proposed tasks\n\n| ID | Title | Severity |\n|----|-------|----------|\n| T1 | Merge `ai/chs-chain-export` and verify on main | Blocker |\n| T2 | Rebuild walker to recursively follow `n_2` + union across handoffs | High |\n| T3 | Make walker follow `preservedSegment` uuids (no contiguous-line-range assumption) | High |\n| T4 | Reuse existing `transcript_chain` field instead of adding a registry field | Medium (do before T2 lands, else rework) |\n| T5 | Fix Git Bash wrapper path-token word-splitting | High |\n| T6 | Address pi long-prompt hangs (timeout / cap / documented workaround) | Medium |\n| T7 | Copy prior terminal's handoff chain forward at SessionStart resume | Medium |\n\n### T1 \u2014 Merge `ai/chs-chain-export` and verify on main\n- **Problem:** CHANGE-001 (`_resolve_chain_from_handoff`) + CHANGE-002 (wire as Strategy 0) are 7/7 green on the branch but unmerged; main does not have the fix (O4).\n- **Evidence:** Lines 14, 26.\n- **Done:** Branch merged; tests green on main; chain export confirmed from main.\n\n### T2 \u2014 Rebuild walker to follow `n_2` recursively + union across handoffs\n- **Problem:** Single-handoff read discards ancestor edges; `n_2=None` makes `754f0d6e \u2192 223e7922` invisible (O1).\n- **Evidence:** Lines 4\u20136.\n- **Done:** Walker reconstructs the full ancestor chain, including the currently-dropped `754f0d6e \u2192 223e7922` edge.\n\n### T3 \u2014 Make walker follow `preservedSegment` uuids across compaction boundaries\n- **Problem:** Line order \u2260 message order across a boundary; contiguous-line-range assumption reorders messages (O5).\n- **Evidence:** Line 16.\n- **Done:** Walker follows `preservedSegment` uuids; a non-contiguous-boundary test asserts correct ordering.\n\n### T4 \u2014 Reuse existing `transcript_chain` field instead of a new registry field\n- **Problem/Opportunity:** Re-invented infrastructure; an existing field covers it (OP1).\n- **Evidence:** Line 18.\n- **Done:** Consumer reads `transcript_chain`; no new registry field added.\n\n### T5 \u2014 Fix Git Bash wrapper path-token word-splitting\n- **Problem:** `/c/Users` \u2192 `/c/Use`; broke inline-python probe 3x; temp-file is a workaround, not a fix (O2).\n- **Evidence:** Lines 10, 26.\n- **Done:** Path tokens round-trip intact; inline-python probe runs without the temp-file workaround.\n\n### T6 \u2014 Address pi long-prompt hangs\n- **Problem:** 8+ min silent hangs on long inline design prompts (O3).\n- **Evidence:** Line 12.\n- **Done:** Long prompts complete or fail fast within an expected bound (timeout/cap), or behavior is documented with a known workaround.\n\n### T7 \u2014 Copy prior terminal's handoff chain forward at SessionStart resume\n- **Problem/Opportunity:** Transient chain gap between resume and first `PreCompact` (OP2).\n- **Evidence:** Line 20.\n- **Done:** Chain is complete immediately on resume, before the first `PreCompact`.\n\n---\n\n## Dependencies\n\n- **T1 (merge) blocks T2, T3, T4, T7** \u2014 all modify the chain code that lives on the unmerged branch; land T1 first to avoid rebasing divergent work. T2/T3/T4 land on top of main after merge.\n- **T4 before/in T2** \u2014 T2 should consume the existing `transcript_chain` field (OP1) rather than add a registry field; resolving T4 first prevents rework of T2. Treat T4 as a design input to T2, not a separate build.\n- **T2 and T3 are co-dependent** \u2014 both touch the walker; do them together (T2 fixes the ancestor-edge union, T3 fixes boundary ordering). Merging them into one walker change avoids two passes over the same code.\n- **T5 (Git Bash wrapper) blocks reliable inline-python probes** \u2014 independent of the chain work; unblocks diagnostics for T2/T3 but is not on the merge chain.\n- **T6 (pi hangs) and T7 (SessionStart copy)** are independent of each other and of the merge chain.\n- Suggested order: **T1 \u2192 (T4 folded into T2 + T3) \u2192 T7**, with **T5** and **T6** in parallel.\n\n---\n\n## Proposed rename of source file\n\nTag each open task number into the filename:\n\n**`fixture-medium-mixed--T1-merge-T2-ancestor-walk-T3-uuid-walk-T4-reuse-field-T5-wrapper-T6-pi-hang-T7-resume-copy.txt`**\n\n(Renamed file is NOT created \u2014 dry-run. Resolved items (dead-end Option B, orphan worktree) are intentionally untagged.)\n"}], "grading": {"expectations": [{"text": "Every proposed task includes the 5 core fields", "passed": false, "evidence": "missing=['VERIFIED FACTS', 'DEAD ENDS', 'DISCRIMINATING TEST', 'DEFINITION OF DONE']"}, {"text": "Resolved items are NOT listed as open issues", "passed": true, "evidence": "resolved/dead-end handling signaled"}, {"text": "Dead-end knowledge is captured (Option B ruled out)", "passed": true, "evidence": "dead-end knowledge present"}, {"text": "Rename plan proposes a source filename containing a #NNN tag", "passed": false, "evidence": "tags=[] rename_lines=9"}, {"text": "Output includes a dependency graph or blocker cross-references", "passed": true, "evidence": "dep representation present"}], "summary": {"pass_rate": 0.6, "passed": 3, "failed": 2, "total": 5}}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "debrief", "skill_path": "<path/to/skill>", "executor_model": "<model-name>", "analyzer_model": "<model-name>", "timestamp": "2026-06-30T20:13:33Z", "evals_run": [0, 1], "runs_per_configuration": 3}, "runs": [{"eval_id": 0, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 0.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Every proposed task includes the 5 core fields", "passed": true, "evidence": "missing=[]"}, {"text": "Output demonstrates gap analysis: timestamp finding is UPDATE to #500", "passed": true, "evidence": "#500 + update wording"}, {"text": "Rename plan proposes a source filename containing a #NNN tag", "passed": true, "evidence": "tags=['#500', '#500', '#500', '#500', '#500', '#500'] rename_lines=8"}, {"text": "Output cites transcript line numbers or quoted evidence", "passed": true, "evidence": "line/quote markers present"}, {"text": "Open issues and opportunities are separated", "passed": true, "evidence": "both sections present"}], "notes": []}, {"eval_id": 1, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 0.8, "passed": 4, "failed": 1, "total": 5, "time_seconds": 0.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Every proposed task includes the 5 core fields", "passed": true, "evidence": "missing=[]"}, {"text": "Resolved items are NOT listed as open issues", "passed": true, "evidence": "resolved/dead-end handling signaled"}, {"text": "Dead-end knowledge is captured (Option B ruled out)", "passed": true, "evidence": "dead-end knowledge present"}, {"text": "Rename plan proposes a source filename containing a #NNN tag", "passed": false, "evidence": "tags=[] rename_lines=8"}, {"text": "Output includes a dependency graph or blocker cross-references", "passed": true, "evidence": "dep representation present"}], "notes": []}, {"eval_id": 0, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.8, "passed": 4, "failed": 1, "total": 5, "time_seconds": 0.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Every proposed task includes the 5 core fields", "passed": false, "evidence": "missing=['VERIFIED FACTS', 'DEAD ENDS', 'DISCRIMINATING TEST', 'DEFINITION OF DONE']"}, {"text": "Output demonstrates gap analysis: timestamp finding is UPDATE to #500", "passed": true, "evidence": "#500 + update wording"}, {"text": "Rename plan proposes a source filename containing a #NNN tag", "passed": true, "evidence": "tags=['#500', '#1', '#500', '#500', '#500', '#500'] rename_lines=3"}, {"text": "Output cites transcript line numbers or quoted evidence", "passed": true, "evidence": "line/quote markers present"}, {"text": "Open issues and opportunities are separated", "passed": true, "evidence": "both sections present"}], "notes": []}, {"eval_id": 1, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.6, "passed": 3, "failed": 2, "total": 5, "time_seconds": 0.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Every proposed task includes the 5 core fields", "passed": false, "evidence": "missing=['VERIFIED FACTS', 'DEAD ENDS', 'DISCRIMINATING TEST', 'DEFINITION OF DONE']"}, {"text": "Resolved items are NOT listed as open issues", "passed": true, "evidence": "resolved/dead-end handling signaled"}, {"text": "Dead-end knowledge is captured (Option B ruled out)", "passed": true, "evidence": "dead-end knowledge present"}, {"text": "Rename plan proposes a source filename containing a #NNN tag", "passed": false, "evidence": "tags=[] rename_lines=9"}, {"text": "Output includes a dependency graph or blocker cross-references", "passed": true, "evidence": "dep representation present"}], "notes": []}], "run_summary": {"with_skill": {"pass_rate": {"mean": 0.9, "stddev": 0.1414, "min": 0.8, "max": 1.0}, "time_seconds": {"mean": 0.0, "stddev": 0.0, "min": 0.0, "max": 0.0}, "tokens": {"mean": 0.0, "stddev": 0.0, "min": 0, "max": 0}}, "without_skill": {"pass_rate": {"mean": 0.7, "stddev": 0.1414, "min": 0.6, "max": 0.8}, "time_seconds": {"mean": 0.0, "stddev": 0.0, "min": 0.0, "max": 0.0}, "tokens": {"mean": 0.0, "stddev": 0.0, "min": 0, "max": 0}}, "delta": {"pass_rate": "+0.20", "time_seconds": "+0.0", "tokens": "+0"}}, "notes": []}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>
