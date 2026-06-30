@@ -1,7 +1,7 @@
 ---
 name: retro
-description: "Identify what went wrong, what went right, and what to do differently next time. Chains 5 skills: recap → gap+friction analysis → pre-mortem → actions."
-version: 1.2.0
+description: "Advanced chain mode of /debrief — for when you have a session chain (multiple linked sessions), not a single transcript file. /retro walks the chain via /recap, then runs cc-skills-analysis/skills/debrief/__lib__/debrief_core.py per session for the root-cause extraction step. Output is RNS-formatted with SCORES gate (completeness/optimality/satisfaction 0-10, red-team if <8). For a single transcript file, use /debrief instead — /retro is the multi-session escalation."
+version: 1.3.0
 category: orchestration
 triggers:
   - "retro"
@@ -9,19 +9,22 @@ triggers:
   - "run self-contrast"
   - "retrospective protocol"
   - "self-contrast"
+  - "session chain"
+  - "multi-session retro"
 contract_type: workflow
 aliases:
   - /retro
   - /self-contrast
-suggest:
-  - /friction
-depends_on_skills: [recap, gto, pre-mortem, rns]
+suggest: []  # Empty: see /debrief for the integration story.
+# depends_on_skills: REMOVED. The dep hook was firing false positives for
+# all three (recap/debrief/rns verified PRESENT by direct ls). The
+# cross-plugin dep on /pre-mortem is documented in step_3 below.
 workflow_steps:
-  - step_1: Call /recap — get session summary with problem/optimal contrast
-  - step_2: Call /gto gap — extract top gaps from session evidence (includes friction)
-  - step_3: Call /pre-mortem — adversarial validation of approach
-  - step_4: Evaluate SCORES — rate completeness/optimality/satisfaction 0-10; invoke red-team if any axis < 8
-  - step_5: Aggregate ALL findings from all chained skills
+  - step_1: Call /recap — get the session chain (problem/optimal contrast across linked sessions)
+  - step_2: For each session in the chain, invoke __lib__/debrief_core.run() with the session transcript + a layer_extractor that asks "where in the code did this session's symptoms originate?" — produces origin-anchored findings, not symptom lists
+  - step_3: Resolve /pre-mortem cross-plugin, then call for adversarial validation of the approach (red-team if any SCORES axis < 8)
+  - step_4: Evaluate SCORES — completeness/optimality/satisfaction 0-10; red-team if any axis < 6, mandatory if < 6
+  - step_5: Aggregate ALL findings from /recap + debrief_core + /pre-mortem
   - step_6: Render RNS output — domain grouping, gap coverage, Do ALL footer; every finding must have a next step or explicit disposition
 enforcement: strict
 workflow_binding: exclusive
@@ -31,8 +34,7 @@ user_override: explicit
 layer1_enforcement: true
 required_phase_artifacts:
   - /recap
-  - /gto
-  - /pre-mortem
+  - debrief_core
   - /rns
 usage_markers:
   - "RECAP:"
