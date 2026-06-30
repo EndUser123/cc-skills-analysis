@@ -70,13 +70,19 @@ So a task written by this skill is a *memory-transfer device*, not a reminder. I
 
 ### Phase 1 — Ingest (read the whole source, cheaply)
 
-Transcript exports are usually too large for one Read (the Read tool caps at ~256 KB). Don't try to read it all yourself and don't read it serially.
+Transcript exports are usually too large for one Read (the Read tool caps at ~256 KB). Don't try to read it all yourself and don't read it serially. Use the bundled driver to plan the chunks **and** surface the theme hints in one pass — don't count lines or eyeball themes by hand:
 
-1. Count lines: `wc -l "<file>"`.
-2. If it fits one Read (< ~250 KB), read it directly.
-3. If it's large, **split into N equal chunks and dispatch N parallel `Explore` subagents**, one per chunk, each running the extraction prompt in [`references/extraction_prompt.md`](references/extraction_prompt.md). Target ~2,000 lines per chunk and **cap N at 6** — beyond that the token cost (each subagent reads its chunk in full) outweighs the latency win, and you must still synthesize all N outputs in one place.
+```bash
+python skills/debrief/scripts/debrief.py plan --path "<source file>"
+```
 
-The parallel chunk-read is the single biggest lever on a big transcript — a 9k-line file takes the same wall-clock as a 2k-line file. The extraction prompt is fixed and lives in the reference file so every run uses the identical, battle-tested wording rather than reinventing it.
+The driver (`scripts/chunk_plan.py`) decides:
+- **single-read** if the file is ≤ 250 KB → read it directly, run the extraction inline.
+- **parallel-chunk** otherwise → split into equal ranges, target ~2,000 lines per chunk, **cap N at 6** (beyond that the token cost — each subagent reads its chunk in full — outweighs the latency win).
+
+The driver also emits the **theme hints** (keyword counts for `ingestion / tooling / friction / state / handoff / transcript / gate / daemon`) *before* extraction starts. Use these as the grouping hint for Phase 2 — grouping by theme is easier if the themes are obvious from the start. Don't regroup from scratch.
+
+The driver emits a **paste-ready extraction prompt per chunk**, substituting the file path and line range. Copy each prompt into a parallel `Explore` subagent (dispatched in one message — no waiting for chunk 1).
 
 Each subagent returns: open issues + opportunities, each with a 1–3 sentence description, the **transcript line number(s)**, and any **named files/plugins/symbols**.
 
@@ -90,34 +96,52 @@ Collect the chunk outputs and produce a single consolidated list:
 
 ### Phase 3 — Gap-analyze against the existing task list (BEFORE creating anything)
 
-This is the step that prevents the most common failure: duplicate tasks. **Call `TaskList` first.** For every item from Phase 2, decide:
+This is the step that prevents the most common failure: duplicate tasks. **Call `TaskList` first.** For every item from Phase 2, walk the decision tree in [`references/task_writing_guide.md`](references/task_writing_guide.md) § Update vs Create:
 
-- **UPDATE** an existing task if one already covers it → append the new evidence, dead-ends, and line citations to that task's description (do not overwrite — append a dated section).
-- **CREATE** a new task only if nothing existing covers it.
+1. Is there an existing task whose **pipeline** the finding lives in?
+   - Yes → **CREATE** new task, set `PARENT_TASK: #<id>` so the next LLM can find "the work under #<id>" without rediscovering the relationship.
+2. Else, does an existing task **literally cover it** (same scope, same discriminating test)?
+   - Yes → **UPDATE**: append a dated section with the new evidence and dead-ends. Never overwrite.
+3. Else → **CREATE** standalone.
 
-A follow-on LLM cannot find work that lives in two places. When in doubt, update.
+Duplicates are worse than gaps. When uncertain, ask "does the existing task share my pipeline?" — if yes, CREATE with PARENT_TASK; if no (truly separate), UPDATE only when the literal scope overlaps.
+
+### Phase 3.5 — Validate BLOCKERS references before committing
+
+After Phase 5 (dependency wiring), every `BLOCKERS: #<id>` reference in every proposed task must resolve against the live tracker. `debrief.py validate` checks:
+
+```bash
+python skills/debrief/scripts/debrief.py validate \
+  --existing-tasks   <(TaskList snapshot) \
+  --proposed-tasks   <proposed-tasks.json>
+```
+
+Warns on **dangling** IDs (no longer in the tracker) and **already-completed** IDs. Fix or drop before committing — don't let a fixed task claim to be blocked by something that's already shipped.
 
 ### Phase 4 — Write tasks in the cold-start template
 
-Every task — created or updated — gets the eight fields in [`assets/task_template.md`](assets/task_template.md):
+Every task — created or updated — gets the **nine** fields in [`assets/task_template.md`](assets/task_template.md). The first line is the **TLDR** so the next LLM scanning the task list can act on three lines alone:
 
 ```
-TITLE:        imperative, names the shipping change (not the symptom)
-PROBLEM:      one sentence — the user-facing problem
-VERIFIED FACTS: file:line + probe output + transcript line, with source tags
-MUST RE-VERIFY: claims carried from the session that were NOT re-confirmed
-DEAD ENDS:    approaches already tried that failed or were the wrong cause
+TLDR:             <what changes><newline><discriminating test><newline><definition of done>
+TITLE:            imperative, names the shipping change (not the symptom)
+TASK_KIND:        <full | lite — see Scale rule below; default full>
+PROBLEM:          one sentence — the user-facing problem
+VERIFIED FACTS:   file:line + probe output + transcript line, with source tags
+MUST RE-VERIFY:   claims carried from the session that were NOT re-confirmed
+DEAD ENDS:        approaches already tried that failed or were the wrong cause
+PARENT_TASK:      #<id> if this task shares a pipeline with an existing one
 DISCRIMINATING TEST: the one command that says fixed / not-fixed
-DEFINITION OF DONE: concrete, runnable, gated
-BLOCKERS:     task IDs or external facts that gate this
-BLAST RADIUS: what it touches, reversibility, safety notes
+DEFINITION OF DONE:  concrete, runnable, gated
+BLOCKERS:         task IDs or external facts that gate this (validated in Phase 3.5)
+BLAST RADIUS:     what it touches, reversibility, safety notes
 ```
 
-The full rationale for each field (and the writing principles — one task per *change-unit* not per atomic issue; decision-gate-first; why "DEAD ENDS" matters more than "background") is in [`references/task_writing_guide.md`](references/task_writing_guide.md). Read it before the first task you write in a session.
+The full rationale for each field (grouping rule, decision-gate-first, why DEAD ENDS matters) is in [`references/task_writing_guide.md`](references/task_writing_guide.md). Read it before the first task you write in a session.
 
 **Grouping rule:** one task per *change-unit that ships and verifies together*, not one task per atomic issue. A "fix the parser" + "repoint the source" + "repair the bad rows" that all live in one pipeline and verify with one test are ONE task with sub-bullets, not three.
 
-**Scale the template to the finding.** The full eight fields are for non-trivial change-unit tasks. For a genuinely trivial, single-step finding on a small transcript, a **lite task** is acceptable: `PROBLEM` + `DISCRIMINATING TEST` + `DEFINITION OF DONE`. If you can't fill `DEAD ENDS` with anything real (not "none"), that's the signal the finding is lite-tier — don't pad the field. A lite task is still a task; what's forbidden is dropping `DISCRIMINATING TEST`, because that's the field that enforces "verified, not asserted."
+**TASK_KIND rule.** The full nine fields are the default for non-trivial change-unit tasks. For a genuinely trivial, single-step finding on a small transcript, set `TASK_KIND: lite` and drop to TLDR + TITLE + DISCRIMINATING TEST + DEFINITION OF DONE. **Don't pad an empty DEAD ENDS to inflate a lite into a full** — if a "lite" task needs more fields when the next LLM picks it up, promote it (update TASK_KIND: full and fill the missing fields).
 
 ### Phase 5 — Wire dependencies
 
@@ -157,6 +181,28 @@ Output, in this order:
 5. **Source file** old → new name.
 
 Keep the report tight — the tasks themselves hold the detail; the report is the index.
+
+### Phase 8 — Drop the breadcrumb (always do this)
+
+After the report, create **one** meta-task so a future `/debrief` (or any reader) can find this one. This is the breadcrumb for the *next* transcript that might overlap:
+
+```
+TITLE: source-debrief-breadcrumb — <old filename or descriptive stem>
+TASK_KIND: lite
+PARENT_TASK: <one of the real debriefed task IDs, if any>
+PROBLEM: a previous /debrief produced these tasks on <DATE>; re-running will find them and UPDATE, not duplicate.
+DISCRIMINATING TEST: ./debrief.py plan --path <source>; grep the proposed-task JSON for these IDs.
+DEFINITION OF DONE: breadcrumb exists; skill can find this transcript's work via TaskList.
+```
+
+The breadcrumb is the only artifact that survives across compactions and across separate transcripts. Without it, a future LLM re-debriefing a related transcript sees zero context for "what was already mined from the last one."
+
+## Scope boundaries
+
+- **This skill writes tasks and renames one source file.** It does not implement fixes, run migrations, or edit code beyond the task tracker. If the user wants a fix implemented, say so and stop — don't drift into implementation mid-debrief.
+- **Confirm before mutating live state.** Phase 4 (`TaskCreate`/`TaskUpdate`) and Phase 6 (rename) are side-effecting. Before the first write, state the plan plainly — N creates, M updates, and the old → new filename — then proceed. Pause for explicit confirmation if the rename target is outside the user's Downloads/workspace, or if the plan creates more than ~8 tasks (a sign the grouping rule wasn't applied). Always dry-run the rename script (`--apply` is opt-in) before committing it.
+- Mark every cross-session claim with its evidence level. If something was NOT re-verified this session, the task's `MUST RE-VERIFY` field says so explicitly. Never let "probably" graduate into an unmarked assertion inside a task.
+- Per the global Destructive Action rules, confirm with the user before deleting or overwriting anything other than the task tracker entries and the single source-file rename.
 
 ## Scope boundaries
 

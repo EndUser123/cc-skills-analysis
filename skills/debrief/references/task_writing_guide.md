@@ -30,27 +30,37 @@ uses. The decision gate is almost always the highest-ROI task in the set.
 
 ## Update vs Create (gap analysis)
 
-**Always call `TaskList` before creating anything.** For each finding:
+**Always call `TaskList` before creating anything.** For each finding, the decision tree:
 
-- If an existing task already covers it → **UPDATE**: append a dated section with the new
-  evidence, dead-ends, and line citations. Never overwrite — append.
-- Only if nothing covers it → **CREATE**.
+1. Is there a **parent pipeline** (an existing task whose track the new finding lives in)?
+   - Yes → **CREATE** a new task with `PARENT_TASK: #<id>` so the next LLM can find "the
+     work under #<id>" without rediscovering the relationship. The pipeline relationship
+     is more important than the surface overlap.
+2. Else, does an **existing task literally cover it** (same scope, same discriminating test)?
+   - Yes → **UPDATE**: append a dated section with the new evidence, dead-ends, line
+     citations. Never overwrite.
+3. Else → **CREATE** standalone (no PARENT_TASK).
 
 Duplicates are worse than gaps: the next LLM can't find work that lives in two places.
-When uncertain, update.
+When uncertain between UPDATE and CREATE, ask "does the existing task share my pipeline?"
+If yes, CREATE with PARENT_TASK. If no (truly separate), UPDATE only when the literal
+scope overlaps.
 
-## The eight fields, and why each exists
+## The nine fields, and why each exists
 
 | Field | Why it exists |
 |-------|---------------|
+| **TLDR** | First three lines of the task: what changes, the discriminating test, the definition of done. Most tasks are actionable from TLDR alone — the rest is the evidence dossier. |
 | **TITLE** | Names the change, not the symptom. A scanner of the task list should know what gets built. |
+| **TASK_KIND** | `full` (default) or `lite`. Set explicitly so the eval can detect mixing. Promote lite→full when the next LLM discovers it needed more; never pad an empty DEAD ENDS to inflate a lite into a full. |
 | **PROBLEM** | One sentence of user-facing problem. Anchors the task to a real need, not an implementation detail. |
 | **VERIFIED FACTS** | Citations (file:line + transcript line). The only thing that stops a guess from becoming ground truth. |
 | **MUST RE-VERIFY** | Claims carried from the session that were NOT re-confirmed this run. Explicit untrustworthiness beats silent assertion. |
 | **DEAD ENDS** | Approaches tried that failed or were the wrong cause. Saves the next LLM from re-walking the wrong premise — usually the highest-value field. |
+| **PARENT_TASK** | `#<id>` when this task shares a *pipeline* with an existing task. Lets the next LLM find "the work under #918" without rediscovering the relationship. Drop it when the task is genuinely standalone. |
 | **DISCRIMINATING TEST** | The one command whose output says fixed/not-fixed. Definition of done in miniature; enforces the global "claim verification" rule at task level. |
 | **DEFINITION OF DONE** | Concrete, runnable, gated. "Test X passes with output Y", not "fixed". |
-| **BLOCKERS** | Task IDs or external facts that gate this. Lets you emit the dependency graph. |
+| **BLOCKERS** | Task IDs or external facts that gate this. Lets you emit the dependency graph. **Validated** by `debrief.py validate` against the live tracker — dangling or already-completed refs are warnings, not silent passes. |
 | **BLAST RADIUS** | What it touches, reversibility, safety. Surfaces live-DB / FK-trap / flag-flip risks before someone trips them. |
 
 ## Dependency wiring
