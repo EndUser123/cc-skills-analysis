@@ -1,7 +1,7 @@
 ---
 name: debrief
 description: "This skill is used when the user points at a transcript or chat-history file and asks to mine it for unfinished work, open issues, origin-anchored tasks, or to trace symptoms back to code. Trigger phrases include 'debrief this transcript', 'mine the chat history', 'transcript to tasks', 'turn this session into tasks', 'victim log', and 'why is this broken'. Recursively walks symptom → cause → origin chains, calls /friction and /truth from inside the loop, and writes cold-start tasks to the tracker with the source file tagged. Distinct from /recap (summarizes) and /top-problems (lists, never creates tasks); /retro is the multi-session chain mode."
-version: 1.0.0
+version: 1.0.40
 status: stable
 category: analysis
 enforcement: advisory
