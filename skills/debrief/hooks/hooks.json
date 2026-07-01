@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/debrief/hooks/SessionEnd_debrief_reflect.py\"",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
