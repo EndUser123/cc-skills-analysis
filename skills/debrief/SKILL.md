@@ -69,6 +69,10 @@ So a task written by `/debrief` is a **memory-transfer device anchored at the co
 - Listing problems without creating tasks (that's `/top-problems`).
 - A multi-session chain analysis (use `/retro` — it calls `/debrief`'s `debrief_core` for the per-session extraction step).
 
+## Two surfaces of /debrief
+
+`/debrief` is two surfaces of the same shared logic. The **skill** is invoked manually with `/debrief <file>` and produces findings on demand. The **hook** is the `SessionEnd_debrief_reflect.py` script wired to Claude Code's `SessionEnd` event and produces findings automatically at every session close. Both share the same `__lib__/debrief_core.py` state machine, the same `assets/opportunity_task_template.md` schema, and the same `__lib__/dream_state.py` for cross-session idempotency. Findings from both surfaces land in the same artifacts directory; the user reviews and promotes them the same way.
+
 ## The investigator loop
 
 The skill's body is **a loop, not a pipeline**. Each finding is the unit of work; each iteration walks one layer closer to the origin. The bundled state machine `__lib__/debrief_core.py` enforces the discipline; the LLM supplies the human judgment (read files, classify, recurse).

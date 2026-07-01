@@ -9,9 +9,20 @@ import os
 import re
 import json
 import time
+from datetime import datetime, timezone
 import urllib.request
 import urllib.error
 from pathlib import Path
+
+# dream_state lives in the sibling __lib__ dir; insert absolute path so the
+# import resolves regardless of the hook's launch cwd.
+sys.path.insert(0, "P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/debrief/__lib__")
+try:
+    from dream_state import should_re_review, record_dream_review, get_last_dream_state
+    _DREAM_AVAILABLE = True
+except Exception as _e:
+    _DREAM_AVAILABLE = False
+    _DREAM_IMPORT_ERR = repr(_e)
 
 LOCAL_URL = "http://127.0.0.1:1234/v1/chat/completions"
 LOCAL_MODEL = "ornith-1.0-9b@q4_k_m"
@@ -306,6 +317,41 @@ def main():
         sys.exit(0)
     if session_id:
         mark_done(session_id)
+    # === Dream-cycle integration ===
+    # Surface a system_efficiency review if the last one is >7 days old.
+    # This is an ADDITION to the reflect pass, not a replacement: candidates.json
+    # above is unchanged. Wrapped in try/except so a dream-state failure never
+    # breaks the reflect pass. See skills/debrief/__lib__/dream_state.py.
+    try:
+        if _DREAM_AVAILABLE:
+            now_iso = datetime.now(timezone.utc).isoformat()
+            prev_state = get_last_dream_state()
+            prev_entry = (prev_state or {}).get("topics", {}).get("system_efficiency") if isinstance(prev_state, dict) else None
+            last_reviewed_iso = prev_entry.get("last_reviewed") if isinstance(prev_entry, dict) else None
+            if should_re_review("system_efficiency", threshold_days=7):
+                sf_dir = out_dir
+                system_findings_path = sf_dir / "system_findings.json"
+                system_findings = {
+                    "session_id": session_id,
+                    "produced_at": now_iso,
+                    "topic": "system_efficiency",
+                    "kind": "dream-cycle review due",
+                    "findings": ["model-routing review due (7+ days since last)"],
+                    "last_reviewed": last_reviewed_iso,
+                    "review_threshold_days": 7,
+                    "promotion_target": "main",
+                }
+                system_findings_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(system_findings_path, "w", encoding="utf-8") as f:
+                    json.dump(system_findings, f, indent=2)
+                record_dream_review(topic="system_efficiency", findings=system_findings["findings"], actioned=False)
+                log("dream-cycle: wrote system_findings.json (system_efficiency review due)")
+            else:
+                log("dream-cycle: system_efficiency within threshold; skipping")
+        else:
+            log("dream-cycle: module unavailable (" + str(_DREAM_IMPORT_ERR) + "); skipping")
+    except Exception as e:
+        log("dream-cycle integration failed: " + type(e).__name__ + ": " + str(e))
     end_iso = time.strftime("%Y-%m-%dT%H:%M:%S")
     log("model=" + str(model_used) + " fallback=" + ("Y" if fallback_used else "N") + " opps=" + str(len(reflect.get("opportunities", []))))
     log("exit " + end_iso)
