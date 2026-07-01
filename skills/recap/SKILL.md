@@ -1,7 +1,7 @@
 ---
 name: recap
 description: Generate a handoff-ready session recap across the full session chain — what was accomplished, what's incomplete, and what the next developer/PM needs to know
-version: 1.5.1
+version: 1.0.43
 status: stable
 category: session
 contract_type: hybrid

@@ -1,7 +1,7 @@
 ---
 name: behave
 description: Structured behavioral analysis for LLM performance debugging — hypothesis testing for session patterns (loops, context degradation, decision inefficiency, cognitive overload, attention drift)
-version: 1.0.0
+version: 1.0.43
 category: analysis
 enforcement: advisory
 triggers:

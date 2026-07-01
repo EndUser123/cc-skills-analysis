@@ -1,7 +1,7 @@
 ---
 name: friction
 description: Detect interaction friction and workflow automation opportunities from chat history and session evidence.
-version: 2.0.0
+version: 1.0.43
 status: stable
 category: analysis
 enforcement: advisory

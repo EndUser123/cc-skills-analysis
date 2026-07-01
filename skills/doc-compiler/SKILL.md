@@ -1,6 +1,6 @@
 ---
 name: doc-compiler
-version: 3.0.0
+version: 1.0.43
 description: Compile skills, plugins, projects, and workflows into interactive, verified HTML documentation with Mermaid diagrams, TOC, proof metadata, and browser validation.
 category: documentation
 enforcement: strict

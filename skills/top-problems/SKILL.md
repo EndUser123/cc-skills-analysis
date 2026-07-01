@@ -2,7 +2,7 @@
 name: top-problems
 description: Analyze recent session history, premortem evidence, and task data to find the most impactful fixable problems, including systemic contract and stale-data failures
 category: analysis
-version: 3.4.0
+version: 1.0.43
 status: stable
 enforcement: advisory
 triggers:

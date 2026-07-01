@@ -1,7 +1,7 @@
 ---
 name: why
 description: Decision archaeology — trace backward through sessions to reconstruct why something exists, what caused it, and the reasoning chain behind it. NOT a debug tool — answers "why are we doing X?"
-version: "1.0.0"
+version: 1.0.43
 status: stable
 category: analysis
 triggers:

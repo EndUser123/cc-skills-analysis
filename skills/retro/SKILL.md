@@ -1,7 +1,7 @@
 ---
 name: retro
 description: "Advanced chain mode of /debrief — for when you have a session chain (multiple linked sessions), not a single transcript file. /retro walks the chain via /recap, then runs cc-skills-analysis/skills/debrief/__lib__/debrief_core.py per session for the root-cause extraction step. Output is RNS-formatted with SCORES gate (completeness/optimality/satisfaction 0-10, red-team if <8). For a single transcript file, use /debrief instead — /retro is the multi-session escalation."
-version: 1.3.0
+version: 1.0.43
 category: orchestration
 triggers:
   - "retro"

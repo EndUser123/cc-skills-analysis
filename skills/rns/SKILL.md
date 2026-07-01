@@ -1,7 +1,7 @@
 ---
 name: rns
 description: Dynamic actions from findings w/ recover/prevent/realize tags, priority, file:line. Converts unstructured LLM output to selectable RNS actions.
-version: 1.3.0
+version: 1.0.43
 triggers:
   - "/rns"
   - "/rns {text}"

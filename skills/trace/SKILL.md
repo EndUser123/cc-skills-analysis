@@ -1,7 +1,7 @@
 ---
 name: trace
 description: Manual trace-through verification for code, skills, workflows, and documents - catch logic errors that automated testing misses
-version: "1.0.0"
+version: 1.0.43
 status: stable
 category: verification
 triggers:

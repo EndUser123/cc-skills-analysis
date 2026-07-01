@@ -1,7 +1,7 @@
 ---
 name: similarity
 description: "Find skills similar to a target skill based on keywords, dependencies, and metadata"
-version: "1.0.0"
+version: 1.0.43
 status: stable
 category: analysis
 enforcement: advisory

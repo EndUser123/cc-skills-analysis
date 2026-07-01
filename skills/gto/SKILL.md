@@ -1,7 +1,7 @@
 ---
 name: gto
 description: "GTO v4.4 — Session-aware gap-to-opportunity analysis with execution-contract runtime. Reads session transcripts to produce RNS-formatted findings. Uses haiku model for gap reviewer and merge-only re-runs for speed. Contract: workflow-execution with artifact as completion object."
-version: "4.4.0"
+version: 1.0.43
 triggers:
   - "/gto"
 category: analysis
