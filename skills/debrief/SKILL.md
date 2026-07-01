@@ -1,7 +1,7 @@
 ---
 name: debrief
 description: "This skill is used when the user points at a transcript or chat-history file and asks to mine it for unfinished work, open issues, origin-anchored tasks, or to trace symptoms back to code. Trigger phrases include 'debrief this transcript', 'mine the chat history', 'transcript to tasks', 'turn this session into tasks', 'victim log', and 'why is this broken'. Recursively walks symptom → cause → origin chains, calls /friction and /truth from inside the loop, and writes cold-start tasks to the tracker with the source file tagged. Distinct from /recap (summarizes) and /top-problems (lists, never creates tasks); /retro is the multi-session chain mode."
-version: 1.0.43
+version: 1.0.45
 status: stable
 category: analysis
 enforcement: advisory
@@ -85,7 +85,7 @@ The full Phase 0 → Phase 9 diagram lives in [`references/loop-diagram.md`](ref
 |---|---|
 | `__lib/debrief_core.py` | The state machine + recursive loop. The LLM supplies `source_tree_resolver` and `layer_extractor` callbacks (Agent tool invocations); `debrief_core` enforces the state discipline and emits ready-to-task bodies. `--selfcheck` green. |
 | `scripts/chunk_plan.py` | Chunk plan + theme-hint grep. |
-| `scripts/debrief.py` | Driver (plan / validate / selfcheck modes). |
+| `scripts/debrief.py` | Driver: `plan` (chunks + extraction prompts), `run` (route deduped findings through `debrief_core.run()` — the only path to `WRITTEN`), `validate` (BLOCKERS-id check), `close` (Phase 8/9 closure gate — refuses done without a tagged file + breadcrumb task), `selfcheck`. |
 | `scripts/rename_tag.py` | Deterministic source-file rename. |
 | `assets/task_template.md` | The 9-field cold-start task template (TLDR + 9 fields, lite/full split). |
 | `references/extraction_prompt.md` | The paste-ready parallel-extraction prompt (Phase 1). |
@@ -101,6 +101,6 @@ The full Phase 0 → Phase 9 diagram lives in [`references/loop-diagram.md`](ref
 
 ## The recursive investigator in 5 lines
 
-A debriefer running `/debrief` does, in order: (1) `debrief.py plan --path <file>` to get chunks + theme hints, (2) `python debrief_core.py` with `layer_extractor` and `source_tree_resolver` callbacks that dispatch Agent tool sub-investigators per finding, (3) call `/truth` on every layer transition, (4) gap-analyze the resulting `WRITTEN` findings against `TaskList`, (5) TaskCreate each + invoke `rename_tag.py --apply`. The loop in (2) does the heavy lifting; everything else is plumbing.
+A debriefer running `/debrief` does, in order: (1) `debrief.py plan --path <file>` to get chunks + theme hints, (2) `debrief.py run --path <file> --findings <dedup.json> --truth-mode contract` to route the deduped findings through the enforced state machine (the only path to `WRITTEN` tasks — `contract` mode leaves un-/truth-stamped findings at LOCATED with a `MUST RE-VERIFY` note), (3) call `/truth` on every layer transition the run surfaced, (4) gap-analyze the `WRITTEN` findings against `TaskList` and TaskCreate each + invoke `rename_tag.py --apply`, (5) `debrief.py close --path <file> --breadcrumb-task N --tracker-snapshot <dump>` as the closure gate — it refuses exit 0 unless the source file is tagged AND a non-completed breadcrumb task exists. The loop in (2) does the heavy lifting; the gate in (5) is what stops "done" from being a judgment call.
 
 `/debrief` and `/retro` share `debrief_core` — `/debrief` for files, `/retro` for session chains (it walks the chain first, then runs `debrief_core` per session, then aggregates). Same state machine, same victim-log detection, same /truth gate, same task template.

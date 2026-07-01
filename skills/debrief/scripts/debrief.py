@@ -35,6 +35,9 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 SKILL_DIR = HERE.parent  # skills/debrief
+LIB_DIR = SKILL_DIR / "__lib"
+if str(LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(LIB_DIR))
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def _read_json(path: str) -> object:
@@ -151,9 +154,147 @@ def mode_validate(existing_tasks_path: str, proposed_tasks_path: str) -> int:
     return 0
 
 
+# ── run mode ────────────────────────────────────────────────────────────────
+_TAG_RE = re.compile(r"(?:^| )\[[^\]]+\](?=\.[^.]+$|$)")
+
+
+def _is_tagged(basename: str) -> bool:
+    """A Phase-8-tagged filename carries a ` [tag]` before the extension."""
+    return bool(_TAG_RE.search(basename))
+
+
+def mode_run(path: str, findings_path: str, truth_mode: str,
+             resolver_cache_path: str = "", apply: bool = False) -> int:
+    """Route deduped findings through debrief_core.run() — the only executable
+    path to WRITTEN tasks. The state machine enforces /truth + origin guards;
+    this command is what stops the LLM from bypassing it by hand-dedup.
+
+    --truth-mode contract (default): every finding stays UNVERIFIED -> LOCATED
+    with recursion_exhausted + a MUST RE-VERIFY note. That is today's behavior,
+    but now it is machine-stamped rather than LLM-asserted.
+    """
+    import debrief_core
+
+    if not os.path.exists(path):
+        print(f"error: missing transcript: {path}", file=sys.stderr)
+        return 2
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        transcript_text = f.read()
+    raw_findings = _read_json(findings_path)
+    if isinstance(raw_findings, dict):
+        raw_findings = raw_findings.get("findings", raw_findings.get("tasks", []))
+    initial = []
+    for item in raw_findings:
+        if isinstance(item, (list, tuple)) and len(item) >= 2:
+            initial.append((str(item[0]), str(item[1])))
+        elif isinstance(item, dict):
+            t = item.get("symptom_text") or item.get("text") or item.get("subject") or ""
+            s = item.get("symptom_source") or item.get("source") or item.get("id") or path
+            if t:
+                initial.append((str(t), str(s)))
+
+    # truth_callable per --truth-mode
+    truth_callable = None
+    if truth_mode == "contract":
+        def truth_callable(f):
+            return {"status": "UNVERIFIED", "evidence": "",
+                    "correction": "", "note": "contract mode: LLM must run /truth"}
+    elif truth_mode == "skip":
+        truth_callable = None
+    elif truth_mode == "skill":
+        print("error: --truth-mode skill not wired yet (plan_verifier CLI unconfirmed)",
+              file=sys.stderr)
+        return 2
+    else:
+        print(f"error: unknown --truth-mode: {truth_mode}", file=sys.stderr)
+        return 2
+
+    # source_tree_resolver from --resolver-cache (optional). Cache is a list of
+    # {text, file, line, explanation} — the LLM populates one per finding.
+    resolver = None
+    if resolver_cache_path:
+        cache_raw = _read_json(resolver_cache_path)
+        cache = cache_raw if isinstance(cache_raw, list) else cache_raw.get("entries", [])
+        table = {}
+        for e in cache:
+            if isinstance(e, dict) and e.get("text"):
+                table[e["text"]] = (e.get("file", ""), int(e.get("line", 0) or 0),
+                                    e.get("explanation", ""))
+        def resolver(text: str):
+            if text in table:
+                return table[text]
+            for k, v in table.items():
+                if k and (k in text or text in k):
+                    return v
+            return ("", 0, "")
+
+    res = debrief_core.run(
+        transcript_text=transcript_text,
+        initial_findings=initial,
+        layer_extractor=lambda p: ([], []),
+        source_tree_resolver=resolver,
+        truth_callable=truth_callable,
+    )
+    out = {
+        "summary": res["summary"],
+        "written": res["tasks"]["written"],
+        "blocked": [f for f in res["findings"]
+                    if f.get("state") == "located" or f.get("recursion_exhausted")],
+    }
+    print(json.dumps(out, indent=2))
+    if apply:
+        print(f"\n# Phase 8 rename (fill themes + run):", file=sys.stderr)
+        print(f"python rename_tag.py --themes \"<theme>:<id>,...\" --path \"{path}\" --apply",
+              file=sys.stderr)
+        print(f"# Phase 9: create breadcrumb task referencing these findings + the renamed file.",
+              file=sys.stderr)
+    return 0
+
+
+# ── close mode ──────────────────────────────────────────────────────────────
+def mode_close(path: str, breadcrumb_task: int, tracker_snapshot: str,
+               allow_untagged: bool = False) -> int:
+    """Phase 8/9 closure gate. Refuses exit 0 unless the source file is tagged
+    AND a non-completed breadcrumb task exists in the tracker snapshot. This is
+    the check that stops the LLM from declaring `/debrief` done without the
+    rename + breadcrumb."""
+    failures = []
+    p = Path(path)
+    # Phase 8: file is tagged (or a tagged sibling exists next to the original).
+    tagged_present = False
+    if p.exists() and _is_tagged(p.name):
+        tagged_present = True
+    elif p.exists() and not _is_tagged(p.name):
+        for cand in p.parent.glob(f"{p.stem} [*]{p.suffix}"):
+            tagged_present = True
+            break
+    if not tagged_present and not allow_untagged:
+        failures.append("source file not tagged (Phase 8 rename did not run)")
+
+    # Phase 9: breadcrumb task exists and is not completed/deleted.
+    if tracker_snapshot:
+        snap = _read_json(tracker_snapshot)
+        if isinstance(snap, dict):
+            snap = snap.get("tasks", snap)
+        row = next((t for t in snap if t.get("id") == breadcrumb_task), None)
+        if row is None:
+            failures.append(f"breadcrumb task #{breadcrumb_task} not found in snapshot")
+        elif row.get("status") in ("completed", "deleted"):
+            failures.append(f"breadcrumb task #{breadcrumb_task} is {row.get('status')}")
+    else:
+        failures.append("no --tracker-snapshot supplied (cannot verify breadcrumb)")
+
+    if failures:
+        for m in failures:
+            print(f"FAIL: {m}", file=sys.stderr)
+        return 1
+    print(f"OK: tagged file present + breadcrumb #{breadcrumb_task} exists")
+    return 0
+
+
 # ── selfcheck mode ──────────────────────────────────────────────────────────
 def mode_selfcheck() -> int:
-    """Run --selfcheck on every script in scripts/."""
+    """Run --selfcheck on every script in scripts/, then exercise run + close."""
     rc = 0
     for name in ("chunk_plan.py", "rename_tag.py"):
         cprc, cpout, cperr = _run_script(str(HERE / name), ["--selfcheck"])
@@ -165,10 +306,60 @@ def mode_selfcheck() -> int:
     try:
         import rename_tag  # noqa: F401
         import chunk_plan  # noqa: F401
+        import debrief_core  # noqa: F401
         print("imports: OK")
     except Exception as e:
         print(f"imports: FAIL ({e})", file=sys.stderr)
         rc = 4
+
+    # _is_tagged: the Phase-8 detection close relies on
+    try:
+        assert _is_tagged("auth [chs #917].jsonl") is True
+        assert _is_tagged("plain-transcript.txt") is False
+        assert _is_tagged("[chs #917].txt") is True
+        print("is_tagged: OK")
+    except AssertionError as e:
+        print(f"is_tagged: FAIL ({e})", file=sys.stderr)
+        rc = 5
+
+    # mode_run: contract truth-mode must block every finding (0 WRITTEN).
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        tdir = Path(td)
+        tpath = tdir / "tx.txt"
+        tpath.write_text("rows duplicate on ingest, fell back to workaround",
+                         encoding="utf-8")
+        fjson = tdir / "f.json"
+        fjson.write_text(json.dumps([
+            {"symptom_text": "rows duplicate", "symptom_source": "L10"},
+            {"symptom_text": "missing audit log", "symptom_source": "L11"},
+        ]), encoding="utf-8")
+        import io, contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            run_rc = mode_run(str(tpath), str(fjson), truth_mode="contract")
+        out = json.loads(buf.getvalue())
+        assert run_rc == 0, f"run should exit 0, got {run_rc}"
+        assert out["summary"]["written"] == 0, \
+            "contract mode must not produce WRITTEN tasks (no /truth stamp)"
+        assert out["summary"]["total_findings"] >= 2
+        print("run-contract: OK (gate bites — 0 WRITTEN)")
+
+        # close: negative case — untagged file, missing breadcrumb.
+        snap = tdir / "snap.json"
+        snap.write_text(json.dumps([{"id": 1, "status": "pending"}]), encoding="utf-8")
+        close_rc_neg = mode_close(str(tpath), breadcrumb_task=999,
+                                  tracker_snapshot=str(snap))
+        assert close_rc_neg != 0, "close must fail on untagged + missing breadcrumb"
+        # close: positive case — tagged file + present breadcrumb.
+        tagged = tdir / "tx [debrief #1].txt"
+        tagged.write_text("x", encoding="utf-8")
+        snap2 = tdir / "snap2.json"
+        snap2.write_text(json.dumps([{"id": 1, "status": "pending"}]), encoding="utf-8")
+        close_rc_pos = mode_close(str(tagged), breadcrumb_task=1,
+                                  tracker_snapshot=str(snap2))
+        assert close_rc_pos == 0, f"close should pass on tagged + present, got {close_rc_pos}"
+        print("close: OK (negative bites, positive passes)")
     return rc
 
 
@@ -186,6 +377,25 @@ def main():
     p_val.add_argument("--proposed-tasks", required=True,
                        help="Proposed task bodies (json: list of {id?, subject, description})")
 
+    p_run = sub.add_parser("run", help="route findings through debrief_core.run() (the enforced path)")
+    p_run.add_argument("--path", required=True, help="transcript file")
+    p_run.add_argument("--findings", required=True, help="deduped findings JSON")
+    p_run.add_argument("--truth-mode", choices=("contract", "skip", "skill"),
+                       default="contract",
+                       help="contract=UNVERIFIED stamp (default); skip=no gate; skill=stub")
+    p_run.add_argument("--resolver-cache", default="",
+                       help="optional JSON: [{text,file,line,explanation}]")
+    p_run.add_argument("--apply", action="store_true",
+                       help="emit Phase 8/9 instructions to stderr")
+
+    p_close = sub.add_parser("close", help="Phase 8/9 closure gate (refuses done without tag + breadcrumb)")
+    p_close.add_argument("--path", required=True, help="original or renamed transcript")
+    p_close.add_argument("--breadcrumb-task", type=int, required=True)
+    p_close.add_argument("--tracker-snapshot", required=True,
+                         help="TaskList snapshot JSON")
+    p_close.add_argument("--allow-untagged", action="store_true",
+                         help="skip the Phase-8 tag check (emergency use only)")
+
     sub.add_parser("selfcheck", help="run --selfcheck on every script")
 
     args = ap.parse_args()
@@ -193,6 +403,12 @@ def main():
         return mode_plan(args.path or [], args.json)
     if args.mode == "validate":
         return mode_validate(args.existing_tasks, args.proposed_tasks)
+    if args.mode == "run":
+        return mode_run(args.path, args.findings, args.truth_mode,
+                        args.resolver_cache, args.apply)
+    if args.mode == "close":
+        return mode_close(args.path, args.breadcrumb_task, args.tracker_snapshot,
+                          args.allow_untagged)
     if args.mode == "selfcheck":
         return mode_selfcheck()
     ap.error(f"unknown mode: {args.mode}")
