@@ -14,9 +14,9 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-# dream_state lives in the sibling __lib__ dir; insert absolute path so the
+# dream_state lives in the sibling __lib dir; insert absolute path so the
 # import resolves regardless of the hook's launch cwd.
-sys.path.insert(0, "P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/debrief/__lib__")
+sys.path.insert(0, "P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/debrief/__lib")
 try:
     from dream_state import should_re_review, record_dream_review, get_last_dream_state
     _DREAM_AVAILABLE = True
@@ -321,7 +321,7 @@ def main():
     # Surface a system_efficiency review if the last one is >7 days old.
     # This is an ADDITION to the reflect pass, not a replacement: candidates.json
     # above is unchanged. Wrapped in try/except so a dream-state failure never
-    # breaks the reflect pass. See skills/debrief/__lib__/dream_state.py.
+    # breaks the reflect pass. See skills/debrief/__lib/dream_state.py.
     try:
         if _DREAM_AVAILABLE:
             now_iso = datetime.now(timezone.utc).isoformat()

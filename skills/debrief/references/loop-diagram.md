@@ -115,7 +115,7 @@ the bug is already in the code. A pipeline (extract → list → write) produces
 symptom-level tasks. A loop (classify → locate → verify → recurse) produces
 origin-level tasks.
 
-The state machine in `__lib__/debrief_core.py` enforces the discipline. The
+The state machine in `__lib/debrief_core.py` enforces the discipline. The
 LLM supplies two callbacks that cannot be encoded as deterministic logic:
 
 - `source_tree_resolver(text)` — reads the cited file:line and decides where
