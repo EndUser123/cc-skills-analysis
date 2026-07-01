@@ -169,6 +169,7 @@ OPPORTUNITY_MARKERS = [
     (r"\b(makes? (this|it) (better|more useful|more productive)|better quality|more effective)\b", "quality-improvement"),
     (r"\b(fell back to|switched to|ended up (using|on)|the trick was|workaround that stuck|what worked was|settled on)\b", "problem-recovery"),
     (r"\b(in any domain|cross-?domain|everywhere|always (do|apply))\b", "domain-general"),
+    (r"\b(deferral|defer that)\b", "deferred-reminder"),
 ]
 
 
@@ -193,6 +194,24 @@ def detect_opportunity_log(transcript_text: str) -> dict:
         "explicit_idea_count": explicit,
         "all_counts": counts,
     }
+
+
+# NOTE: New detector, not a duplicate. detect_victim_log and
+# detect_opportunity_log aggregate across many marker kinds; this one targets a
+# single kind ("deferred-reminder") and fires a cycle when it repeats, because
+# re-deferring the same pattern is a system-integrity smell, not a generic
+# opportunity. The kind label matches the OPPORTUNITY_MARKERS tuple above.
+DEFERRED_REMINDER_MARKER = r"\b(deferral|defer that)\b"
+
+
+def detect_deferred_reminder_cycle(transcript_text: str) -> dict:
+    """Heuristic: a deferred-reminder cycle when the user re-defers the same
+    pattern >1 time. Returns count + is_cycle. Re-deferral is a
+    system-integrity finding (consolidate, don't re-defer), distinct from a
+    one-off opportunity. Kept separate from detect_opportunity_log so the
+    emission path can carry a 'system-integrity' topic."""
+    count = len(re.findall(DEFERRED_REMINDER_MARKER, transcript_text, re.I))
+    return {"count": count, "is_cycle": count > 1, "topic": "deferred-reminder-cycle"}
 
 
 # ── /friction taxonomy lookup ───────────────────────────────────────────────
@@ -535,6 +554,32 @@ def run(
         budget.max_findings_per_layer = max(budget.max_findings_per_layer, 12)
 
     findings: list[Finding] = []
+    # Deferred-reminder cycle: when "deferral/defer that" repeats >1 time the
+    # user is re-deferring the same pattern. Surface it as a system-integrity
+    # OPPORTUNITY finding (lateral, no code origin) so the caller can write a
+    # consolidate-rather-than-re-defer task. Detected here so both /debrief
+    # (run()) and the SessionEnd hook (which calls the shared detector) see it
+    # from one regex. Not part of the defect recursion loop.
+    deferred_cycle = detect_deferred_reminder_cycle(transcript_text)
+    deferred_finding: Optional[Finding] = None
+    if deferred_cycle["is_cycle"]:
+        dr_count = deferred_cycle["count"]
+        df = Finding(
+            finding_id=f"F{abs(hash(('deferred-reminder', dr_count))) % 10**8:08x}",
+            state=State.DISCOVERED,
+            category=Category.DESIGN,
+            kind=FindingKind.OPPORTUNITY,
+            symptom_text=f"{dr_count} occurrences of 'deferral/defer that' in the transcript; the user has deferred this pattern multiple times",
+            symptom_source="deferred-reminder-cycle detector",
+            idea="deferred-reminder pattern is repeating; consolidate rather than re-defer",
+            generalization_test="count of 'deferral/defer that' in transcript > 1",
+            promote_to="backlog",
+            evidence_strength="repeated_pattern",
+        )
+        deferred_finding = df
+        findings.append(df)
+        classify_layer([df])
+
     # Layer 0: discover
     layer0_texts  = [t for t, _ in initial_findings]
     layer0_sources = [s for _, s in initial_findings]

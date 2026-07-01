@@ -23,6 +23,12 @@ try:
 except Exception as _e:
     _DREAM_AVAILABLE = False
     _DREAM_IMPORT_ERR = repr(_e)
+try:
+    from debrief_core import detect_deferred_reminder_cycle
+    _DEFERRED_AVAILABLE = True
+except Exception as _e:
+    _DEFERRED_AVAILABLE = False
+    _DEFERRED_IMPORT_ERR = repr(_e)
 
 LOCAL_URL = "http://127.0.0.1:1234/v1/chat/completions"
 LOCAL_MODEL = "ornith-1.0-9b@q4_k_m"
@@ -264,13 +270,46 @@ def main():
     # Length gate.
     line_count = count_lines(transcript_path)
     log("transcript lines: " + str(line_count))
+    # Deferred-reminder cycle detection runs BEFORE the MIN_LINES gate: a
+    # short transcript can still show re-deferral, and the detector is a cheap
+    # regex count (no LLM, no API key). Reads the tail so the same text feeds
+    # the LLM reflect path below. Single regex source: debrief_core.
+    tail = read_tail_lines(transcript_path, TAIL_LINES)
+    transcript_text = "".join(tail)
+    try:
+        if _DEFERRED_AVAILABLE:
+            cycle = detect_deferred_reminder_cycle(transcript_text)
+            if cycle["is_cycle"]:
+                out_dir_pre = CANDIDATES_DIR / str(session_id) if session_id else CANDIDATES_DIR / "unknown"
+                out_dir_pre.mkdir(parents=True, exist_ok=True)
+                sf_pre = out_dir_pre / "system_findings.json"
+                sf_payload = {
+                    "session_id": session_id,
+                    "produced_at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()),
+                    "topic": "deferred-reminder-cycle",
+                    "kind": "system-integrity",
+                    "category": "design",
+                    "finding_id": "deferred-reminder-cycle",
+                    "count": cycle["count"],
+                    "symptom_text": str(cycle["count"]) + " occurrences of 'deferral/defer that' in the transcript; the user has deferred this pattern multiple times",
+                    "idea": "deferred-reminder pattern is repeating; consolidate rather than re-defer",
+                    "generalization_test": "count of 'deferral/defer that' in transcript > 1",
+                    "promotion_target": "backlog",
+                    "evidence_strength": "repeated_pattern",
+                    "findings": ["deferred-reminder pattern is repeating; consolidate rather than re-defer"],
+                }
+                with open(sf_pre, "w", encoding="utf-8") as f:
+                    json.dump(sf_payload, f, indent=2)
+                log("deferred-reminder: wrote system_findings.json (count=" + str(cycle["count"]) + ")")
+        else:
+            log("deferred-reminder: detector unavailable (" + str(_DEFERRED_IMPORT_ERR) + "); skipping")
+    except Exception as e:
+        log("deferred-reminder detection failed: " + type(e).__name__ + ": " + str(e))
     if line_count < MIN_LINES:
         log("transcript < " + str(MIN_LINES) + " lines; exit 0 (no candidates)")
         if session_id:
             mark_done(session_id)
         sys.exit(0)
-    tail = read_tail_lines(transcript_path, TAIL_LINES)
-    transcript_text = "".join(tail)
     prompt = build_prompt(transcript_text)
     schema = build_opportunity_schema()
     # Tiered: local 9B first.
@@ -331,7 +370,7 @@ def main():
             if should_re_review("system_efficiency", threshold_days=7):
                 sf_dir = out_dir
                 system_findings_path = sf_dir / "system_findings.json"
-                system_findings = {
+                dream_payload = {
                     "session_id": session_id,
                     "produced_at": now_iso,
                     "topic": "system_efficiency",
@@ -342,9 +381,25 @@ def main():
                     "promotion_target": "main",
                 }
                 system_findings_path.parent.mkdir(parents=True, exist_ok=True)
+                # Merge, don't clobber: if a deferred-reminder finding was
+                # written earlier, preserve it as a second entry rather than
+                # overwriting with the dream payload.
+                merged = [dream_payload]
+                try:
+                    if system_findings_path.exists():
+                        existing = json.loads(system_findings_path.read_text(encoding="utf-8"))
+                        if isinstance(existing, list):
+                            merged = existing + [dream_payload]
+                        elif isinstance(existing, dict) and existing.get("topic") != "system_efficiency":
+                            merged = [existing, dream_payload]
+                        else:
+                            merged = [dream_payload]
+                except Exception as me:
+                    log("dream-cycle merge-read failed: " + repr(me) + "; overwriting")
+                    merged = [dream_payload]
                 with open(system_findings_path, "w", encoding="utf-8") as f:
-                    json.dump(system_findings, f, indent=2)
-                record_dream_review(topic="system_efficiency", findings=system_findings["findings"], actioned=False)
+                    json.dump(merged if len(merged) > 1 else dream_payload, f, indent=2)
+                record_dream_review(topic="system_efficiency", findings=dream_payload["findings"], actioned=False)
                 log("dream-cycle: wrote system_findings.json (system_efficiency review due)")
             else:
                 log("dream-cycle: system_efficiency within threshold; skipping")
