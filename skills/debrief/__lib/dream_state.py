@@ -137,6 +137,43 @@ def list_topics_since(days: int) -> list[dict]:
     return out
 
 
+def list_outstanding_dream_findings(threshold_days: int = 7) -> list[dict]:
+    """Return a list of dream-cycle topics that are outstanding and ready for re-review.
+    A topic is outstanding if last_actioned is False AND the time since last_reviewed
+    exceeds threshold_days. Returns an empty list if the state file is missing or invalid."""
+    state = get_last_dream_state()
+    if not state:
+        return []
+    cutoff = timedelta(days=threshold_days)
+    now = datetime.now(timezone.utc)
+    out = []
+    for topic, entry in state.get("topics", {}).items():
+        if entry.get("last_actioned"):
+            continue
+        last_reviewed = entry.get("last_reviewed")
+        if not last_reviewed:
+            continue
+        try:
+            last = _parse_iso(last_reviewed)
+        except (ValueError, TypeError):
+            continue
+        age = now - last
+        if age <= cutoff:
+            continue
+        row = {
+            "topic": topic,
+            "last_reviewed": last_reviewed,
+            "last_actioned": False,
+            "findings": list(entry.get("findings", [])),
+            "age_days": int(age.total_seconds() // 86400),
+        }
+        if "promotion_target" in entry:
+            row["promotion_target"] = entry["promotion_target"]
+        out.append(row)
+    out.sort(key=lambda e: e["age_days"], reverse=True)
+    return out
+
+
 def _delete_topic(topic: str) -> None:
     """Remove a topic from state (used by the self-check for cleanup)."""
     state = get_last_dream_state()
