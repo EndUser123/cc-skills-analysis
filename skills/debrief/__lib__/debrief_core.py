@@ -49,11 +49,21 @@ class Category(str, Enum):
     UNKNOWN   = "unknown"
 
 
+# NOTE: FindingKind is a new axis, not a replacement for Category. Category
+# is the defect-side taxonomy; FindingKind is the lifecycle axis. Defects
+# walk vertical recursion; opportunities walk lateral. They are
+# orthogonal. Do not collapse one into the other.
+class FindingKind(str, Enum):
+    DEFECT      = "defect"
+    OPPORTUNITY = "opportunity"
+
+
 @dataclass
 class Finding:
     finding_id: str
     state: State = State.DISCOVERED
     category: Category = Category.UNKNOWN
+    kind: FindingKind = FindingKind.DEFECT
 
     # symptom layer (where it shows up in the transcript)
     symptom_text: str = ""
@@ -64,6 +74,12 @@ class Finding:
     origin_file: str = ""
     origin_line: int = 0
     origin_explanation: str = ""
+
+    # opportunity layer (lateral) — populated for opportunities
+    idea: str = ""                      # reusable pattern discovered
+    generalization_test: str = ""      # how to prove it generalizes
+    promote_to: str = ""                # cks|skill|hook|docs|memory|backlog|reject
+    evidence_strength: str = ""        # explicit_user_ask|user_correction|repeated_pattern|inferred|weak
 
     # chain (linked-list of parent findings — empty at top level)
     parent_id: Optional[str] = None
@@ -83,6 +99,7 @@ class Finding:
         d = asdict(self)
         d["state"] = self.state.value
         d["category"] = self.category.value
+        d["kind"] = self.kind.value
         return d
 
 
@@ -128,6 +145,43 @@ def detect_victim_log(transcript_text: str) -> dict:
         "is_victim_log": is_victim_log,
         "distinct_symptom_kinds": distinct,
         "high_frequency_markers": high_frequency,
+        "all_counts": counts,
+    }
+
+
+# NOTE: New function, not a duplicate. detect_victim_log handles defects
+# (symptoms of bugs); detect_opportunity_log handles good ideas (what
+# worked, what to generalize, what's worth promoting). They are
+# orthogonal detectors; the calling skill can run both in parallel.
+OPPORTUNITY_MARKERS = [
+    (r"\b(this (worked|trick|approach) (really|well)?|the trick was)\b", "what-worked"),
+    (r"\b(we should|let's (also|always)|generalize this|make this a habit)\b", "should-do"),
+    (r"\b(good idea|useful idea|great idea|worth (keeping|remembering))\b", "explicit-idea"),
+    (r"\b(makes? (this|it) (better|more useful|more productive)|better quality|more effective)\b", "quality-improvement"),
+    (r"\b(fell back to|switched to|ended up (using|on)|the trick was|workaround that stuck|what worked was|settled on)\b", "problem-recovery"),
+    (r"\b(in any domain|cross-?domain|everywhere|always (do|apply))\b", "domain-general"),
+]
+
+
+def detect_opportunity_log(transcript_text: str) -> dict:
+    """Heuristic: transcript is rich in opportunity signals when EITHER
+    >=2 distinct opportunity kinds appear OR an explicit-idea marker
+    (good/useful/great/worth-keeping) appears at least once. Mirror of
+    detect_victim_log's structure so the calling skill can run both
+    detectors in parallel and treat them as orthogonal axes.
+    """
+    counts = {}
+    for pat, kind in OPPORTUNITY_MARKERS:
+        n = len(re.findall(pat, transcript_text, re.I))
+        if n:
+            counts[kind] = counts.get(kind, 0) + n
+    distinct = sum(1 for v in counts.values() if v >= 1)
+    explicit = counts.get("explicit-idea", 0)
+    is_opportunity_log = bool(explicit) or distinct >= 2
+    return {
+        "is_opportunity_log": is_opportunity_log,
+        "distinct_kinds": distinct,
+        "explicit_idea_count": explicit,
         "all_counts": counts,
     }
 
@@ -269,8 +323,21 @@ def write_layer(findings: list[Finding]) -> dict:
     import claude_code internals). The output is what TaskCreate's
     description field should be set to."""
     written = []
+    rejected = []
     for f in findings:
         if f.state != State.VERIFIED:
+            continue
+        # Safety guard: an under-resolved finding must not produce a WRITTEN
+        # task with <unknown> placeholders. The cheap experiment showed that
+        # defect and opportunity inputs both reach this function; without the
+        # guard, opportunity inputs were silently emitted as phantom defect
+        # tasks. Now: stay at VERIFIED with recursion_exhausted=True and a
+        # clear must_re_verify note.
+        if not f.origin_file or f.origin_line == 0:
+            f.recursion_exhausted = True
+            if "no origin_file resolved; investigation did not converge" not in f.must_re_verify:
+                f.must_re_verify.append("no origin_file resolved; investigation did not converge")
+            rejected.append(f)
             continue
         # Emit a TaskCreate-ready description that uses the cold-start template
         # from assets/task_template.md.
@@ -302,7 +369,65 @@ def write_layer(findings: list[Finding]) -> dict:
         d["task_body"] = body
         written.append(d)
         f.state = State.WRITTEN
-    return {"written": written, "count": len(written)}
+    return {"written": written, "rejected": rejected, "count": len(written)}
+
+
+# NOTE: New function, not a duplicate of write_layer. write_layer is the
+# defect (vertical) writer; write_opportunity_layer is the opportunity
+# (lateral) writer. Both share the VERIFIED -> WRITTEN transition, the
+# safety-guard pattern, and the dict return shape.
+def write_opportunity_layer(findings: list[Finding]) -> dict:
+    """Lateral pipeline for FindingKind.OPPORTUNITY. No origin_file
+    (opportunities aren't anchored at code), no recursive locate step.
+    Safety guard: an opportunity without idea or generalization_test is
+    rejected, not silently fabricated. Weak-evidence findings are demoted
+    to PROMOTE_TO:reject.
+    """
+    written = []
+    rejected = []
+    for f in findings:
+        if f.state != State.VERIFIED:
+            continue
+        if f.kind != FindingKind.OPPORTUNITY:
+            continue
+        if not f.idea:
+            f.recursion_exhausted = True
+            f.must_re_verify.append("opportunity has no idea field; transcription step did not produce a reusable pattern")
+            rejected.append(f)
+            continue
+        if not f.generalization_test:
+            f.recursion_exhausted = True
+            f.must_re_verify.append("opportunity has no generalization_test; cannot promote without a way to prove the pattern generalizes")
+            rejected.append(f)
+            continue
+        if f.evidence_strength == "weak":
+            f.recursion_exhausted = True
+            f.promote_to = "reject"
+            f.must_re_verify.append("opportunity evidence is weak; demoted to PROMOTE_TO:reject per rejection rules")
+            rejected.append(f)
+            continue
+        body = "TLDR: " + f.idea[:120] + "\n" + \
+            "TITLE: Promote: " + f.idea[:80] + "\n" + \
+            "TASK_KIND: opportunity-full\n" + \
+            "SEED: " + str(f.symptom_source) + " — " + f.symptom_text[:120] + "\n" + \
+            "IDEA: " + f.idea + "\n" + \
+            "WHY: " + (f.origin_explanation or "expected future leverage from this pattern") + "\n" + \
+            "EVIDENCE: " + (f.evidence_strength or "inferred") + "\n" + \
+            "PROMOTE_TO: " + (f.promote_to or "backlog") + "\n" + \
+            "GENERALIZATION_TEST: " + f.generalization_test + "\n" + \
+            "ACTION: concrete next step required (e.g., 'update SKILL.md', 'add cks entry', 'create hook')\n" + \
+            "VERIFIED FACTS: " + (f.verified_evidence or "<none — see MUST RE-VERIFY>") + "\n" + \
+            "MUST RE-VERIFY: " + (", ".join(f.must_re_verify) or "none") + "\n" + \
+            "DEAD ENDS: " + (", ".join(f.dead_ends) or "none yet") + "\n" + \
+            "DISCRIMINATING TEST: run the GENERALIZATION_TEST in a second, unrelated transcript; if the pattern still applies, promote as evidenced.\n" + \
+            "DEFINITION OF DONE: GENERALIZATION_TEST passes in a second context; opportunity is then either promoted to " + (f.promote_to or "backlog") + " or rejected with a one-line reason.\n" + \
+            "BLOCKERS: none\n" + \
+            "BLAST RADIUS: " + (f.promote_to or "backlog") + " surface; no code changes by default.\n"
+        d = f.to_dict()
+        d["task_body"] = body
+        written.append(d)
+        f.state = State.WRITTEN
+    return {"written": written, "rejected": rejected, "count": len(written)}
 
 
 # ── recursion: symptom → origin ────────────────────────────────────────────
