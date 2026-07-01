@@ -75,6 +75,13 @@ class Finding:
     origin_line: int = 0
     origin_explanation: str = ""
 
+    # principle extracted from the fix path (generalizable invariant, not
+    # a one-off fix). Populated by the principle-extraction step in run()
+    # between verify_layer and write_layer. If /truth verifies it, it goes
+    # into the task body as the GENERALIZABLE_PRINCIPLE field.
+    generalizable_principle: str = ""
+    applies_to: str = ""                      # coding|research|writing|debugging|workflow|tool|unknown
+
     # opportunity layer (lateral) — populated for opportunities
     idea: str = ""                      # reusable pattern discovered
     generalization_test: str = ""      # how to prove it generalizes
@@ -100,6 +107,8 @@ class Finding:
         d["state"] = self.state.value
         d["category"] = self.category.value
         d["kind"] = self.kind.value
+        d["generalizable_principle"] = self.generalizable_principle
+        d["applies_to"] = self.applies_to
         return d
 
 
@@ -357,7 +366,8 @@ def write_layer(findings: list[Finding]) -> dict:
             f"PROBLEM: {f.symptom_text}\n"
             f"VERIFIED FACTS: {f.verified_evidence or '<none — see MUST RE-VERIFY>'}\n"
             f"MUST RE-VERIFY: {', '.join(f.must_re_verify) or 'none'}\n"
-            f"DEAD ENDS: {', '.join(f.dead_ends) or 'none yet'}\n"
+            + (f"GENERALIZABLE_PRINCIPLE: {f.generalizable_principle}\nAPPLIES_TO: {f.applies_to or 'unknown'}\n" if f.generalizable_principle else "")
+            + f"DEAD ENDS: {', '.join(f.dead_ends) or 'none yet'}\n"
             f"DISCRIMINATING TEST: read {f.origin_file or '<unknown>'} around line "
             f"{f.origin_line or 0} and confirm the defect shape described above.\n"
             f"DEFINITION OF DONE: discriminating test passes; failing repro is gone.\n"
@@ -470,6 +480,38 @@ def recurse_layer(
 
 
 # ── main pipeline ──────────────────────────────────────────────────────────
+def extract_generalizable_principle(f, truth_callable):
+    """For a VERIFIED defect finding, ask the LLM (via the truth_callable
+    callback) whether the fix path contains a generalizable principle.
+
+    Contract for truth_callable: it must be called as
+    `truth_callable(claim=..., file_path=...)` and return a verdict dict
+    with at least {status: VERIFIED|FALSE|PARTIAL|UNVERIFIED, evidence: str}.
+    This function never calls the LLM itself; it relies on the same
+    truth_callable that the rest of the pipeline uses. That way /truth
+    is the single verification gate.
+
+    Returns: (principle, applies_to, verdict_status) where:
+    - principle: str, the extracted generalizable invariant (or "" if none)
+    - applies_to: str, one of coding|research|writing|debugging|workflow|tool|unknown
+    - verdict_status: str, the /truth verdict on the principle claim
+    """
+    if not f.origin_explanation:
+        return ("", "", "SKIPPED")
+    claim = "the fix for " + (f.origin_file or "this bug") + " is a generalizable principle beyond this one instance"
+    if truth_callable is None:
+        return ("", "", "SKIPPED")
+    verdict = truth_callable(claim=claim, file_path=f.origin_file or "")
+    status = verdict.get("status", "UNVERIFIED")
+    if status in ("VERIFIED", "PARTIAL"):
+        principle = verdict.get("evidence", "")
+        applies_to = verdict.get("applies_to", "unknown")
+        if not principle:
+            return ("", "", status)
+        return (principle[:200], applies_to, status)
+    return ("", "", status)
+
+
 def run(
     *,
     transcript_text: str,
@@ -537,6 +579,24 @@ def run(
         layers_seen += 1
         current = next_layer
 
+    # Principle extraction: for each VERIFIED defect finding, ask the LLM
+    # whether the fix path is a generalizable principle. The principle
+    # rides along in the task body above the discriminating test, so the
+    # next LLM sees the principle before deciding how to act.
+    if truth_callable is not None:
+        for f in findings:
+            if f.state == State.VERIFIED and f.kind == FindingKind.DEFECT and not f.generalizable_principle:
+                # Adapt the in-pipeline truth_callable(f)->dict contract to
+                # the (claim=, file_path=)->dict contract the principle
+                # extractor expects. The verdict is the same /truth verdict
+                # the verify step already obtained for this finding; the
+                # adapter re-queries truth_callable so the principle claim
+                # is stamped independently.
+                principle_truth = lambda claim="", file_path="": truth_callable(f) or {}
+                principle, applies_to, status = extract_generalizable_principle(f, principle_truth)
+                if principle:
+                    f.generalizable_principle = principle
+                    f.applies_to = applies_to
     written = write_layer(findings)
     return {
         "victim_log": victim,
@@ -614,6 +674,35 @@ def _selfcheck() -> None:
     # original finding stays at LOCATED with recursion_exhausted
     assert res2["summary"]["written"] == 0
     assert res2["summary"]["blocked_unverified"] >= 1
+    # 7th: principle extraction populates the principle field when /truth
+    # verifies the fix path is a generalizable invariant. The truth mock
+    # follows the (claim=, file_path=) contract the pipeline reuses; a
+    # lambda avoids re-declaring a helper def.
+    truth_principle = lambda claim, file_path="": {
+        "status": "VERIFIED",
+        "evidence": "any tool that crashes on list input needs a type guard",
+        "correction": "",
+        "applies_to": "coding",
+    }
+    fp = Finding(
+        finding_id="p7", state=State.VERIFIED, kind=FindingKind.DEFECT,
+        category=Category.DEFECT,
+        origin_file="src/foo.py", origin_line=42,
+        origin_explanation="guard the .lower() on a list",
+    )
+    p, a, s = extract_generalizable_principle(fp, truth_principle)
+    assert p, "principle should populate when /truth verifies the fix path"
+    assert p.startswith("any tool that crashes"), f"unexpected principle: {p!r}"
+    assert a == "coding", f"unexpected applies_to: {a!r}"
+    assert s == "VERIFIED", s
+    fp.generalizable_principle = p
+    fp.applies_to = a
+    res7 = write_layer([fp])
+    assert len(res7["written"]) == 1
+    body7 = res7["written"][0]["task_body"]
+    assert "GENERALIZABLE_PRINCIPLE:" in body7, f"principle not rendered:\n{body7}"
+    assert "APPLIES_TO: coding" in body7, f"applies_to not rendered:\n{body7}"
+    assert "type guard" in body7
     print("self-check OK")
 
 

@@ -13,6 +13,8 @@ VERIFIED FACTS: <file:line + probe output + transcript line, each with a source 
                 e.g. "history.jsonl = 3.2 MB not 2.7 GB (wc, transcript L4991)"
 MUST RE-VERIFY: <claims carried from the session that were NOT re-confirmed this run>
                 e.g. "row count not re-verified — Bash was down (transcript L8736)"
+GENERALIZABLE_PRINCIPLE: <the generalizable invariant from the fix path, if /truth verified one; else omit>
+APPLIES_TO:     <coding|research|writing|debugging|workflow|tool|unknown — domain the principle covers>
 DEAD ENDS:      <approaches already tried that failed or were the wrong cause — do not repeat>
                 e.g. "DB-path repoint was SECONDARY cause; source-format is primary (L5094)"
 PARENT_TASK:    <#<id> if this task shares a pipeline with an existing one — see Update vs Create>
