@@ -1,7 +1,7 @@
 ---
 name: debrief
 description: "This skill is used when the user points at a transcript or chat-history file and asks to mine it for unfinished work, open issues, origin-anchored tasks, or to trace symptoms back to code. Trigger phrases include 'debrief this transcript', 'mine the chat history', 'transcript to tasks', 'turn this session into tasks', 'victim log', and 'why is this broken'. Recursively walks symptom → cause → origin chains, calls /friction and /truth from inside the loop, and writes cold-start tasks to the tracker with the source file tagged. Distinct from /recap (summarizes) and /top-problems (lists, never creates tasks); /retro is the multi-session chain mode."
-version: 1.0.45
+version: 1.0.46
 status: stable
 category: analysis
 enforcement: advisory
@@ -54,6 +54,7 @@ Three kinds of rot turn a transcript into useless noise:
 1. **Symptom-list rot.** A debriefer writes tasks like "Bash returned empty" — anchored at the transcript line. The next LLM picks up the task, can't reproduce the symptom without the transcript, and either closes the task unverified or spends an hour rediscovering the origin. The right task is anchored at the **line of code that produces the symptom**, not the line of transcript that describes it.
 2. **Unverified-claim rot.** A prior session's guess ("the file is 2.7 GB", "the root cause is X") gets copied forward until someone treats it as ground truth. `/debrief` runs `/truth` on every claim at every layer of the recursion — no claim advances to a task without a `VERIFIED | FALSE | PARTIAL | UNVERIFIED` verdict, and `UNVERIFIED` blocks advancement.
 3. **Re-walked-dead-end rot.** The next LLM re-derives the same wrong premise the last one did, because the wrong turn was never recorded. `/debrief` lifts every dead-end into the task body so the next investigator starts at the origin, not at the wrong premise.
+4. **Orphaned-finding rot.** An extraction surfaces 30 findings; 5 become tasks, 25 are "already fixed / already tracked / deferred / external" and silently dropped. The next session re-discovers them because they were never *recorded as resolved or parked*. `/debrief` must account for **every** finding.
 
 So a task written by `/debrief` is a **memory-transfer device anchored at the code**, not a symptom index. If a fresh session can't pick up the task and make verifiable progress without re-reading the transcript, the task is incomplete.
 
@@ -97,6 +98,7 @@ The full Phase 0 → Phase 9 diagram lives in [`references/loop-diagram.md`](ref
 - **Confirm before mutating live state.** Phases 6/8 are side-effecting. State the plan (N creates, M updates, old → new filename) and proceed. Pause for confirmation if the rename target is outside Downloads or if the plan creates more than ~8 tasks.
 - **Mark every cross-session claim with its evidence level.** `MUST RE-VERIFY` is mandatory for any claim the recursion couldn't reach verified-origin level on.
 - **When recursion hits the budget without verifying origin, write the task with `MUST RE-VERIFY: <next-session-action>` so the breadcrumb tells the next LLM exactly where to pick up.**
+- **Every finding must be accounted for.** Group findings into task groups freely (fewer, well-scoped tasks beat tracker bloat), but none may be orphaned. The accounting: (1) **open/un-tasked** → one task each or folded into a group task that lists them; (2) **verified-fixed** → recorded in the breadcrumb task, no separate task; (3) **already-tracked** → cite the existing `#<id>` in the breadcrumb; (4) **explicitly deferred** → one PARKED group task with the deferral gate (see #989); (5) **external / not-our-code** → one documentation-only task. Before `close`, state the count: "N findings → A tasked, B fixed-in-breadcrumb, C deferred, D external" so nothing is silently dropped.
 - Per the global Destructive Action rules, confirm before deleting or overwriting anything other than the task tracker entries and the single source-file rename.
 
 ## Source-file naming standard (Phase 8)

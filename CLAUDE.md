@@ -28,7 +28,7 @@ Analyzing HOW the work is progressing.
 | /debrief | Mine a transcript export for open issues/opportunities → cold-start tasks + source-file tag | `debrief/` |
 | /retro | Full retrospective protocol and self-contrast | `retro/` |
 | /epistemic-check | Validates response quality against contract | `epistemic-check/` |
-| config-audit | Audits project configuration for drift | `config-audit/` |
+| /claude-audit | Audit Claude Code config (CLAUDE.md, rules, hooks, MCP, plugins) + rule-shape fit; consolidates claudit + config-audit | `claude-audit/` |
 
 ## Artifacts Convention
 
