@@ -253,7 +253,7 @@ def mode_run(path: str, findings_path: str, truth_mode: str,
 
 # ── close mode ──────────────────────────────────────────────────────────────
 def mode_close(path: str, breadcrumb_task: int, tracker_snapshot: str,
-               allow_untagged: bool = False) -> int:
+               allow_untagged: bool = False, wiki: bool = False) -> int:
     """Phase 8/9 closure gate. Refuses exit 0 unless the source file is tagged
     AND a non-completed breadcrumb task exists in the tracker snapshot. This is
     the check that stops the LLM from declaring `/debrief` done without the
@@ -262,11 +262,14 @@ def mode_close(path: str, breadcrumb_task: int, tracker_snapshot: str,
     p = Path(path)
     # Phase 8: file is tagged (or a tagged sibling exists next to the original).
     tagged_present = False
+    tagged_path = None
     if p.exists() and _is_tagged(p.name):
         tagged_present = True
+        tagged_path = p
     elif p.exists() and not _is_tagged(p.name):
         for cand in p.parent.glob(f"{p.stem} [*]{p.suffix}"):
             tagged_present = True
+            tagged_path = cand
             break
     if not tagged_present and not allow_untagged:
         failures.append("source file not tagged (Phase 8 rename did not run)")
@@ -289,6 +292,20 @@ def mode_close(path: str, breadcrumb_task: int, tracker_snapshot: str,
             print(f"FAIL: {m}", file=sys.stderr)
         return 1
     print(f"OK: tagged file present + breadcrumb #{breadcrumb_task} exists")
+    # Reminder fires every close so the flag isn't forgotten; --wiki escalates
+    # to a full directive that hands the tagged transcript to /wiki ingest
+    # (SHA256 dedup is automatic — re-ingest of an already-logged file is a no-op).
+    if wiki and tagged_path is not None:
+        print(
+            "\nWIKI DIRECTIVE: durable findings (the B/C/D accounting buckets — "
+            "verified-fixed, deferred, external) are wiki candidates.\n"
+            "  1. Skill(skill=\"wiki\")   # skill-first gate\n"
+            f"  2. /wiki ingest \"{tagged_path}\"   # explicit single file, deduped by SHA256\n"
+            "If the hash is already in log.md, /wiki skips it — safe to re-run."
+        )
+    else:
+        print("HINT: durable findings are wiki candidates → re-run close with --wiki "
+              "to emit the /wiki ingest directive.")
     return 0
 
 
@@ -395,6 +412,8 @@ def main():
                          help="TaskList snapshot JSON")
     p_close.add_argument("--allow-untagged", action="store_true",
                          help="skip the Phase-8 tag check (emergency use only)")
+    p_close.add_argument("--wiki", action="store_true",
+                         help="emit a /wiki ingest directive for the tagged transcript (durable-findings capture)")
 
     sub.add_parser("selfcheck", help="run --selfcheck on every script")
 
@@ -408,7 +427,7 @@ def main():
                         args.resolver_cache, args.apply)
     if args.mode == "close":
         return mode_close(args.path, args.breadcrumb_task, args.tracker_snapshot,
-                          args.allow_untagged)
+                          args.allow_untagged, args.wiki)
     if args.mode == "selfcheck":
         return mode_selfcheck()
     ap.error(f"unknown mode: {args.mode}")

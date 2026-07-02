@@ -11,7 +11,8 @@ Ported from claudit (acostanzo/quickstop) with the Rule-Shape additions that dis
 | Security Posture | 15% | Permission hygiene, secrets exposure, tool restrictions |
 | MCP Configuration | 15% | Server health, tool sprawl, unused servers |
 | Plugin Health | 15% | Version currency, structure, legacy patterns |
-| Context Efficiency | 15% | Token budget awareness, memory usage, config bloat |
+| Context Efficiency | 10% | Token budget awareness, config bloat |
+| Memory | 5% | MEMORY.md index discipline, liveness, derivability, redundancy |
 
 ## Grade Thresholds
 
@@ -172,10 +173,35 @@ See `claude-md-architecture.md` for the full framework. A rule's **trigger** mus
 | Minimal loaded context | +5 | Only what's needed is loaded |
 | On-demand-only subdirectory files | +5 | Good architecture — subdirectory files load only when needed |
 
+## Memory (5%)
+
+**Philosophy:** `MEMORY.md` is an always-loaded index with a 200-line / ~24KB ceiling; value lives in topic files. Bloat, dead links, and prose-as-index waste tokens every session and rot recall. Memory is personal and long-term — destructive actions default to **archive**, never delete. Full procedure and self-reflection prompts: Phase 2.5 of `SKILL.md`.
+
+### Deductions
+| Issue | Points | Description |
+|---|---|---|
+| No MEMORY.md when memory dir exists | -10 | Topic files with no index → unreachable |
+| Index > 200 lines / > 24KB | -15 | Over ceiling — always-loaded cost exceeds budget |
+| Broken topic-file link (resolves to nothing) | -5 each (max -25) | Dead retrieval key — liveness check fail |
+| Entry cites file/symbol/skill that no longer exists | -5 each (max -20) | Provenance decay — teaches a wrong lesson |
+| Entry re-derivable from CLAUDE.md / git / docs | -5 each (max -20) | Restates cheaper authoritative source → drop |
+| Duplicate/clustered entries (same root cause) | -5 per cluster | Redundancy — merge into one topic file |
+| Index line > 150 chars or multi-sentence | -2 each (max -15) | Prose masquerading as retrieval key → shorten |
+| Topic file body < 5 lines | -3 each (max -12) | Index carries more than file → fold + drop |
+| Free-prose lines consuming the 200-line budget | -2 each (max -10) | Non-index lines in the always-loaded tier |
+
+### Bonuses
+| Optimization | Points | Description |
+|---|---|---|
+| Lean, all-retrieval-key index | +5 | Every line is `Title — one-line hook`, ≤150 chars |
+| Every entry passes liveness + derivability | +3 | No dead links, no restated CLAUDE.md rules |
+| Archived (not deleted) stale entries | +2 | Destructive actions stayed reversible |
+
 ## Scope-aware scoring
 
-- **Global only** (no project): exclude CLAUDE.md Quality; renormalize remaining 5 weights proportionally. Note "CLAUDE.md Quality: skipped (no project)."
-- **Comprehensive**: score all 6 categories.
+- **Global only** (no project): exclude CLAUDE.md Quality; renormalize remaining weights proportionally. Note "CLAUDE.md Quality: skipped (no project)."
+- **No MEMORY.md / memory dir**: exclude Memory; note "Memory: not configured." Renormalize proportionally.
+- **Comprehensive**: score all 7 categories.
 
 ## Recommendation Ranking
 
@@ -198,4 +224,11 @@ Each deduction maps to a slug: `{category_slug}:{issue_type}:{file_stem}:{conten
 - `rule-shape:subtree-at-root` — subtree-specific rule at repo root
 - `rule-shape:import-misconception` — `@import` treated as token reduction
 
-All other category → slug mappings follow claudit's original issue-type table (over-engineering, claudemd-quality, security, mcp-config, plugin-health, context-efficiency).
+All other category → slug mappings follow claudit's original issue-type table (over-engineering, claudemd-quality, security, mcp-config, plugin-health, context-efficiency). Memory slugs:
+- `memory:dead-link` — topic-file link resolves to nothing
+- `memory:provenance-decay` — cited file/symbol/skill no longer exists
+- `memory:derivable` — re-derivable from CLAUDE.md / git / docs
+- `memory:redundant-cluster` — clustered with another entry (same root cause)
+- `memory:prose-index` — index line is prose, not a retrieval key
+- `memory:thin-topic` — topic body shorter than its index line
+- `memory:budget-prose` — non-index lines consuming the 200-line budget

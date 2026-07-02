@@ -2,10 +2,10 @@
 name: skill-audit
 description: Unified skill audit + improvement orchestrator. Audits any Claude Code skill against an 8-category rubric (frontmatter, instructions, agent design, directory, over-engineering, references, prompt patterns P1-P8, contract compliance), produces a scored report with ranked recommendations, and applies selected fixes through a 5-phase pipeline (diagnose → plan → execute → evaluate → gate). Use when improving an existing skill, auditing for quality, or migrating frontmatter to the evidence-first contract.
 allowed-tools: Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion
-argument-hint: <skill-path> [score|patterns|contract|improve|migrate-ef]
+argument-hint: <skill-path | artifact> [score|patterns|contract|improve|migrate-ef|intel]
 enforcement: advisory
 workflow_steps:
-  - locating_skill
+  - intake
   - diagnosing
   - planning
   - executing_fixes
@@ -31,6 +31,21 @@ Parse `$ARGUMENTS` for the subcommand. Default subcommand when only a path is gi
 | `contract <path>` | EF / execution-contract frontmatter compliance only |
 | `improve <path>` | Apply selected fixes from a previous audit, then re-score |
 | `migrate-ef <path>` | One-shot EF migration (delegates to `skill_guard._skill_frontmatter_loader`) |
+| `intel <artifact>` | Detect external skills referenced in a transcript/log/file/dir, map to our internal skills, diff, and emit ranked improvement recommendations. No rubric score — produces a *diff*, not a grade. |
+
+## Intake — route the request
+
+First decide audit-vs-intel. This is one branch, not a separate command.
+
+1. If the subcommand is `intel <artifact>` **OR** the first argument is not a skill path
+   (it's a `.jsonl` transcript, a `.log`/`.txt` file, an arbitrary dir of external skill
+   files, or a non-skill `SKILL.md` from outside this repo) → run **`intel`** (see its
+   section below). Do not score it.
+2. Otherwise → resolve the target as a skill and run the audit phases.
+
+**Intake classifier (use it)**: a path is an *artifact* (→ intel) when it is a `.jsonl`,
+`.log`, `.txt`, or any `SKILL.md` whose path is NOT under
+`P:/packages/.claude-marketplace/plugins/`. Everything else resolves as a skill target.
 
 ## Locate the skill
 
@@ -139,6 +154,56 @@ Read the target's frontmatter. Call `classify_migration_status` directly. Report
 - status (UNMIGRATED / PARTIALLY_MIGRATED / MIGRATED)
 - missing fields
 - whether `category` is `knowledge` or `meta` (which are exempt from contract enforcement)
+
+## Subcommand: `intel <artifact>`
+
+Detect external skills referenced in an evidence artifact, map each to our nearest
+internal skill, diff, and emit ranked improvement recommendations. This is the only
+subcommand whose input is **not** one of our skills — it's a transcript, log, text file,
+external `SKILL.md`, or a directory of them. It produces a *diff*, never a rubric score.
+
+### Flow
+
+1. **Detect + map (deterministic)** — run
+   `python "${SKILL_ROOT}/scripts/external_intel.py" <artifact> [<artifact> ...]`
+   The script emits a JSON manifest: per external skill, its `invocations`, `citations`
+   (`file:line`), `sources`, and a proposed `internal_match` with `confidence` +
+   `match_basis` (`name` ≥0.7 / `keyword` 0.35–0.69 / `none` <0.35 / `no-internal-index`).
+   Detection uses **structured signals only**: Skill tool_use blocks and `/command`
+   patterns in transcripts; `SKILL.md` path mentions and slash commands in text/logs;
+   directory walks for skill files. Prose mentions are NOT counted (noise).
+2. **Diff (LLM judgment)** — apply `${SKILL_ROOT}/references/external-intel-rubric.md`.
+   Walk axes A→E (capability, prompt-pattern, output structure, guardrails, dispatch);
+   stop at the first axis that yields an actionable gap per external skill. Gate the
+   strength of each recommendation on `match_basis` per the rubric's confidence table —
+   weak matches are stated as hypotheses, not edited.
+3. **Recommend (actionable)** — each gap becomes one recommendation of the form
+   `GAP / OURS / FIX → target-path → hand-off`. The hand-off for an internal target is
+   `run /skill-audit improve <target-path>`; for no target (`match_basis: none`), it's
+   greenfield via `/cc-skills-architect:write-a-skill`. **Do not auto-apply** — intel
+   proposes, the user picks, Phase 3 executes.
+4. **Read external SKILL.md when available** — if the artifact is or contains external
+   skill files, Read them before diffing; structured capability evidence beats invocation traces.
+
+### Output shape
+
+```
+EXTERNAL-INTEL REPORT
+Artifacts: <path> (kind: transcript|text|skillmd|dir, N signals)
+
+External skill: <name>   [×N invocations]   citations: file:line, ...
+  Internal match: <ours|none>   confidence: 0.XX   basis: name|keyword|none
+  Gaps (axis A first):
+    A. <capability ours lacks>  → FIX: ...  → /skill-audit improve <path> | write-a-skill
+    ...
+Ranked recommendations: [Critical/High/Medium/Low as in the rubric]
+```
+
+### Self-check
+
+`python "${SKILL_ROOT}/scripts/external_intel.py" selfcheck` validates detection
+(Skill tool_use + slash captured; drive-letter paths rejected; weak-match labeling).
+Run it once after any edit to the script.
 
 ## Error Handling
 

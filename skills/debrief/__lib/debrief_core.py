@@ -170,6 +170,16 @@ OPPORTUNITY_MARKERS = [
     (r"\b(fell back to|switched to|ended up (using|on)|the trick was|workaround that stuck|what worked was|settled on)\b", "problem-recovery"),
     (r"\b(in any domain|cross-?domain|everywhere|always (do|apply))\b", "domain-general"),
     (r"\b(deferral|defer that)\b", "deferred-reminder"),
+    # Behavioral/heuristic patterns (added 2026-07-02): surface thinking/behavior
+    # quality issues so /debrief pattern-mines for them, not just code/conversation.
+    # Tuned LOOSE — false positives cost a tag, false negatives miss a learning.
+    # promote_to defaults to docs/memory at the task-creation step.
+    (r"\b(marked (the )?(task|verification|smoke).{0,40}complete|complete.{0,30}(task|verification|smoke))", "verification-skip"),
+    (r"\b(before (running|actually )?(the )?(verification|smoke|test|it|this)|without (running|actually )?(the )?(verification|smoke|test))", "verification-skip"),
+    (r"\b(local (strictly )?dominates|dominates (over|on)|my (local )?(copy|version) dominates)\b", "axis-mismatch"),
+    (r"\b(based on (my )?(memory|recall)|I (read|recall) (the|a)? (file|memory|earlier)|from (memory|recall))\b", "memory-as-evidence"),
+    (r"\b(skip(ping)? plan(-mode)? ceremony|skip plan mode|just execute|just (do|run) it|skip the ceremony)\b", "plan-mode-bypass"),
+    (r"\b(marked .{0,30}complete (before|without)|complete(d)? .{0,30}(before|without|but not))\b", "premature-completion"),
 ]
 
 
