@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
 """debrief Phase 6 — deterministic source-file rename (house style).
 
-Turns the bracket tag from freeform prose into a tested function:
-    [theme #id #id · theme #id].ext
+House naming standard (codified 2026-07-01):
+    <session-start-date> [<Domain #id #id · domain #id>].ext
 
-is_noise_name() decides whether the original filename stem is throwaway
-auto-generated noise (-> bracket-only) or carries real signal (-> preserved
-as a prefix). This is the one place the "drop the original name" decision is
-made, so it's auditable instead of left to each run's judgment.
+The export tool's auto-generated stem (timestamps, "cusersbrsthdownloads...",
+"review npm version file", etc.) is garbage and is NEVER kept. The only
+prefix is the session-start date, pulled from the transcript content (the
+earliest real in-session event timestamp — NOT the export-tool timestamp and
+NOT a date quoted inside a recap/template). Pass it via --date; it becomes
+the stem. If --date is omitted the stem falls back to bracket-only.
+
+Bracket = domain/feature themes only. Rules:
+  - theme label is a short topic (CHS, pi, go, gate, plugin-audit, opportunity);
+    acronyms UPPERCASE, else lowercase.
+  - IDs grouped under their real topic; each ID appears exactly once.
+  - NO meta / self-referential themes (debrief-skill, breadcrumb). The
+    breadcrumb lives in the task tracker, not the filename.
+  - themes joined by " · ".
 
 Usage:
   # dry-run: show the name that WOULD result
-  python rename_tag.py --themes "chs:917,918 pi:914 go:916,939 gate:942,943,944,945" \
-      --path "C:/Users/brsth/Downloads/Review npm.txt"
+  python rename_tag.py --date 2026-07-01 --themes "CHS:917,918 pi:914 gate:942" \
+      --path "C:/Users/brsth/Downloads/2026-07-01-145732-...garbage....txt"
 
   # actually rename
   python rename_tag.py --themes "..." --path "..." --apply
@@ -104,15 +114,22 @@ def _selfcheck() -> None:
               ("gate", [942, 943, 944, 945])]
     got = build_name("✳ Review npm version file content", ".txt", themes)
     assert got == "[chs #917 #918 · pi #914 · go #916 #939 · gate #942 #943 #944 #945].txt", got
+    # house standard (codified 2026-07-01): <session-start-date> [domain themes].ext
+    assert build_name("2026-07-01", ".txt", [("CHS", [917]), ("plugin-audit", [982])]) \
+        == "2026-07-01 [CHS #917 · plugin-audit #982].txt"
     print("self-check OK")
 
 
 def main():
     ap = argparse.ArgumentParser(description="debrief Phase 6 rename formatter")
     ap.add_argument("--selfcheck", action="store_true")
-    ap.add_argument("--stem", default="")
+    ap.add_argument("--date", default="",
+                    help="session-start date (YYYY-MM-DD) pulled from transcript content; "
+                         "becomes the stem, replacing the export tool's garbage prefix")
+    ap.add_argument("--stem", default="",
+                    help="override stem explicitly (rare; prefer --date)")
     ap.add_argument("--ext", default=".txt")
-    ap.add_argument("--themes", help='"chs:917,918 pi:914 go:916,939"')
+    ap.add_argument("--themes", help='"CHS:917,918 pi:914 gate:942,943"  (whitespace-separated)')
     ap.add_argument("--path", help="existing file to rename")
     ap.add_argument("--apply", action="store_true", help="actually rename (default: dry-run)")
     args = ap.parse_args()
@@ -124,11 +141,22 @@ def main():
     if not args.themes:
         ap.error("--themes is required (or --selfcheck)")
     themes = _parse_themes(args.themes)
+    # --date wins (house standard: session-start date is the only allowed prefix;
+    # it replaces the export tool's garbage stem). Then explicit --stem. Then the
+    # path basename — which for export garbage should be treated as noise, so the
+    # result is bracket-only.
+    if args.date:
+        stem = args.date
+    elif args.stem:
+        stem = args.stem
+    elif args.path:
+        stem = os.path.splitext(os.path.basename(args.path))[0]
+    else:
+        stem = ""
     if args.path:
-        stem = args.stem or os.path.splitext(os.path.basename(args.path))[0]
         ext = os.path.splitext(args.path)[1] or args.ext
     else:
-        stem, ext = args.stem, args.ext if args.ext.startswith(".") else f".{args.ext}"
+        ext = args.ext if args.ext.startswith(".") else f".{args.ext}"
     new = build_name(stem, ext, themes)
     validate(new)
 

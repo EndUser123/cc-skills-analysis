@@ -99,6 +99,26 @@ The full Phase 0 → Phase 9 diagram lives in [`references/loop-diagram.md`](ref
 - **When recursion hits the budget without verifying origin, write the task with `MUST RE-VERIFY: <next-session-action>` so the breadcrumb tells the next LLM exactly where to pick up.**
 - Per the global Destructive Action rules, confirm before deleting or overwriting anything other than the task tracker entries and the single source-file rename.
 
+## Source-file naming standard (Phase 8)
+
+The rename target is **not** a freeform restatement of the transcript. It follows one house format:
+
+```
+<session-start-date> [<Domain-theme> #<id> #<id> · <theme> #<id>].<ext>
+```
+
+Example: `2026-07-01 [CHS #917 · dream-cycle #976 · gate #942 · plugin-audit #982].txt`
+
+Rules — the export tool's auto-generated stem (`2026-07-01-145732-cusersbrsthdownloads-...`, `Review npm version file content`, etc.) is garbage and is **never** kept:
+
+1. **Prefix = session-start date only**, pulled from the transcript *content* — the earliest real in-session event timestamp. NOT the export-tool filename timestamp, and NOT a date quoted inside a recap/template/example. Pass it as `rename_tag.py --date YYYY-MM-DD`.
+2. **Bracket = domain/feature themes only.** Short topic labels (`CHS`, `pi`, `go`, `gate`, `plugin-audit`, `opportunity`); acronyms UPPERCASE, else lowercase.
+3. **Each task ID appears exactly once**, under its real topic. Never list the same ID under two themes.
+4. **No meta / self-referential themes.** `debrief-skill` and `breadcrumb` do not go in the filename — the breadcrumb lives in the task tracker (`#NNN`), which is where the next `/debrief` looks it up.
+5. Themes joined by ` · `.
+
+`rename_tag.py --date <session-start-date> --themes "<Domain>:<id>,<id> <theme>:<id>" --path <file> --apply` enforces this. `--selfcheck` asserts the format.
+
 ## The recursive investigator in 5 lines
 
 A debriefer running `/debrief` does, in order: (1) `debrief.py plan --path <file>` to get chunks + theme hints, (2) `debrief.py run --path <file> --findings <dedup.json> --truth-mode contract` to route the deduped findings through the enforced state machine (the only path to `WRITTEN` tasks — `contract` mode leaves un-/truth-stamped findings at LOCATED with a `MUST RE-VERIFY` note), (3) call `/truth` on every layer transition the run surfaced, (4) gap-analyze the `WRITTEN` findings against `TaskList` and TaskCreate each + invoke `rename_tag.py --apply`, (5) `debrief.py close --path <file> --breadcrumb-task N --tracker-snapshot <dump>` as the closure gate — it refuses exit 0 unless the source file is tagged AND a non-completed breadcrumb task exists. The loop in (2) does the heavy lifting; the gate in (5) is what stops "done" from being a judgment call.
