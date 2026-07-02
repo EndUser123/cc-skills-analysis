@@ -75,6 +75,15 @@ class Finding:
     origin_line: int = 0
     origin_explanation: str = ""
 
+    # mechanism-gap citation — required for mechanism-building proposals
+    # (promote_to in skill/hook). The file:line proving the absent mechanism,
+    # e.g. "sync.py:345 — no read-only dir exclusion in find_all_git_repos".
+    # Enforces the Iron Law on the proposal's FRAME: 'mechanism X is absent'
+    # must be cited like any factual claim, or the finding stalls at VERIFIED
+    # with a MUST RE-VERIFY note. Defects are origin-anchored (no gate);
+    # docs/memory promotions record knowledge (no absent mechanism).
+    mechanism_gap: str = ""
+
     # principle extracted from the fix path (generalizable invariant, not
     # a one-off fix). Populated by the principle-extraction step in run()
     # between verify_layer and write_layer. If /truth verifies it, it goes
@@ -439,6 +448,23 @@ def write_opportunity_layer(findings: list[Finding]) -> dict:
             f.must_re_verify.append("opportunity has no generalization_test; cannot promote without a way to prove the pattern generalizes")
             rejected.append(f)
             continue
+        # Mechanism-gap citation gate (Part B). A promotion that BUILDS a new
+        # mechanism (skill/hook) rests on a counterfactual — "mechanism X is
+        # absent" — which must be cited like any factual claim. Without it the
+        # finding stalls at VERIFIED. This is the gate the "fleet enrollment"
+        # failure needed: a proposal shipped without anyone verifying the
+        # mechanism was actually missing. docs/memory/cks promotions record
+        # knowledge, not mechanisms, so they are exempt. Fail-closed mirrors
+        # how /truth-UNVERIFIED already stalls — the friction is the feature.
+        if f.promote_to in {"skill", "hook"} and not f.mechanism_gap:
+            f.recursion_exhausted = True
+            f.must_re_verify.append(
+                "mechanism-building proposal (promote_to=" + f.promote_to
+                + ") lacks MECHANISM GAP citation — cite the file:line proving "
+                "the mechanism is absent before this can become a task"
+            )
+            rejected.append(f)
+            continue
         if f.evidence_strength == "weak":
             f.recursion_exhausted = True
             f.promote_to = "reject"
@@ -467,6 +493,54 @@ def write_opportunity_layer(findings: list[Finding]) -> dict:
         written.append(d)
         f.state = State.WRITTEN
     return {"written": written, "rejected": rejected, "count": len(written)}
+
+
+# ── close-gate: lever-dedup (Part A) ───────────────────────────────────────
+# Structural check for the close step. Catches "N tasks are one lever wearing
+# disguises" — e.g. three proposal actions all targeting the skill-audit
+# checker. Deterministic (file/surface join over task bodies), no LLM, no
+# adequacy judge (those measured non-discriminating; see memory
+# semantic-critic-adequacy-no-discrimination). Advisory at close — the human
+# decides whether to collapse; it never blocks.
+_FIX_SITE_PATTERNS = [
+    re.compile(r"BLAST RADIUS:\s*(\S+)"),
+    re.compile(r"DISCRIMINATING TEST:\s*read\s+(\S+)"),
+    re.compile(r"PROMOTE_TO:\s*(\S+)"),
+]
+_TRIVIAL_SITES = {"none", "backlog", "unknown", "<unknown>", "no", "-", ""}
+
+
+def _extract_fix_sites(task_body: str) -> set:
+    sites: set = set()
+    for rx in _FIX_SITE_PATTERNS:
+        for m in rx.findall(task_body):
+            sites.add(m.strip().lower().rstrip(",.;:"))
+    return sites
+
+
+def detect_redundant_levers(tasks: list) -> dict:
+    """Scan /debrief-originated tasks (those carrying the DISCRIMINATING TEST
+    signature) for fix-sites shared across >=2 tasks. Returns advisory warnings
+    — never blocks close. The close gate prints these so a human can collapse
+    redundant levers before they ship as separate tasks."""
+    debrief_tasks = [
+        t for t in tasks
+        if "DISCRIMINATING TEST:" in (t.get("description") or t.get("subject") or "")
+    ]
+    site_to_tasks: dict = {}
+    for t in debrief_tasks:
+        tid = str(t.get("id", "?"))
+        body = t.get("description") or t.get("subject") or ""
+        for site in _extract_fix_sites(body):
+            if site in _TRIVIAL_SITES:
+                continue
+            site_to_tasks.setdefault(site, []).append(tid)
+    warnings = [
+        "lever-dedup: " + str(len(ids)) + " tasks (" + ", ".join(ids)
+        + ") share fix-site '" + site + "' — verify distinct levers or collapse into one task"
+        for site, ids in site_to_tasks.items() if len(ids) >= 2
+    ]
+    return {"warnings": warnings, "scanned": len(debrief_tasks)}
 
 
 # ── recursion: symptom → origin ────────────────────────────────────────────
@@ -758,6 +832,45 @@ def _selfcheck() -> None:
     assert "GENERALIZABLE_PRINCIPLE:" in body7, f"principle not rendered:\n{body7}"
     assert "APPLIES_TO: coding" in body7, f"applies_to not rendered:\n{body7}"
     assert "type guard" in body7
+    # Part B: mechanism-building opportunity without mechanism_gap → rejected.
+    op_nogap = Finding(
+        finding_id="op1", state=State.VERIFIED, kind=FindingKind.OPPORTUNITY,
+        idea="add a fleet-enrollment lint", generalization_test="runs on a second repo",
+        promote_to="skill", evidence_strength="explicit_user_ask",
+    )
+    r_ng = write_opportunity_layer([op_nogap])
+    assert len(r_ng["rejected"]) == 1, "skill-promotion without mechanism_gap must be rejected"
+    assert any("MECHANISM GAP" in n for n in op_nogap.must_re_verify), op_nogap.must_re_verify
+    # With the citation, it writes.
+    op_gap = Finding(
+        finding_id="op2", state=State.VERIFIED, kind=FindingKind.OPPORTUNITY,
+        idea="add a fleet-enrollment lint", generalization_test="runs on a second repo",
+        promote_to="skill", evidence_strength="explicit_user_ask",
+        mechanism_gap="sync.py:345 — no read-only dir exclusion in find_all_git_repos",
+    )
+    r_g = write_opportunity_layer([op_gap])
+    assert len(r_g["written"]) == 1, "skill-promotion WITH mechanism_gap must write"
+    # docs/memory promotion does NOT need mechanism_gap.
+    op_mem = Finding(
+        finding_id="op3", state=State.VERIFIED, kind=FindingKind.OPPORTUNITY,
+        idea="remember pi auth startup noise is benign", generalization_test="n/a",
+        promote_to="memory", evidence_strength="explicit_user_ask",
+    )
+    r_m = write_opportunity_layer([op_mem])
+    assert len(r_m["written"]) == 1, "memory promotion must not require mechanism_gap"
+    # Part A: lever-dedup surfaces shared fix-sites; non-debrief tasks skipped.
+    tasks_shared = [
+        {"id": 1, "description": "TLDR: x\nDISCRIMINATING TEST: read sync.py\nBLAST RADIUS: sync.py\n"},
+        {"id": 2, "description": "TLDR: y\nDISCRIMINATING TEST: read sync.py\nBLAST RADIUS: sync.py\n"},
+        {"id": 3, "description": "TLDR: z\nDISCRIMINATING TEST: read other.py\nBLAST RADIUS: other.py\n"},
+    ]
+    dl = detect_redundant_levers(tasks_shared)
+    assert dl["scanned"] == 3, dl
+    assert any("sync.py" in w for w in dl["warnings"]), dl
+    assert not any("other.py" in w for w in dl["warnings"]), dl
+    dl2 = detect_redundant_levers([{"id": 9, "description": "unrelated pre-existing task"}])
+    assert dl2["scanned"] == 0
+    assert dl2["warnings"] == []
     print("self-check OK")
 
 

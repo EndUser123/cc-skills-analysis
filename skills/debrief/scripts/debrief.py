@@ -292,6 +292,20 @@ def mode_close(path: str, breadcrumb_task: int, tracker_snapshot: str,
             print(f"FAIL: {m}", file=sys.stderr)
         return 1
     print(f"OK: tagged file present + breadcrumb #{breadcrumb_task} exists")
+    # Part A: lever-dedup advisory. Catches "N tasks are one lever wearing
+    # disguises" (e.g. three proposal actions all targeting one checker) before
+    # close. Advisory — prints warnings, never fails the gate. Scoped to
+    # /debrief-originated tasks (those carrying the DISCRIMINATING TEST
+    # signature) so pre-existing tracker entries don't create noise.
+    if tracker_snapshot:
+        import debrief_core
+        snap_for_dedup = _read_json(tracker_snapshot)
+        if isinstance(snap_for_dedup, dict):
+            snap_for_dedup = snap_for_dedup.get("tasks", snap_for_dedup)
+        if isinstance(snap_for_dedup, list):
+            dedup = debrief_core.detect_redundant_levers(snap_for_dedup)
+            for w in dedup["warnings"]:
+                print(f"WARNING: {w}")
     # Reminder fires every close so the flag isn't forgotten; --wiki escalates
     # to a full directive that hands the tagged transcript to /wiki ingest
     # (SHA256 dedup is automatic — re-ingest of an already-logged file is a no-op).
