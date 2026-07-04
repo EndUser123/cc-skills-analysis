@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -66,11 +67,14 @@ class TestGtoFindingsToDebrief:
         assert item["gto_score"] == 6.0
         assert item["symptom_source"] == "uncompleted_goal"
 
-    def test_resolved_findings_filtered(self):
+    @pytest.mark.parametrize("closed_status", ["resolved", "rejected", "mapped"])
+    def test_non_open_statuses_filtered(self, closed_status):
+        # the converter drops resolved/rejected/mapped — only open survives.
+        # parametrized so flipping one status out of the set fails a test.
         open_f = _finding(id="SESSION-UNCO-001", status="open")
-        resolved_f = _finding(id="SESSION-UNCO-002", status="resolved",
-                              title="done thing")
-        out = gto_adapter.gto_findings_to_debrief([open_f, resolved_f])
+        closed_f = _finding(id="SESSION-UNCO-002", status=closed_status,
+                            title="done thing")
+        out = gto_adapter.gto_findings_to_debrief([open_f, closed_f])
         assert len(out) == 1
         assert out[0]["gto_id"] == "SESSION-UNCO-001"
 
@@ -88,6 +92,70 @@ class TestGtoFindingsToDebrief:
         f = _finding(title="", description="")
         out = gto_adapter.gto_findings_to_debrief([f])
         assert out[0]["symptom_text"] == "SESSION-UNCO-001"
+
+
+# ── UNIT: _outcome_to_findings (the inlined converter) ───────────────────────
+
+class TestOutcomeToFindings:
+    """Pins the branches of _outcome_to_findings so a mutation in any one
+    branch fails a named test. The converter mirrors orchestrator.py:324-380;
+    if that inline drifts, these catch it."""
+
+    def _item(self, **kw):
+        base = dict(category="uncompleted_goal", content="do the thing",
+                    confidence=0.5, recurrence_count=1, acknowledged=False)
+        base.update(kw)
+        return SimpleNamespace(**base)
+
+    def _gto(self):
+        return gto_adapter._import_gto()
+
+    def test_severity_high_at_recurrence_ge_2(self):
+        result = SimpleNamespace(items=[self._item(recurrence_count=2)])
+        out = gto_adapter._outcome_to_findings(result, self._gto(), "t", "s", None)
+        assert out[0].severity == "high"
+
+    def test_severity_boundary_recurrence_1_not_high(self):
+        # boundary: recurrence==1 is NOT high — it falls back to the category map.
+        # pins >= 2 vs > 2 (off-by-one mutation kills this).
+        result = SimpleNamespace(items=[self._item(recurrence_count=1, category="uncompleted_goal")])
+        out = gto_adapter._outcome_to_findings(result, self._gto(), "t", "s", None)
+        assert out[0].severity == "medium"
+
+    def test_severity_uses_category_map_below_threshold(self):
+        # open_question + deferred_item are "low"; uncompleted_goal/identified_task "medium".
+        result = SimpleNamespace(items=[
+            self._item(category="open_question"),
+            self._item(category="deferred_item"),
+            self._item(category="identified_task"),
+        ])
+        out = gto_adapter._outcome_to_findings(result, self._gto(), "t", "s", None)
+        assert [f.severity for f in out] == ["low", "low", "medium"]
+
+    def test_id_format_category_prefix_and_1_based_index(self):
+        # id = SESSION-{category[:4].upper()}-{idx+1:03d}
+        result = SimpleNamespace(items=[
+            self._item(category="uncompleted_goal"),
+            self._item(category="identified_task"),
+        ])
+        out = gto_adapter._outcome_to_findings(result, self._gto(), "t", "s", None)
+        assert out[0].id == "SESSION-UNCO-001"
+        assert out[1].id == "SESSION-IDEN-002"
+
+    def test_evidence_level_verified_at_confidence_ge_07(self):
+        # boundary at 0.7: >= 0.7 → verified, < 0.7 → unverified.
+        result = SimpleNamespace(items=[
+            self._item(confidence=0.7),
+            self._item(confidence=0.69),
+        ])
+        out = gto_adapter._outcome_to_findings(result, self._gto(), "t", "s", None)
+        assert out[0].evidence_level == "verified"
+        assert out[1].evidence_level == "unverified"
+
+    def test_empty_items_returns_empty(self):
+        result = SimpleNamespace(items=[])
+        out = gto_adapter._outcome_to_findings(result, self._gto(), "t", "s", None)
+        assert out == []
 
 
 # ── UNIT: attach_score_and_owner ─────────────────────────────────────────────
@@ -117,6 +185,33 @@ class TestAttachScoreAndOwner:
         body_once = once[0]["body"]
         twice = gto_adapter.attach_score_and_owner(once, findings)
         assert twice[0]["body"] == body_once  # no double-stamp
+
+    def test_score_only_when_owner_none(self):
+        # owner missing → stamp score only, no owner_skill token.
+        findings = [{"symptom_text": "fold gto", "symptom_source": "s",
+                     "gto_score": 7.0, "gto_owner_skill": None}]
+        tasks = [{"body": "fold gto — trace"}]
+        out = gto_adapter.attach_score_and_owner(tasks, findings)
+        assert "gto_score: 7.0" in out[0]["body"]
+        assert "owner_skill" not in out[0]["body"]
+
+    def test_owner_only_when_score_none(self):
+        # score missing → stamp owner only, no gto_score token.
+        findings = [{"symptom_text": "fold gto", "symptom_source": "s",
+                     "gto_score": None, "gto_owner_skill": "debrief"}]
+        tasks = [{"body": "fold gto — trace"}]
+        out = gto_adapter.attach_score_and_owner(tasks, findings)
+        assert "owner_skill: debrief" in out[0]["body"]
+        assert "gto_score" not in out[0]["body"]
+
+    def test_substring_match_not_exact(self):
+        # matching is substring-containment, not equality — the task body
+        # embeds the symptom text with surrounding prose.
+        findings = [{"symptom_text": "fold gto", "symptom_source": "s",
+                     "gto_score": 5.0, "gto_owner_skill": "d"}]
+        tasks = [{"body": "TODO: fold gto now and also other stuff"}]
+        out = gto_adapter.attach_score_and_owner(tasks, findings)
+        assert "[gto]" in out[0]["body"]
 
 
 # ── INTEGRATION: gap-review pass-2 merge (read path) ─────────────────────────
@@ -188,6 +283,13 @@ class TestRunGtoDetectorsRealChain:
         assert len(findings) >= 1, (
             "run_gto_detectors returned 0 findings on a real transcript — "
             "the #983 regression (0 deterministic findings) has recurred.")
+        # And it must be a SESSION-* outcome finding from the outcome detector
+        # — not a carried-over or agent finding that would satisfy count>=1
+        # while leaving #983 (no deterministic session outcomes) un-fixed.
+        session_outcomes = [f for f in findings if f.id.startswith("SESSION-")]
+        assert session_outcomes, (
+            "findings returned but none are SESSION-* outcomes — the outcome "
+            "detector did not fire, so #983 is not actually closed.")
 
     def test_findings_convert_to_debrief_shape(self, tmp_path):
         tp = _real_transcript()
