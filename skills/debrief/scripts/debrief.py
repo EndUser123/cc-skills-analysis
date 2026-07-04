@@ -284,6 +284,22 @@ def mode_close(path: str, breadcrumb_task: int, tracker_snapshot: str,
             failures.append(f"breadcrumb task #{breadcrumb_task} not found in snapshot")
         elif row.get("status") in ("completed", "deleted"):
             failures.append(f"breadcrumb task #{breadcrumb_task} is {row.get('status')}")
+        else:
+            # Structure-invariant (NOT a discriminator): the breadcrumb must
+            # carry an ACCOUNTING line proving the LLM did finding-bucketing at
+            # all. Catches "declared done with no accounting" — the one failure
+            # mode worth gating. Deliberately does NOT validate the numbers
+            # (count-equivalence is theater when both sides come from the same
+            # LLM) and does NOT call an LLM verifier (≈0 discrimination on this
+            # corpus; see memory feedback_gate_discrimination_rule). Presence of
+            # the sentinel is the whole check, like requiring a "TLDR:" prefix.
+            body = " ".join(str(row.get(k, "")) for k in ("subject", "description"))
+            if not re.search(r"ACCOUNTING:\s*\d+\s*findings", body, re.IGNORECASE):
+                failures.append(
+                    f"breadcrumb task #{breadcrumb_task} missing ACCOUNTING line "
+                    "(emit 'ACCOUNTING: <N> findings -> <A> tasked, <B> fixed-in-breadcrumb, "
+                    "<C> deferred, <D> external' per SKILL.md scope boundaries)"
+                )
     else:
         failures.append("no --tracker-snapshot supplied (cannot verify breadcrumb)")
 
@@ -368,15 +384,25 @@ def mode_selfcheck() -> int:
         close_rc_neg = mode_close(str(tpath), breadcrumb_task=999,
                                   tracker_snapshot=str(snap))
         assert close_rc_neg != 0, "close must fail on untagged + missing breadcrumb"
-        # close: positive case — tagged file + present breadcrumb.
+        # close: positive case — tagged file + present breadcrumb WITH accounting.
         tagged = tdir / "tx [debrief #1].txt"
         tagged.write_text("x", encoding="utf-8")
         snap2 = tdir / "snap2.json"
-        snap2.write_text(json.dumps([{"id": 1, "status": "pending"}]), encoding="utf-8")
+        snap2.write_text(json.dumps([{
+            "id": 1, "status": "pending",
+            "description": "ACCOUNTING: 2 findings -> 1 tasked, 1 fixed-in-breadcrumb, "
+                           "0 deferred, 0 external",
+        }]), encoding="utf-8")
         close_rc_pos = mode_close(str(tagged), breadcrumb_task=1,
                                   tracker_snapshot=str(snap2))
         assert close_rc_pos == 0, f"close should pass on tagged + present, got {close_rc_pos}"
-        print("close: OK (negative bites, positive passes)")
+        # close: accounting-gate bites — breadcrumb present but no ACCOUNTING line.
+        snap3 = tdir / "snap3.json"
+        snap3.write_text(json.dumps([{"id": 1, "status": "pending"}]), encoding="utf-8")
+        close_rc_noacct = mode_close(str(tagged), breadcrumb_task=1,
+                                     tracker_snapshot=str(snap3))
+        assert close_rc_noacct != 0, "close must fail when breadcrumb lacks ACCOUNTING line"
+        print("close: OK (negative bites, positive passes, accounting-gate bites)")
     return rc
 
 

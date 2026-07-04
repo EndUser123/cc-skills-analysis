@@ -23,7 +23,7 @@ marker so the breadcrumb can resume.
 """
 from __future__ import annotations
 
-import json, os, re, subprocess, sys
+import json, os, re, subprocess, sys, hashlib
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
@@ -275,8 +275,17 @@ def verify_with_truth(claim: str, file_path: str = "", timeout: int = 30) -> dic
 
 
 # ── state-machine operations ──────────────────────────────────────────────
+def _stable_fid(*parts: str) -> str:
+    """Deterministic 8-hex finding id from the source+text (and any parent id),
+    so two runs of the same input produce byte-identical artifact JSON — the
+    'deterministic, auditable run' contract debrief.py:13 promises. Python's
+    built-in hash() is salted per-process and breaks that contract."""
+    raw = "\x00".join(str(p) for p in parts).encode("utf-8")
+    return f"F{hashlib.sha256(raw).hexdigest()[:8]}"
+
+
 def _new_finding(text: str, source: str, parent_id: Optional[str] = None) -> Finding:
-    fid = f"F{abs(hash((source, text))) % 10**8:08x}"
+    fid = _stable_fid(source, text)
     return Finding(
         finding_id=fid,
         symptom_text=text,
@@ -575,7 +584,7 @@ def run(
     if deferred_cycle["is_cycle"]:
         dr_count = deferred_cycle["count"]
         df = Finding(
-            finding_id=f"F{abs(hash(('deferred-reminder', dr_count))) % 10**8:08x}",
+            finding_id=_stable_fid("deferred-reminder", str(dr_count)),
             state=State.DISCOVERED,
             category=Category.DESIGN,
             kind=FindingKind.OPPORTUNITY,

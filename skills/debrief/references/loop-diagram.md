@@ -130,11 +130,13 @@ When the budget hits without verifying the origin, the finding is yielded
 with `recursion_exhausted=True` and the task body carries a `MUST RE-VERIFY`
 note so the next LLM knows exactly where to pick up.
 
-## When to escalate to /retro
+## Chain inputs (`chain_*.md`)
 
-`/debrief` is for a single transcript file. When the user has a *chain* of
-sessions (multiple linked sessions, not one transcript), `/retro` walks the
-chain via `/recap` first, then invokes `debrief_core.run()` per session with
-the same state machine. `/debrief` and `/retro` share `debrief_core`; the
-only difference is the input shape (file vs chain) and the output sink
-(TaskCreate vs RNS-formatted).
+`/debrief` handles both single-transcript files and multi-session chain
+exports directly. The victim-log detector, recursion budget (auto-bumped for
+victim logs), and `--truth-mode contract` gate all scale to chain length —
+run the same Phase 0 → 9 loop, just with a larger `chunk_plan`. `/retro` is
+the legacy chain surface being migrated into `/debrief`; both share
+`debrief_core` (same state machine, victim-log detection, /truth gate, task
+template). Do not route `chain_*.md` files to `/retro` — invoke `/debrief`
+on the chain export.
