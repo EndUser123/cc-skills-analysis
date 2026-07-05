@@ -2,7 +2,7 @@
 name: skill-audit
 description: Unified skill audit + improvement orchestrator. Audits any Claude Code skill against an 8-category rubric (frontmatter, instructions, agent design, directory, over-engineering, references, prompt patterns P1-P8, contract compliance), produces a scored report with ranked recommendations, and applies selected fixes through a 5-phase pipeline (diagnose → plan → execute → evaluate → gate). Use when improving an existing skill, auditing for quality, or migrating frontmatter to the evidence-first contract.
 allowed-tools: Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion
-argument-hint: <skill-path | artifact> [score|patterns|contract|improve|migrate-ef|intel]
+argument-hint: <skill-path | artifact> [score|patterns|contract|partition|improve|migrate-ef|intel]
 enforcement: advisory
 workflow_steps:
   - intake
@@ -29,6 +29,7 @@ Parse `$ARGUMENTS` for the subcommand. Default subcommand when only a path is gi
 | `score <path>` | Rubric-only — no plan, no fixes |
 | `patterns <path>` | P1-P8 prompt-pattern coverage only (per the original `/prompt-audit`) |
 | `contract <path>` | EF / execution-contract frontmatter compliance only |
+| `partition <path>` | Determinism partition only — per-component review of whether each part should be deterministic Python, TypeScript, LangGraph, or LLM |
 | `improve <path>` | Apply selected fixes from a previous audit, then re-score |
 | `migrate-ef <path>` | One-shot EF migration (delegates to `skill_guard._skill_frontmatter_loader`) |
 | `intel <artifact>` | Detect external skills referenced in a transcript/log/file/dir, map to our internal skills, diff, and emit ranked improvement recommendations. No rubric score — produces a *diff*, not a grade. |
@@ -59,9 +60,15 @@ Resolve the target path:
 
 ## Phase 1 — Diagnose
 
-For the default and `score` subcommands, run all four checks:
+For the default and `score` subcommands, run all five checks:
 
 1. **Rubric scoring** — apply `${SKILL_ROOT}/references/scoring-rubric.md` (8 categories, weights).
+   Includes the **adaptive-pathing** sub-check under Instruction Quality: for any skill with 3+
+   phases or `workflow_steps`, grep the SKILL.md body for escape-hatch signals (`--skip-`,
+   `--quick`, `--no-`, `--force`, `--dry-run`, `--legacy`, `--minimal`) and conditional-routing
+   prose (`if ... fails`, `fallback`, `otherwise`, `when X`, `unless`, `on error`). Zero hits →
+   apply the "Brittle single-path workflow" -10 deduction; hits → consider the +5 adaptive bonus.
+   Single-purpose / knowledge / meta / <3-phase skills are exempt.
 2. **Prompt pattern coverage** — grep SKILL.md and scripts for P1-P8 markers per the
    `prompt-patterns-catalog.md` at `P:/packages/cc-skills-sdlc/prompt-patterns-catalog.md`.
 3. **Contract compliance** — invoke
@@ -69,6 +76,16 @@ For the default and `score` subcommands, run all four checks:
    to classify frontmatter (`UNMIGRATED` / `PARTIALLY_MIGRATED` / `MIGRATED`) and list missing fields.
 4. **Cross-reference integrity** — grep for `${SKILL_ROOT}` and `${CLAUDE_PLUGIN_ROOT}`
    references; verify each resolves to an existing file.
+5. **Determinism partition** — apply `${SKILL_ROOT}/references/determinism-partition-rubric.md`.
+   Enumerate the skill's components (each script, workflow step, agent dispatch, gate/matcher,
+   output-formatter) and for each classify its *current home* vs *recommended home* across
+   **{deterministic Python, TypeScript, LangGraph, LLM}**. The rubric is a top-down ladder
+   (one-correct-answer → code; stateful ≥3-node branching workflow → LangGraph; judgment/prose
+   → LLM). **LangGraph is a first-class option, not an afterthought** — a Python `if/elif` chain
+   encoding retries + conditional routing over many nodes is a graph problem in imperative
+   clothing. Emit one row per component + the summary count. `Confidence: low` rows are
+   surfaced as hypotheses, never auto-applied (partition changes are architectural and hard to
+   reverse). Skip for `score`-only runs if the user asked a narrower question.
 
 ## Phase 2 — Plan
 
@@ -96,6 +113,11 @@ Prompt Patterns (P1-P8):
   ...
 Contract Status: MIGRATED | PARTIALLY_MIGRATED | UNMIGRATED
   Missing fields: contract_type, required_artifacts, response_requirements
+
+Determinism Partition: N components → Python: a | TS: b | LangGraph: c | LLM: d | review: e
+  Top mismatches (current → recommended):
+    <component>  LLM → Python   (deterministic work parked in wrong layer)
+    <component>  Python(if/elif x6) → LangGraph   (stateful workflow in imperative clothing)
 ```
 
 Then rank recommendations (Critical / High / Medium / Low per the rubric's ranking table).
@@ -154,6 +176,27 @@ Read the target's frontmatter. Call `classify_migration_status` directly. Report
 - status (UNMIGRATED / PARTIALLY_MIGRATED / MIGRATED)
 - missing fields
 - whether `category` is `knowledge` or `meta` (which are exempt from contract enforcement)
+
+## Subcommand: `partition <path>`
+
+Determinism partition review only (Phase-1 check #5 in isolation). Read
+`${SKILL_ROOT}/references/determinism-partition-rubric.md`, then enumerate every
+component of the target skill (scripts, workflow steps, agent dispatches,
+gates/matchers, formatters) and classify each as **current home → recommended home**
+across `{deterministic Python, TypeScript, LangGraph, LLM}`. Apply the rubric's
+top-down ladder per component; cite the ladder step that fired as the `Basis`.
+
+Rules:
+- **LangGraph is a first-class candidate**, not just Python vs TS vs LLM. A workflow
+  with conditional edges, retry cycles, fan-out+join, or shared mutable state across
+  many nodes earns graph orchestration; a linear pipeline does not.
+- **Never auto-apply** partition recommendations — they are architectural and hard to
+  reverse. Emit them ranked; the user picks; Phase 3 executes (if ever).
+- `Confidence: low` rows (ambiguous, needs human judgement) are stated as hypotheses
+  and excluded from the "actionable" count.
+- Output: one row per component per the rubric's `Output format`, then the summary
+  count, then ranked recommendations of the form
+  `COMPONENT / CURRENT → RECOMMENDED / BASIS → hand-off`.
 
 ## Subcommand: `intel <artifact>`
 

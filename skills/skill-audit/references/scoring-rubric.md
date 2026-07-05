@@ -83,6 +83,7 @@ Category Name        ███████████████████�
 | Missing input validation | -5 | No validation of user input or arguments |
 | No user interaction points | -5 | Complex skills should confirm plans with user |
 | Inconsistent phase numbering | -5 | Phases numbered incorrectly or skipped |
+| Brittle single-path workflow (multi-step only) | -10 | 3+ phases or `workflow_steps` with no escape hatch, fallback, or conditional branch — locks the model into one path that breaks when a step fails or the user wants a subset |
 
 ### Bonuses
 
@@ -92,6 +93,17 @@ Category Name        ███████████████████�
 | Good argument handling | +5 | Clean `$ARGUMENTS` parsing with validation |
 | Explicit error handling | +5 | Clear guidance for failure modes |
 | User confirmation at key points | +5 | AskUserQuestion for plan approval |
+| Documented adaptive pathing | +5 | Explicit escape hatches (`--skip-*`, `--quick`, `--no-*`), mode variants, or conditional routing (`if X, do Y; fallback to Z`) |
+
+### Adaptive-pathing detection signals
+
+A multi-step skill is "brittle" if it has 3+ phases or `workflow_steps` entries AND zero hits across these signals (grep SKILL.md body):
+
+- Escape-hatch flags: `--skip-`, `--quick`, `--no-`, `--force`, `--dry-run`, `--legacy`, `--minimal`
+- Conditional routing prose: `if ... fails`, `fallback`, `otherwise`, `when X`, `unless`, `on error`
+- Mode variants: a table or list of modes (e.g., `--quick` vs full, `advisory` vs `enforced`)
+
+**Scope rule (avoid noise):** single-purpose skills, knowledge/meta-category skills, and skills with <3 phases are exempt — the brittle-path deduction does not apply, same as Scope-Aware Scoring for other categories. The check discriminates only when a skill is complex enough for one path to be a liability.
 
 ---
 

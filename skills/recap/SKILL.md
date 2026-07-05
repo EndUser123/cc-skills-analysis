@@ -44,9 +44,12 @@ execution:
 
 `/recap` uses `session_chain.walk_session_chain()` to walk the full session chain via handoff files, then parses each transcript in oldest-to-newest order.
 
-**LLM Executor:** If you are the LLM with full conversation context in memory, skip the transcript search and proceed directly to synthesizing findings from context. Only walk the session chain when resuming a prior session without current context.
+**LLM Executor: ALWAYS walk the chain via `session_chain.walk_session_chain()`. Never skip the transcript walk.** Do not assume "I have full conversation context in memory" — post-compaction, in-memory context is a lossy subset of the transcript and feels complete while missing items. The transcript at `transcript_path` is the only authoritative source. (This clause replaces an earlier "skip if you have context" shortcut that caused recaps to silently omit work dropped by compaction.)
 
-1. **Get current session ID**: Extract from `CLAUDE_TRANSCRIPT` env var (stem of the `.jsonl` path), or from `sessionId` field in the transcript file itself
+1. **Get current session ID (MANDATORY — derive explicitly, never auto-detect).** Do NOT rely on any "current session" file or terminal-keyed auto-detection. Under concurrent Claude sessions in one Windows Terminal, `WT_SESSION` is shared, `~/.claude/active-session-{terminal_id}.txt` and `~/.claude/.artifacts/{terminal_id}/identity.json` are last-writer-wins, and mtime/size fallbacks resolve to a sibling session. Wrong session_id → wrong chain walked → silent miss (same failure class as the post-compaction skip trap). Derive it directly:
+   - **Preferred:** from the live `transcript_path` in your most recent hook payload — `C:\Users\<user>\.claude\projects\P--\<session_id>.jsonl` (or `<session_id>-<model>.jsonl`). The stem minus the optional `-<model>` suffix is the session_id.
+   - **First prompt of a session (no hook payload yet):** run `/status` or inspect `~/.claude/projects/P--/` for the `.jsonl` whose mtime is newest and whose content includes your current first message. Do NOT guess from memory or from the active-session file.
+   - Pass the derived id as the sole key into `walk_session_chain()` in Step 2.
 2. **Walk the session chain**: Call `session_chain.walk_session_chain(session_id)` — Strategy 1 uses handoff files (`n_1_transcript_path`), Strategy 2 uses mtime-gap + semantic fallback
 3. **Parse each transcript**: Load each transcript path, detect session boundaries via `sessionId` changes, extract goals/message counts
 4. **Aggregate context**: Extract goals, message counts from each session
@@ -344,6 +347,7 @@ These are internal self-check prompts. They are not default user-facing question
 - Session chain walked successfully (or fallback used)
 - Session boundaries detected via sessionId changes
 - All sessions in chain processed
+- **The recap cites session IDs returned by `walk_session_chain()` — NOT inferred from in-memory conversation context.** This is the anti-compaction invariant: synthesis grounded in in-memory context alone silently omits items the summarizer dropped. If you cannot point to a session ID from the walk, you skipped the walk; go back and run it.
 
 If gate fails: note chain walk issue and proceed with available data.
 

@@ -1,7 +1,7 @@
 ---
 name: claude-audit
 description: Audit and optimize Claude Code configuration (CLAUDE.md, .claude/rules/, skills, hooks, agents, MCP, plugins, MEMORY.md) for over-engineering, token waste, and rule-shape — whether each rule lives in the right mechanism. Consolidates claudit + config-audit. Self-contained; no external subagent fleet.
-version: 1.1.0
+version: 1.1.1
 status: stable
 category: analysis
 enforcement: advisory
@@ -14,6 +14,7 @@ workflow_steps:
   - research
   - audit
   - memory
+  - env-vars
   - score
   - apply
 ---
@@ -168,7 +169,57 @@ If the index exceeds ~100 entries, emit an **intent→entry** quick-nav table gr
 ### Equivalence verification (mandatory after every `shorten`/`merge` in Phase 4)
 After rewriting an index line or merging a topic, **re-read the new line in isolation** and confirm it still predicts the surviving body — a shortened key that no longer discriminates its own topic is information loss, not compaction (the `/mlc` "verify equivalence: ensure no information lost" rule). If the line fails this, rewrite until it predicts the body. Token savings without equivalence is a regression.
 
-## Phase 3: Score + Report
+## Phase 2.6: Env Var Audit (settings.json `env` block)
+
+**Premise:** An env var earns its slot only if it carries **information the consuming code does not already have**. Count alone is not debt — debt is a var that exists with no consumer, or whose `settings.json` value merely restates the code's own default. The unit of work is *"remove the var AND simplify the consuming code,"* not just *"remove the var."*
+
+### Inputs
+- `env` block from `settings.json` (Phase 0).
+- Consumer corpus: `P:/.claude/**/*.py` + `P:/packages/.claude-marketplace/plugins/**/*.py` + plugin `hooks.json`/`settings.json` shell commands + `~/.claude.json` MCP config. Skip `_archive`/`backup` dirs.
+
+### Per-var classification
+
+For each defined env var, find every consumer (`grep -rn '"VAR"\|\$VAR'`), then classify:
+
+| Verdict | Test | Action |
+|---|---|---|
+| **remove-var** (dead) | Zero real consumers outside `settings_health_check.py`'s own `SYSTEM_VARS` allowlist and outside this audit | Delete the env entry; no code change |
+| **remove-var-and-simplify** (redundant override) | Exactly one consumer reads it via `os.environ.get("VAR", <default>)` (or `_env_bool("VAR", default=...)`) **and** the `settings.json` value equals that `<default>` | Delete the env entry **and** delete the env-read indirection at the consumer site — hardcode the default inline. The var was carrying no information. |
+| **keep-killswitch** | Name matches `*_BYPASS`, `*_DEBUG`, `*_VERBOSE`, `*_DISABLE*`, `*_ENABLED`, `*_MODE` — deliberate operator override even if currently equal to default | Keep; document intent in a one-line comment if absent |
+| **keep** | Has consumers and the value changes behavior vs. the code default | Keep |
+
+### Falsification gate (close before recommending `remove-*`)
+A var can be read by mechanisms `grep '"VAR"'` misses. Before any `remove-*` verdict, confirm **none** of these apply:
+
+1. **Shell expansion** in a hook command or `settings.json` hook entry: `$VAR` or `${VAR}` (not quoted).
+2. **MCP config** in `~/.claude.json` or project `.mcp.json`: `"env": {"VAR": "$VAR"}` or `command` referencing it.
+3. **Re-export** by another var (rare): `OTHER_VAR="$VAR"` in a profile script or `settings.json` value.
+4. **Lazy / runtime import** in a hook whose source glob skipped it (e.g., a plugin `__lib/` module the scan pattern missed — re-grep the specific plugin dir).
+
+If any apply, downgrade to `keep` and note the consumer site.
+
+### Output
+Per-var table with evidence and the recommended action:
+
+```
+=== ENV VAR AUDIT ===
+VAR_NAME                       settings  code_default  verdict                 consumer
+TDD_AUTOSCAFFOLD               0         "0"           remove-var-and-simplify PreToolUse.py:412
+MULTI_AGENT_ENABLED            true      False         keep                    (default-true, value changes behavior)
+STRAWBERRY_VALIDATOR_VERBOSE   false     —             keep-killswitch         (no consumer; *_VERBOSE override)
+DELEGATION_GATE_ENABLED        false     True          keep                    (default-true; settings flips to false)
+SOME_DEAD_VAR                  "x"       —             remove-var              (0 consumers)
+=== END ===
+```
+
+`settings` and `code_default` columns show both values so the reviewer can sanity-check the equality claim. Feed `remove-*` candidates into Phase 4 (apply). Score feeds Phase 3 Context Efficiency category.
+
+### Phase 4 application
+- **remove-var**: delete the line from the `env` block.
+- **remove-var-and-simplify**: delete the env line **and** Edit the consumer to replace `os.environ.get("VAR", X)` / `_env_bool("VAR", X)` with the literal `X`. Re-grep the consumer after the edit to confirm no other read site exists. Run the consumer's tests if present.
+- Both are PR-eligible for project settings, personal for `~/.claude/settings.json`. Run each through the falsification gate a second time at apply time (state may have changed since Phase 2.6).
+
+
 
 Score the 7 categories (rubric), compute weighted overall, look up grade. Decision-memory handling in Phase 4.
 
