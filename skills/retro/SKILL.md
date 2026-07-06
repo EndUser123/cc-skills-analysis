@@ -1,5 +1,6 @@
 ---
 name: retro
+disable-model-invocation: true
 description: "DEPRECATED — use /debrief chain. Multi-session retrospective protocol (recap→gaps→friction→pre-mortem→rns + SCORES)."
 enforcement: advisory
 workflow_steps: []

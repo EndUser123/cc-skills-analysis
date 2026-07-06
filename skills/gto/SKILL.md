@@ -1,5 +1,6 @@
 ---
 name: gto
+disable-model-invocation: true
 description: "DEPRECATED entry — use /debrief gaps. GTO v4.4 engine: session-aware gap-to-opportunity analysis with execution-contract runtime (deterministic detectors + mandatory haiku gap reviewer + RNS + artifact.json contract)."
 version: 1.0.43
 triggers:

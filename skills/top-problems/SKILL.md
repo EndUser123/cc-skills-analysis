@@ -1,5 +1,6 @@
 ---
 name: top-problems
+disable-model-invocation: true
 description: "DEPRECATED — use /debrief top. 6-source problem scan → ranked tasks (findings become tasks)."
 enforcement: advisory
 workflow_steps: []
