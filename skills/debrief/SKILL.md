@@ -1,6 +1,6 @@
 ---
 name: debrief
-description: "This skill is used when the user points at a transcript or chat-history file and asks to mine it for unfinished work, open issues, origin-anchored tasks, or to trace symptoms back to code. Trigger phrases include 'debrief this transcript', 'mine the chat history', 'transcript to tasks', 'turn this session into tasks', 'victim log', and 'why is this broken'. Recursively walks symptom → cause → origin chains, calls /friction and /truth from inside the loop, and writes cold-start tasks to the tracker with the source file tagged. Distinct from /recap (summarizes) and /top-problems (lists, never creates tasks); handles multi-session chain exports (`chain_*.md`) directly — `/retro` is the legacy chain surface being migrated in."
+description: "Unified analysis hub — mines transcripts for unfinished work + origin-anchored tasks. Modes: default (transcript → root-cause tasks), chain (multi-session retrospective: /recap→gaps→/friction→/red-team→/rns + SCORES), gaps (deterministic gap detectors + mandatory haiku gap reviewer + RNS + artifact contract), top (6-source problem scan → ranked tasks). Trigger phrases: 'debrief this transcript', 'mine the chat history', 'victim log', 'why is this broken', 'run a retro', 'top problems', 'what gaps remain'. Absorbs /retro, /gto, /top-problems."
 version: 1.0.50
 status: stable
 category: analysis
@@ -10,7 +10,17 @@ triggers:
   - "debrief this transcript"
   - "victim log"
   - "why is this broken"
-suggest: []
+  - /retro
+  - /gto
+  - /top-problems
+  - "run a retro"
+  - "top problems"
+  - "what gaps remain"
+suggest:
+  - /improve
+  - /wiki
+  - /review
+  - /red-team
 do_not:
   - write a finding as a task without running /truth on it (UNVERIFIED claims don't ship)
   - state a verified fact without a file:line citation
@@ -67,8 +77,23 @@ So a task written by `/debrief` is a **memory-transfer device anchored at the co
 
 **Do NOT use for:**
 - Live session summarization with no file (that's `/recap`).
-- Listing problems without creating tasks (that's `/top-problems`).
-- A multi-session chain analysis with no export file — `/debrief` handles chain exports (`chain_*.md`) directly; only fall back to `/retro` if you have loose per-session transcripts that haven't been chained yet.
+- A pure bug fix on a known root cause (that's `/rca` or `/debug`).
+- A multi-session chain analysis with no export file — `/debrief chain` handles chain exports (`chain_*.md`) directly. If you only have loose per-session transcripts that haven't been chained yet, run `/recap` on each first to build the chain.
+
+## Modes
+
+`/debrief` is four entry points sharing one state machine. Pick by what the user pointed at.
+
+| Mode | Invocation | When | What it does |
+|---|---|---|---|
+| **default** | `/debrief <file>` | A single transcript or session export | Victim-log detection → recursive origin-trace → VERIFIED tasks + source-file rename. The full Phase 0–9 loop. |
+| **chain** | `/debrief chain <chain_*.md>` (or `/retro`) | A multi-session chain export | Walks the chain through the retrospective protocol: recap → gaps → `/friction` → `/red-team` (pre-mortem) → `/rns`, then emits a SCORES summary. Absorbs `/retro`. |
+| **gaps** | `/debrief gaps <path>` (or `/gto`) | Want deterministic first-pass detectors before recursion | Runs `/gto`'s session-goal/outcome detectors + carryover registry + leverage scoring + mandatory haiku gap-reviewer, seeds the findings into `debrief_core.run()`. Artifact contract enforced. Absorbs `/gto`. |
+| **top** | `/debrief top <path>` (or `/top-problems`) | Want a ranked architectural-problem scan across the 6 sources | 6-source scan + veto checks + X-Y detection + fix-level classification → **ranked tasks** (findings become tasks; debrief creates them just like in default mode). Absorbs `/top-problems`. |
+
+**Modes compose.** `/debrief gaps top <path>` runs deterministic detectors AND the 6-source scan, merging both finding sets before the recursive state machine. `/debrief chain <file>` implies `gaps` (chain mode always runs the deterministic detectors on each session segment).
+
+**The unifying rule across all modes:** every finding flows through `debrief_core.run()` — the enforced CLASSIFIED → LOCATED → VERIFIED → WRITTEN state machine with `/truth` verification at every layer. No mode bypasses the gate. The difference is *what seeds the findings*: default relies on LLM extraction, gaps adds deterministic detectors, top adds the 6-source ranked scan, chain sequences it across sessions.
 
 ## Two surfaces of /debrief
 
@@ -127,11 +152,11 @@ Rules — the export tool's auto-generated stem (`2026-07-01-145732-cusersbrsthd
 
 A debriefer running `/debrief` does, in order: (1) `debrief.py plan --path <file>` to get chunks + theme hints, (2) `debrief.py run --path <file> --findings <dedup.json> --truth-mode contract` to route the deduped findings through the enforced state machine (the only path to `WRITTEN` tasks — `contract` mode leaves un-/truth-stamped findings at LOCATED with a `MUST RE-VERIFY` note), (3) call `/truth` on every layer transition the run surfaced, (4) gap-analyze the `WRITTEN` findings against `TaskList` and TaskCreate each + invoke `rename_tag.py --apply`, (5) `debrief.py close --path <file> --breadcrumb-task N --tracker-snapshot <dump>` as the closure gate — it refuses exit 0 unless the source file is tagged AND a non-completed breadcrumb task exists. The loop in (2) does the heavy lifting; the gate in (5) is what stops "done" from being a judgment call. Pass `--wiki` to (5) to emit a `/wiki ingest <tagged-file>` directive — the B/C/D accounting buckets (verified-fixed, deferred, external) are durable knowledge, not tasks, and `/wiki` ingests the tagged transcript with automatic SHA256 dedup (re-ingest of an already-logged file is a no-op, so it's safe to run every close).
 
-`/debrief` handles both single-transcript files and multi-session chain exports (`chain_*.md`) — the victim-log detector, recursion budget, and `--truth-mode contract` gate all scale to chain length. `/retro` is the legacy chain surface being migrated into `/debrief`; both share `debrief_core` (same state machine, victim-log detection, /truth gate, task template), so prefer `/debrief` for chain inputs and do not route `chain_*.md` files to `/retro`.
+`/debrief` handles both single-transcript files and multi-session chain exports (`chain_*.md`) — the victim-log detector, recursion budget, and `--truth-mode contract` gate all scale to chain length. **Chain mode** (`/debrief chain` or `/retro`) walks the chain through the retrospective protocol: recap → gaps → `/friction` → `/red-team` (pre-mortem) → `/rns`, then emits a SCORES summary. Both the default and chain modes share `debrief_core` (same state machine, victim-log detection, /truth gate, task template). `/retro` is now a stub routing to `/debrief chain` — do not invoke it directly; chain `chain_*.md` inputs through `/debrief chain`.
 
-## Optional: deterministic detectors from /gto (`--gto-detectors`)
+## Gaps mode: deterministic detectors from /gto (`--gto-detectors`)
 
-`/debrief`'s strength is recursive origin-tracing; it has no deterministic first pass. `/gto`'s strength is the opposite — deterministic session-goal/outcome detection, carryover+resolution registry, leverage scoring, and gap-to-skill routing — but no recursive origin work. `--gto-detectors` gives debrief both: a deterministic first pass that seeds the recursion with structured findings.
+`/debrief gaps` (formerly `/gto`) is selected by passing `--gto-detectors` to the run. `/debrief`'s strength is recursive origin-tracing; it has no deterministic first pass. `/gto`'s strength is the opposite — deterministic session-goal/outcome detection, carryover+resolution registry, leverage scoring, and gap-to-skill routing — but no recursive origin work. `--gto-detectors` gives debrief both: a deterministic first pass that seeds the recursion with structured findings.
 
 - `--gto-detectors`: run gto's detectors on `--path` and merge the open findings into the run. Findings arrive as `{symptom_text, symptom_source}` at the same `--findings` seam debrief_core already consumes, then flow through the normal state machine (CLASSIFIED → LOCATED → VERIFIED → WRITTEN). Each WRITTEN task body gets a `[gto] gto_score: N | owner_skill: X` tag stamped by `attach_score_and_owner`.
 - `--gap-review` (requires `--gto-detectors`): two-pass gap-reviewer agent. Pass 1 writes `gap_reviewer_handoff.json` under `~/.claude/.artifacts/debrief/{session-id}/` and prints the Agent-tool dispatch instruction; the running LLM dispatches the gap_reviewer (system prompt `GAP_REVIEW_SYSTEM` from `skills.gto.agents.prompts`), which writes `gap_reviewer_result.json`. Re-run with the same flags (pass 2) to merge the agent's findings.
