@@ -165,3 +165,11 @@ A debriefer running `/debrief` does, in order: (1) `debrief.py plan --path <file
 **Carryover model:** gto's carryover (`carryover.json`) persists per `--session-id` alongside debrief's `dream-state.json`. Different axes — finding-ID-keyed vs topic-keyed — no merge. Carryover lets a goal that recurred across sessions escalate severity even when each individual transcript mentions it once.
 
 **Coupling note:** `--gto-detectors` imports from `skills.gto.__lib` (lazy, in-function). The base `run` path stays import-free — `/debrief` works fine without `/gto`. If `/gto` is restructured or removed, only this opt-in flag breaks; the base skill is unaffected. `/gto` remains the source of truth for its detector modules; debrief imports rather than vendoring to avoid detector drift.
+
+## Suggest
+
+`/debrief` cross-suggests after a run (once tasks are written, not mid-analysis):
+- `/improve` — when a root-cause finding is better treated as a design/process/hook recommendation than a tracker task.
+- `/wiki` — when a session produced a durable lesson worth persisting (not a one-off bug fix).
+- `/review` — when a generated task touches implementation quality the user should run a structured review on.
+- `/red-team` — when a finding is a high-risk design or contract change worth adversarial stress before the task is executed.

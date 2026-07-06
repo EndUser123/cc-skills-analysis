@@ -29,6 +29,7 @@ Analyzing HOW the work is progressing.
 | /retro | *DEPRECATED stub → /debrief chain* (multi-session retrospective protocol + SCORES) | `retro/` |
 | /epistemic-check | Validates response quality against contract | `epistemic-check/` |
 | /claude-audit | Audit Claude Code config (CLAUDE.md, rules, hooks, MCP, plugins) + rule-shape fit; consolidates claudit + config-audit | `claude-audit/` |
+| /skill-audit | Unified skill audit + improvement (8-category rubric, 5-phase pipeline; modes: score/patterns/contract/partition/improve/migrate-ef/intel/generate-hooks; absorbs /av) | `skill-audit/` |
 
 ## Artifacts Convention
 

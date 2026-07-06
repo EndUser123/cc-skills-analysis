@@ -1,8 +1,8 @@
 ---
 name: skill-audit
-description: Unified skill audit + improvement orchestrator. Audits any Claude Code skill against an 8-category rubric (frontmatter, instructions, agent design, directory, over-engineering, references, prompt patterns P1-P8, contract compliance), produces a scored report with ranked recommendations, and applies selected fixes through a 5-phase pipeline (diagnose → plan → execute → evaluate → gate). Use when improving an existing skill, auditing for quality, or migrating frontmatter to the evidence-first contract.
+description: Unified skill audit + improvement orchestrator. Audits any Claude Code skill against an 8-category rubric (frontmatter, instructions, agent design, directory, over-engineering, references, prompt patterns P1-P8, contract compliance), produces a scored report with ranked recommendations, applies selected fixes through a 5-phase pipeline (diagnose → plan → execute → evaluate → gate), and generates skill hook packages (generate-hooks mode; absorbs /av). Use when improving an existing skill, auditing for quality, migrating frontmatter to the evidence-first contract, or generating hooks for a skill.
 allowed-tools: Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion
-argument-hint: <skill-path | artifact> [score|patterns|contract|partition|improve|migrate-ef|intel]
+argument-hint: <skill-path | artifact> [score|patterns|contract|partition|improve|migrate-ef|intel|generate-hooks]
 enforcement: advisory
 workflow_steps:
   - intake
@@ -16,8 +16,8 @@ workflow_steps:
 # skill-audit — Unified Skill Audit + Improvement
 
 Consolidates the prior `/quickstop:audit`, `/quickstop:improve`, `/cc-skills-sdlc:prompt-audit`,
-`/cc-skills-architect:skill-craft`, and `/skill-guard:migrate_skill_ef` skills. One entry
-point, one rubric, six subcommands.
+`/cc-skills-architect:skill-craft`, `/skill-guard:migrate_skill_ef`, and `/cc-skills-sdlc:av`
+skills. One entry point, one rubric, seven subcommands.
 
 ## Subcommands
 
@@ -33,6 +33,7 @@ Parse `$ARGUMENTS` for the subcommand. Default subcommand when only a path is gi
 | `improve <path>` | Apply selected fixes from a previous audit, then re-score |
 | `migrate-ef <path>` | One-shot EF migration (delegates to `skill_guard._skill_frontmatter_loader`) |
 | `intel <artifact>` | Detect external skills referenced in a transcript/log/file/dir, map to our internal skills, diff, and emit ranked improvement recommendations. No rubric score — produces a *diff*, not a grade. |
+| `generate-hooks <path>` | Classify skill type (EXECUTION / KNOWLEDGE / PROCEDURE) + score complexity (multi-phase / state-transitions / critical-enforcement) → recommend a hook package and write it on confirmation. Absorbs `/av`. |
 
 ## Intake — route the request
 
@@ -248,6 +249,33 @@ Ranked recommendations: [Critical/High/Medium/Low as in the rubric]
 (Skill tool_use + slash captured; drive-letter paths rejected; weak-match labeling).
 Run it once after any edit to the script.
 
+## Subcommand: `generate-hooks <path>`
+
+Absorbs `/av` (Skill Improvement Tool). Reads the target SKILL.md, classifies it, scores hook need, then recommends + writes a hook package on confirmation.
+
+**Engine source:** `/av`'s classification + templates remain canonical at `P:/packages/.claude-marketplace/plugins/cc-skills-sdlc/skills/av/references/` (`hook-templates.md`, `validation-checklist.md`, `output-package-and-architecture.md`, `integration-checklist.md`). This subcommand reads them; it does not vendor.
+
+### Flow
+
+1. **Read** the target SKILL.md.
+2. **Classify** skill type:
+   - `EXECUTION` — runs external tool/CLI, delegates to subagent → needs execution directive + anti-substitution block + registry entry.
+   - `KNOWLEDGE` — provides reference info → no execution, no hooks.
+   - `PROCEDURE` — multi-step workflow with decision points → phase gates + success criteria.
+3. **Score hook need** (per `/av` complexity rubric):
+   - Multi-phase workflow? +3
+   - State transitions? +3
+   - Critical enforcement needed? +2
+   - Single command? −2
+   - Reference/documentation only? −2
+   - Score ≥1 → hooks recommended; ≤0 → simple recommended.
+4. **Recommend** one of three packages (Simple / Hooks / Both) using the templates at `av/references/hook-templates.md` (7 templates: PostToolUse validator, state manager, PreToolUse gate, PostToolUse transition, + EXECUTION/KNOWLEDGE/PROCEDURE SKILL.md scaffolds). Output the package plan with the basis (which signals fired, the score, the chosen templates).
+5. **Wait** for user choice (AskUserQuestion). Default = Simple (no hooks) when score ≤0.
+6. **Write** the selected package: hook files under `<skill>/hooks/` + the `hooks:` frontmatter block (PreToolUse + PostToolUse matchers per the templates). For EXECUTION skills, also update `StopHook_skill_execution_gate.py`.
+7. **Sanity check** — Read the modified SKILL.md, flag inconsistencies/missing elements/broken links, fix and report.
+
+**Note on the `--legacy-agents` flag (#497):** rolled back agent-format migrations stay out of scope here; this subcommand generates new hook packages only.
+
 ## Error Handling
 
 - Skill not found → report and stop.
@@ -260,6 +288,16 @@ Run it once after any edit to the script.
 - One skill, one rubric, one report. Don't rephrase the rubric — copy it from
   `references/scoring-rubric.md` so all skill audits stay comparable.
 - This skill replaced `/quickstop:audit`, `/quickstop:improve`, `/cc-skills-sdlc:prompt-audit`,
-  `/cc-skills-architect:skill-craft`, and `/skill-guard:migrate_skill_ef` (all retired).
+  `/cc-skills-architect:skill-craft`, `/skill-guard:migrate_skill_ef`, and `/cc-skills-sdlc:av`
+  (all retired or stubbed). `/av` is now a deprecation stub → `/skill-audit generate-hooks`;
+  its hook templates + validation checklist stay canonical at `cc-skills-sdlc/skills/av/references/`.
 - Distinct intent skills (kept separate): `/cc-skills-architect:write-a-skill` (greenfield),
   `/cc-skills-analysis:doc-compiler` (HTML output), `/cc-skills-analysis:similarity` (search).
+
+## Suggest
+
+`/skill-audit` cross-suggests after a run:
+- `/claude-audit` — when findings implicate the runtime env (settings.json, hooks, MCP) rather than skill design.
+- `/improve` — when the finding is a design or process improvement, not a skill defect.
+- `/review` — when the skill has shippable code and the fix touches implementation quality.
+- `/red-team` — when the skill change is high-risk (gate/hook/contract edits) and deserves adversarial review before commit.

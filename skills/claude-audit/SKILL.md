@@ -271,3 +271,11 @@ After fixes, re-score affected categories and show before → after.
 - Show token savings whenever removing/moving always-loaded content.
 - Respect scope: project config is the team contract; personal config is personal.
 - Verify before claiming absence (grep/read first).
+
+## Suggest
+
+`/claude-audit` cross-suggests after a run:
+- `/skill-audit` — when findings implicate skill design (systemic, not one-off config).
+- `/improve` — when a finding is a design or process improvement, not a config defect.
+- `/review` — when a config change touches implementation quality worth a structured review.
+- `/red-team` — when the config change is high-risk (gate/hook/permission edits) and deserves adversarial review before commit.
