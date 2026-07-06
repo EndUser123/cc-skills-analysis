@@ -166,6 +166,18 @@ A debriefer running `/debrief` does, in order: (1) `debrief.py plan --path <file
 
 **Coupling note:** `--gto-detectors` imports from `skills.gto.__lib` (lazy, in-function). The base `run` path stays import-free — `/debrief` works fine without `/gto`. If `/gto` is restructured or removed, only this opt-in flag breaks; the base skill is unaffected. `/gto` remains the source of truth for its detector modules; debrief imports rather than vendoring to avoid detector drift.
 
+## After-action rubric — false absorption / lazy stub classification
+
+When the session under review contains command-consolidation, migration, or absorption work (claims that a command was "shipped / absorbed / stubbed / deprecated / internalized / retired"), flag these as root-cause tasks and route to `/skill-audit preserve`:
+
+- **False absorption claim** — a parent mode advertised as production while its backend runner/harness/script is missing or pending. (Regression of record: `/adv-review` → `/red-team adversarial` advertised dispatch while `runner.py`/`calibrate.py`/`harness_registry.py` were unbuilt, #872/#873/#874.)
+- **Lazy stub classification** — a deprecated command labeled a "stub" by name without reading its source. A deprecation header ≠ stub; `workflow_steps: []` alone ≠ stub. The classifier must read the full body and any referenced engine/backend.
+- **Unsupported "shipped" claim** — a consolidation report asserting a command was absorbed without citing old-source + parent-source + backend-existence evidence.
+
+Detection cue: any doc/migration-table row using the words *stub*, *absorbed*, *shipped*, *deprecated*, *internalized*, *retired* without a source citation. Each instance becomes a root-cause task pointing at `/skill-audit preserve <plan>` (or `/red-team` for adversarial review). The mechanical scaffold is `cc-skills-analysis/skills/skill-audit/scripts/capability_preservation.py`; the rubric is `references/capability-preservation-check.md`.
+
+`/debrief` does not run the audit itself — it captures the lesson and routes.
+
 ## Suggest
 
 `/debrief` cross-suggests after a run (once tasks are written, not mid-analysis):

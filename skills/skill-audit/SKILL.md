@@ -34,6 +34,7 @@ Parse `$ARGUMENTS` for the subcommand. Default subcommand when only a path is gi
 | `migrate-ef <path>` | One-shot EF migration (delegates to `skill_guard._skill_frontmatter_loader`) |
 | `intel <artifact>` | Detect external skills referenced in a transcript/log/file/dir, map to our internal skills, diff, and emit ranked improvement recommendations. No rubric score — produces a *diff*, not a grade. |
 | `generate-hooks <path>` | Classify skill type (EXECUTION / KNOWLEDGE / PROCEDURE) + score complexity (multi-phase / state-transitions / critical-enforcement) → recommend a hook package and write it on confirmation. Absorbs `/av`. |
+| `preserve <path\|plan>` | Capability-preservation check for command consolidation / absorption / stub / alias / retirement claims. Source-backed: reads each old command's full source + referenced backends, classifies (`true_thin_stub` / `retained_engine_with_deprecation_header` / `internalized_engine` / `alias_only` / `pending_unimplemented` / `unsafe_to_remove` / `unresolved_source_missing`), verifies the parent mode and its backends, emits the classification table + `false_absorption_claim` / `capability_preservation_gap` findings. Runs `scripts/capability_preservation.py` for the mechanical scaffold; rubric in `references/capability-preservation-check.md`. |
 
 ## Intake — route the request
 
@@ -275,6 +276,29 @@ Absorbs `/av` (Skill Improvement Tool). Reads the target SKILL.md, classifies it
 7. **Sanity check** — Read the modified SKILL.md, flag inconsistencies/missing elements/broken links, fix and report.
 
 **Note on the `--legacy-agents` flag (#497):** rolled back agent-format migrations stay out of scope here; this subcommand generates new hook packages only.
+
+## Subcommand: `preserve <path|plan>`
+
+Capability-preservation check for **command consolidation, absorption, stub, alias, and retirement claims**. Use this whenever a review targets a migration table, a deprecated-skill list, an absorption map, or any doc claiming a command was "shipped / absorbed / stubbed / deprecated / internalized / aliased / retired". Reducing visible command count is not enough — every absorbed capability must resolve to an existing parent mode or be explicitly marked pending.
+
+**Why this exists:** a past consolidation loosely called deprecated commands "stubs" by name. Source inspection later showed only some were true thin stubs; others carried load-bearing engines, and one advertised capability pointed at an unbuilt runner. See the worked example in `references/capability-preservation-check.md`.
+
+**Procedure:**
+
+1. Enumerate every old command the plan marks absorbed / deprecated / aliased / internalized / retired / stubbed.
+2. For each, run the mechanical scaffold to get structural facts:
+   ```
+   python "${SKILL_ROOT}/scripts/capability_preservation.py" <old-skill-dir> --json
+   ```
+3. Apply the classification rubric in `references/capability-preservation-check.md` to those facts PLUS a full read of the old command's source (SKILL.md body, command markdown, agents, references, plugin metadata, referenced backend scripts). Do not classify by name or header.
+4. For every parent mode claiming to absorb the old command, verify the parent exists, documents the behavior accurately, its referenced backends exist, and required artifacts still have a producer and consumer.
+5. Emit the classification table and any `false_absorption_claim` / `capability_preservation_gap` findings (severity BLOCK / REVISE / NIT per the rubric). Every `shipped / absorbed / stubbed / wired` claim must cite old-source, parent-source, and backend-existence evidence.
+
+**Discrimination cheat-sheet** (the three regression shapes, pinned by `tests/test_capability_preservation.py`):
+
+- empty `workflow_steps` + short redirect body + no missing backend → `true_thin_stub`
+- empty `workflow_steps` + deprecation header + LONG body describing an engine → `retained_engine_with_deprecation_header` (NOT a stub)
+- empty `workflow_steps` + referenced `runner.py`/`calibrate.py`/`harness_registry.py` that do not exist → `pending_unimplemented` (NOT a stub)
 
 ## Error Handling
 
