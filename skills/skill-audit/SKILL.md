@@ -438,6 +438,17 @@ found; never displace the audit verdict or the CEC ledger. Canonical contract
 + worked examples at `debrief/references/thought-partner-addendum.md`
 (canonical owner: `/improve`). The TPA is prompt-advisory only.
 
+## Partner Posture
+
+`/skill-audit`'s posture is **Skill / Command Governance Partner** (see the
+Partner Posture Map in `debrief/references/thought-partner-addendum.md`).
+`/skill-audit` audits skills, commands, agents, prompts, triggers, overlaps,
+aliases, stubs, capability preservation, and consolidation risk, owns
+source-first classification of skill/command behavior, catches drift between
+claimed and actual command behavior, and checks whether skills ask the user
+for discoverable facts or duplicate shared contracts. Posture is
+prompt-advisory.
+
 ## Source-first classification rule
 
 For skill/command classification, consolidation, aliasing, stub

@@ -338,6 +338,16 @@ found; never displace the audit verdict or the CEC ledger. Canonical contract
 + worked examples at `debrief/references/thought-partner-addendum.md`
 (canonical owner: `/improve`). The TPA is prompt-advisory only.
 
+## Partner Posture
+
+`/claude-audit`'s posture is **Runtime / Environment Audit Partner** (see
+the Partner Posture Map in `debrief/references/thought-partner-addendum.md`).
+`/claude-audit` audits Claude Code runtime behavior, hooks, plugin loading,
+settings, routing, cache/source drift, context injection, ground-truth
+freshness, and command activation, separates source edits from loaded
+runtime behavior, and catches stale config, stale cache, and environment
+assumptions. Posture is prompt-advisory.
+
 ## Discoverability ground-truth injection
 
 `/claude-audit` ensures known transcript/log/config locations can be

@@ -44,6 +44,7 @@ SKILL_AUDIT_SKILL = PLUGIN_ROOT / "cc-skills-analysis/skills/skill-audit/SKILL.m
 REVIEW_SKILL = PLUGIN_ROOT / "cc-skills-sdlc/skills/review/SKILL.md"
 CLAUDE_AUDIT_SKILL = PLUGIN_ROOT / "cc-skills-analysis/skills/claude-audit/SKILL.md"
 GO_SKILL = PLUGIN_ROOT / "cc-skills-sdlc/skills/go/SKILL.md"
+WIKI_SKILL = PLUGIN_ROOT / "cc-skills-sdlc/skills/wiki/SKILL.md"
 
 
 # ---- Canonical template invariants ----
@@ -258,6 +259,187 @@ def test_no_tpa_named_commands_introduced():
             f"{trigger} was introduced as a trigger — "
             f"TPA work must not add new commands"
         )
+
+
+# ---- Partner Posture Map invariants (canonical reference) ----
+
+def _posture_section() -> str:
+    text = TPA_DOC.read_text(encoding="utf-8")
+    idx = text.find("## Partner Posture Map")
+    assert idx != -1, "TPA doc missing '## Partner Posture Map' section"
+    return text[idx:]
+
+
+def test_posture_map_section_exists():
+    """VP1: canonical Partner Posture Map exists in the TPA reference."""
+    assert "## Partner Posture Map" in TPA_DOC.read_text(encoding="utf-8")
+
+
+def test_posture_map_names_all_eight_commands():
+    """VP2: the map names all 8 retained commands."""
+    section = _posture_section()
+    for cmd in (
+        "/improve", "/go", "/red-team", "/review",
+        "/debrief", "/skill-audit", "/claude-audit", "/wiki",
+    ):
+        assert cmd in section, f"Partner Posture Map missing command: {cmd}"
+
+
+def test_posture_improve_is_improvement_plus_thought_partner():
+    """VP3: /improve is Improvement Partner + Thought Partner (combined)."""
+    section = _posture_section()
+    assert "Improvement Partner + Thought Partner" in section, (
+        "/improve posture must be the combined Improvement Partner + Thought Partner"
+    )
+
+
+def test_posture_redteam_is_adversarial_trust_partner():
+    """VP4: /red-team is Adversarial Trust Partner and preserves the verdict."""
+    section = _posture_section()
+    assert "Adversarial Trust Partner" in section
+    # Must preserve PROCEED/REVISE/BLOCK as primary output.
+    assert "PROCEED" in section and "REVISE" in section and "BLOCK" in section
+
+
+def test_posture_review_is_code_review_partner():
+    """VP5: /review is Code Review Partner (gated, not a trust verdict)."""
+    section = _posture_section()
+    assert "Code Review Partner" in section
+
+
+def test_posture_debrief_is_learning_forensics_partner():
+    """VP6: /debrief is Learning / Forensics Partner."""
+    section = _posture_section()
+    assert "Learning / Forensics Partner" in section
+
+
+def test_posture_skill_audit_is_governance_partner():
+    """VP7: /skill-audit is Skill / Command Governance Partner."""
+    section = _posture_section()
+    assert "Skill / Command Governance Partner" in section
+
+
+def test_posture_claude_audit_is_runtime_audit_partner():
+    """VP8: /claude-audit is Runtime / Environment Audit Partner."""
+    section = _posture_section()
+    assert "Runtime / Environment Audit Partner" in section
+
+
+def test_posture_go_is_execution_partner():
+    """VP9: /go is Execution Partner."""
+    section = _posture_section()
+    assert "Execution Partner" in section
+
+
+def test_posture_wiki_is_memory_partner_no_auto_ingest():
+    """VP10: /wiki is Memory / Persistence Partner and must NOT auto-ingest."""
+    section = _posture_section()
+    assert "Memory / Persistence Partner" in section
+    lowered = section.lower()
+    assert (
+        "never becomes automatic ingest" in lowered
+        or "not auto-ingest" in lowered
+        or "automatic ingest" in lowered
+    ), "/wiki posture must forbid automatic ingest"
+
+
+def test_posture_is_prompt_advisory():
+    """VP13: posture is prompt-advisory unless a runtime hook enforces it."""
+    section = _posture_section()
+    lowered = section.lower()
+    assert "prompt-advisory" in lowered or "prompt_advisory" in lowered
+
+
+def test_posture_forbids_generic_caveats_and_cot():
+    """VP14: posture forbids generic caveats and does not require/expose CoT."""
+    section = _posture_section()
+    assert "generic caveats" in section.lower(), (
+        "Partner Posture Map must forbid generic caveats"
+    )
+    lowered = section.lower()
+    for phrase in ("explain your reasoning step by step", "show your chain of thought"):
+        assert phrase not in lowered, f"posture section must not require CoT: {phrase!r}"
+
+
+def test_posture_cross_cutting_rules_present():
+    """All 6 cross-cutting posture rules are present in the canonical map."""
+    text = TPA_DOC.read_text(encoding="utf-8")
+    idx = text.find("Cross-cutting posture rules")
+    assert idx != -1, "missing 'Cross-cutting posture rules' subsection"
+    section = text[idx : idx + 2500]
+    for signal in (
+        "does not override command responsibility",
+        "material, not chatty",
+        "belongs primarily to `/improve`",
+        "offload discoverable facts",
+        "prompt-advisory behavior with runtime",
+        "generic caveats",
+    ):
+        assert signal in section, f"cross-cutting rule signal missing: {signal!r}"
+
+
+def test_posture_doc_falsification_present():
+    """The posture falsification condition is present verbatim-ish."""
+    text = TPA_DOC.read_text(encoding="utf-8")
+    idx = text.find("## Falsification (posture)")
+    assert idx != -1, "missing '## Falsification (posture)' section"
+    section = re.sub(r"\s+", " ", text[idx:])
+    for phrase in (
+        "generic task-completion agents",
+        "generic caveats",
+        "displace the command's primary responsibility",
+        "create new commands",
+        "blur ownership",
+        "/skill-audit", "/claude-audit", "/go", "/wiki",
+    ):
+        assert phrase in section, f"posture falsification missing phrase: {phrase!r}"
+
+
+# ---- Per-command Partner Posture section presence ----
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        IMPROVE_SKILL, GO_SKILL, REDTEAM_CMD, REVIEW_SKILL,
+        DEBRIEF_SKILL, SKILL_AUDIT_SKILL, CLAUDE_AUDIT_SKILL, WIKI_SKILL,
+    ],
+)
+def test_partner_posture_section_present(path: Path):
+    """Each of the 8 retained commands carries a short Partner Posture pointer."""
+    text = path.read_text(encoding="utf-8")
+    assert "## Partner Posture" in text, f"{path} missing Partner Posture section"
+
+
+def test_pointer_posture_sections_reference_canonical_map():
+    """Each command's posture pointer must reference the canonical map + stay advisory."""
+    for path in (
+        IMPROVE_SKILL, GO_SKILL, REDTEAM_CMD, REVIEW_SKILL,
+        DEBRIEF_SKILL, SKILL_AUDIT_SKILL, CLAUDE_AUDIT_SKILL, WIKI_SKILL,
+    ):
+        text = path.read_text(encoding="utf-8")
+        idx = text.find("## Partner Posture")
+        assert idx != -1, f"{path} missing Partner Posture section"
+        section = re.sub(r"\s+", " ", text[idx : idx + 1200])
+        assert "Partner Posture Map" in section, (
+            f"{path} posture section must reference the canonical Partner Posture Map"
+        )
+        assert "prompt-advisory" in section.lower(), (
+            f"{path} posture section must state it is prompt-advisory"
+        )
+
+
+# ---- No-new-command invariants for posture ----
+
+def test_no_new_top_level_command_for_posture():
+    """VP11: no new command triggers introduced. Delegate to structural allowlist."""
+    import test_no_new_triggers_structural as _nt
+    _nt.test_no_new_triggers_structural()
+
+
+def test_no_wiki_ingest_for_posture():
+    """VP12: /wiki-ingest was not introduced. Named check via structural test."""
+    import test_no_new_triggers_structural as _nt
+    _nt.test_no_wiki_ingest_trigger()
 
 
 if __name__ == "__main__":

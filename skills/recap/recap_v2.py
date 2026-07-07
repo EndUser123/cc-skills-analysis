@@ -1558,16 +1558,18 @@ def _export_for_handoff(state: RecapV2State) -> dict[str, Any]:
     try:
         import sys
         from pathlib import Path
-        # Sibling skill: resolve relative to this file so it works from either
-        # the marketplace source or the installed plugin cache (no hardcoded
-        # absolute path, no dependency on $CLAUDE_PLUGIN_ROOT in a .py process).
-        rns_scripts = Path(__file__).resolve().parent.parent / "rns" / "scripts"
-        if str(rns_scripts) not in sys.path:
-            sys.path.insert(0, str(rns_scripts))
-        from core.render import render_actions, RenderOptions
+        # Sibling import: rns was dissolved and its renderer is now at
+        # recap/__lib/render_rns.py. Putting recap/__lib on sys.path lets us
+        # import it without turning __lib__ into a package. Resolves relative
+        # to this file so it works from either the marketplace source or the
+        # installed plugin cache.
+        _lib_dir = str(Path(__file__).resolve().parent / "__lib")
+        if _lib_dir not in sys.path:
+            sys.path.insert(0, _lib_dir)
+        from render_rns import render_actions, RenderOptions
 
         actions = _to_rns_actions(state)
-        next_actions_rns = render_actions(actions, RenderOptions(show_effort=True, show_file_ref=True))
+        next_actions_rns = render_actions(actions, None, RenderOptions(show_effort=True, show_file_refs=True))
     except Exception:
         next_actions_rns = "RNS rendering unavailable — show verification_queue directly:\n" + "\n".join(
             f"- [{v.priority}] {v.suggested_action or v.target}" for v in state.verification_queue[:5]

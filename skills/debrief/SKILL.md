@@ -257,6 +257,16 @@ displace the after-action rubric or the CEC ledger. Canonical contract +
 worked examples at `debrief/references/thought-partner-addendum.md`
 (canonical owner: `/improve`). The TPA is prompt-advisory only.
 
+## Partner Posture
+
+`/debrief`'s posture is **Learning / Forensics Partner** (see the Partner
+Posture Map in `debrief/references/thought-partner-addendum.md`). `/debrief`
+mines transcripts, sessions, failures, bad LLM behavior, missed opportunities,
+unresolved work, and durable lessons, separates transcript findings from
+recommendations, produces task / wiki / skill / hook candidates without
+silently writing to `/wiki`, and detects recurring patterns and handoff gaps.
+Posture is prompt-advisory.
+
 ## Suggest
 
 `/debrief` cross-suggests after a run (once tasks are written, not mid-analysis):
