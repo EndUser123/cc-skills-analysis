@@ -75,6 +75,44 @@ claim MUST cite:
 - backend existence evidence (path, or `pending` with ticket),
 - validation command/output where applicable.
 
+## Step 6 — Map to the /go runtime audit (do not merge)
+
+The Step 2 classification is the **reviewer-applied rubric**. A second,
+mechanical classifier exists in the `/go` pipeline
+(`cc-skills-sdlc/skills/go/scripts/capability_claim_audit.py`, pinned by the
+`classification` enum in `go/schemas/verification-result.schema.json`). The
+two describe the same domain for different audiences and intentionally do
+**not** share one class set:
+
+- The rubric carries judgment classes (`alias_only`, `unsafe_to_remove`) a
+  mechanical detector cannot emit.
+- The /go audit carries routing/fallback classes (`routed_to_parent`,
+  `unknown`) the rubric folds into other rows.
+
+**Do not relabel either side to match the other.** Use this correspondence
+only to translate a /go runtime result into the rubric frame (or vice versa)
+when a `capability_preserved` row cites both. The mapping is enforced by
+`tests/test_capability_preservation.py::test_capability_taxonomy_mapping_covers_both_sides`
+— adding a class to either taxonomy without a mapping row fails that test.
+
+<!-- BEGIN CAPABILITY TAXONOMY MAPPING -->
+true_thin_stub -> true_stub
+retained_engine_with_deprecation_header -> deprecation_header_on_retained_engine
+internalized_engine -> retained_engine
+pending_unimplemented -> pending_backend
+unresolved_source_missing -> deleted
+unresolved_source_missing -> unknown
+gap_in_go: alias_only
+gap_in_go: unsafe_to_remove
+gap_in_rubric: routed_to_parent
+gap_in_rubric: unknown
+<!-- END CAPABILITY TAXONOMY MAPPING -->
+
+`internalized_engine` ↔ `retained_engine` is a partial overlap: /go's
+`retained_engine` confirms the engine exists and is load-bearing but does
+not verify parent invocation; the rubric adds that dimension. All other
+`->` rows are same-concept, different-label.
+
 ## Output — classification table
 
 Emit one row per old command:

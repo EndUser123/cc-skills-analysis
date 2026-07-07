@@ -245,6 +245,18 @@ Emit the classified finding into the same XSTC `HANDOFF:` block under
 - `static_test_runtime_confusion` → `/claude-audit` if it's a hook/config gate, else `/skill-audit`.
 - `user_surface_verification_gap` → `/claude-audit` if the surface is plugin/marketplace, else `/skill-audit`.
 
+## Thought Partner Addendum
+
+At the end of transcript mining, emit a Thought Partner Addendum (TPA) when
+the pass surfaced a lesson not captured as a task that would change future
+efficiency, effectiveness, or trust. Each item carries `observation`,
+`why_it_matters`, `evidence`, `recommended_action`,
+`urgency: now | later | watch`. Wiki candidates stay candidates — do not
+auto-write `/wiki`. Omit the section when nothing material was found; never
+displace the after-action rubric or the CEC ledger. Canonical contract +
+worked examples at `debrief/references/thought-partner-addendum.md`
+(canonical owner: `/improve`). The TPA is prompt-advisory only.
+
 ## Suggest
 
 `/debrief` cross-suggests after a run (once tasks are written, not mid-analysis):

@@ -117,6 +117,27 @@ script emits candidates; archival is always a manual, human-reviewed step.
    `/similarity`'s "does NOT delete" discipline and user memory #1005 ("don't auto-clean,
    confirm first").
 
+## Verification (cold-start)
+
+A cold-start LLM can prove the `prune` + `primitive_smells` detectors work with:
+
+```bash
+# 1) The test suite for this skill (catches the noise that drove the first
+#    33-finding false-positive run; pins the wrapper signal on required patterns only):
+python -m pytest plugins/cc-skills-analysis/skills/skill-audit/tests/ -q
+# expect: 10 passed (5 primitive_smells + 5 prune_scan)
+
+# 2) The CLI selfchecks (quick, no pytest):
+python plugins/cc-skills-analysis/skills/skill-audit/scripts/primitive_smells.py selfcheck
+python plugins/cc-skills-analysis/skills/skill-audit/scripts/prune_scan.py selfcheck
+
+# 3) A real prune pass on this plugin (smoke):
+python plugins/cc-skills-analysis/skills/skill-audit/scripts/prune_scan.py cc-skills-analysis
+# expect at least: 3 retire candidates (gto, retro, top-problems — all DEPRECATED stubs).
+```
+
+The detectors are advisory only — review every finding before any archive, and never auto-apply.
+
 ## Phase 1 — Diagnose
 
 For the default and `score` subcommands, run all six checks:
@@ -404,6 +425,18 @@ Any one missing → `NOT_PROVEN`. Two or more missing → BLOCK. The
 `scripts/capability_preservation.py` scaffold runs the four-way check; the
 review's job is to demand the four pieces of evidence, not to accept a
 "documented absorption" claim alone.
+
+## Thought Partner Addendum
+
+At the end of a non-trivial `/skill-audit` run, emit a Thought Partner
+Addendum (TPA) when the audit surfaced something material the user did not ask
+about — command/skill drift, duplicate mechanisms, advisory-vs-runtime gaps,
+or consolidation risk the rubric did not center. Each item carries
+`observation`, `why_it_matters`, `evidence`, `recommended_action`,
+`urgency: now | later | watch`. Omit the section when nothing material was
+found; never displace the audit verdict or the CEC ledger. Canonical contract
++ worked examples at `debrief/references/thought-partner-addendum.md`
+(canonical owner: `/improve`). The TPA is prompt-advisory only.
 
 ## Source-first classification rule
 

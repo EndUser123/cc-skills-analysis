@@ -326,6 +326,18 @@ runtime BLOCK authority lives in `/red-team`'s Pre-check 0 (see
 `red-team/commands/red-team.md`). `/claude-audit` applies the contract as
 a reviewer, not as a runtime gate.
 
+## Thought Partner Addendum
+
+At the end of a non-trivial `/claude-audit` run, emit a Thought Partner
+Addendum (TPA) when the audit surfaced a runtime concern the framing did not
+center — runtime activation (plugin bumped but not enabled), stale cache,
+hook/plugin drift, source-vs-cache mismatch, or ground-truth freshness. Each
+item carries `observation`, `why_it_matters`, `evidence`, `recommended_action`,
+`urgency: now | later | watch`. Omit the section when nothing material was
+found; never displace the audit verdict or the CEC ledger. Canonical contract
++ worked examples at `debrief/references/thought-partner-addendum.md`
+(canonical owner: `/improve`). The TPA is prompt-advisory only.
+
 ## Discoverability ground-truth injection
 
 `/claude-audit` ensures known transcript/log/config locations can be

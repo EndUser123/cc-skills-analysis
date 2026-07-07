@@ -10,6 +10,8 @@ consolidation:
   - true_thin_stub           : review-pr  (empty steps, short redirect body)
   - retained_engine_w_deprec : prompt_refiner (empty steps BUT long body)
 """
+import json
+import re
 import sys
 from pathlib import Path
 
@@ -61,6 +63,65 @@ def test_prompt_refiner_deprecation_header_but_not_thin_stub():
 def test_missing_skill_dir_returns_error():
     r = cp.analyze(PLUGIN_ROOT / "cc-skills-analysis" / "skills" / "__does_not_exist__")
     assert "error" in r
+
+
+# ---------------------------------------------------------------------------
+# Cross-taxonomy mapping invariant
+# ---------------------------------------------------------------------------
+# The /skill-audit rubric (Step 2 table) and the /go runtime classifier
+# (capability_claim_audit.py, pinned by the go schema enum) describe the same
+# capability-preservation domain for different audiences. They intentionally
+# do NOT share a class set. This test catches one-sided drift: add a class to
+# either taxonomy without a mapping row in the rubric doc -> this fails.
+
+GO_SCHEMA = PLUGIN_ROOT / "cc-skills-sdlc" / "skills" / "go" / "schemas" / "verification-result.schema.json"
+RUBRIC_DOC = SCRIPTS.parent / "references" / "capability-preservation-check.md"
+
+
+def _skill_audit_classes_from_rubric():
+    """First-column tokens of the Step 2 class table."""
+    text = RUBRIC_DOC.read_text(encoding="utf-8")
+    table = text[text.index("## Step 2"):text.index("## Step 3")]
+    return set(re.findall(r"^\|\s*`([a-z_]+)`\s*\|", table, re.MULTILINE))
+
+
+def _go_classes_from_schema():
+    schema = json.loads(GO_SCHEMA.read_text(encoding="utf-8"))
+    enum = (schema["properties"]["capability_audit"]["properties"]["claims"]
+            ["items"]["properties"]["classification"]["enum"])
+    assert enum, "classification enum missing from go schema"
+    return set(enum)
+
+
+def _parse_mapping_block():
+    text = RUBRIC_DOC.read_text(encoding="utf-8")
+    block = text[text.index("BEGIN CAPABILITY TAXONOMY MAPPING"):
+                 text.index("END CAPABILITY TAXONOMY MAPPING")]
+    pairs, gap_go, gap_rubric = [], set(), set()
+    for line in block.splitlines():
+        line = line.strip()
+        if " -> " in line:
+            left, right = line.split(" -> ", 1)
+            pairs.append((left.strip(), right.strip()))
+        elif line.startswith("gap_in_go:"):
+            gap_go.add(line.split(":", 1)[1].strip())
+        elif line.startswith("gap_in_rubric:"):
+            gap_rubric.add(line.split(":", 1)[1].strip())
+    return pairs, gap_go, gap_rubric
+
+
+def test_capability_taxonomy_mapping_covers_both_sides():
+    pairs, gap_go, gap_rubric = _parse_mapping_block()
+    skill_classes = _skill_audit_classes_from_rubric()
+    go_classes = _go_classes_from_schema()
+
+    skill_covered = {left for left, _ in pairs} | gap_go
+    go_covered = {right for _, right in pairs} | gap_rubric
+
+    missing_skill = skill_classes - skill_covered
+    missing_go = go_classes - go_covered
+    assert not missing_skill, f"rubric classes with no mapping entry: {sorted(missing_skill)}"
+    assert not missing_go, f"go classes with no mapping entry: {sorted(missing_go)}"
 
 
 if __name__ == "__main__":
