@@ -13,6 +13,40 @@ workflow_steps:
   - gating
 ---
 
+## Routing anti-pattern: "use X because X says so"
+
+When reviewing routing logic (skill descriptions, `## Suggest` blocks, trigger
+phrases, /ask table entries), apply this anti-pattern check:
+
+**Bad behavior to flag:**
+- A skill's routing rule justifies itself by quoting another skill's
+  self-positioning ("use `/debrief` because `/improve` says not to use `/improve`
+  for retrospectives").
+- A routing entry cites only the target skill's docs as evidence.
+- A `triggers:` list contains phrases whose routing intent contradicts the
+  skill's actual machinery (the skill's docs claim to do X but its scripts/
+  workflow_steps show it does not).
+- "Use X because X's name suggests X" — name-based inference without
+  affordance evidence.
+
+**Good behavior to recommend:**
+- Routing entry states the *affordance* the work requires and which command's
+  machinery actually has it.
+- If two commands share an affordance, the deciding affordance is named.
+- If the skill's docs and affordance analysis disagree, the entry flags the
+  docs for audit (a finding, not a silent override).
+- Cross-references the shared routing reference at
+  `debrief/references/routing-by-affordances.md` (or the equivalent canonical
+  routing doc in this repo).
+
+**Detection cue:** any routing sentence where removing the target skill's own
+docs would leave no remaining argument. Each instance becomes a `rubric_violation`
+finding pointing at the specific routing sentence, with `evidence` = the quoted
+routing rule and `correction` = the affordance-based rewrite.
+
+This check is internal to `/skill-audit`'s existing rubric — no new mode, no
+new command. It activates whenever the target's text contains routing claims.
+
 # skill-audit — Unified Skill Audit + Improvement
 
 Consolidates the prior `/quickstop:audit`, `/quickstop:improve`, `/cc-skills-sdlc:prompt-audit`,
@@ -306,6 +340,61 @@ Capability-preservation check for **command consolidation, absorption, stub, ali
 - `--write true` not given → default is dry-run for `migrate-ef`.
 - Patches fail → report error, continue with remaining, surface any partial state.
 - Skill itself is in the middle of being migrated → skip if `category=meta`.
+
+## Cross-Skill Transfer Check (XSTC)
+
+`/skill-audit` is the canonical owner of the Cross-Skill Transfer Check
+when the discovery is in the skill/command/capability-preservation layer.
+Emit one XSTC in the `recommend` workflow-step output (after Phase 4). For
+command-routing / consolidation / absorbed-command claims, XSTC is the
+strongest discipline — owner is `/skill-audit` unless the routing itself
+disagrees with the affordance analysis, in which case flag for audit.
+
+**Advisory status:** XSTC discipline is currently prompt-advisory only.
+No runtime hook enforces XSTC emission. Runtime enforcement is a future
+enhancement, not a current guarantee. Any future report that claims
+XSTC is `runtime_enforced` is `NOT_PROVEN` per the CEC.
+
+## Completion Evidence Contract — required for `capability_preserved`
+
+When reviewing skill/command consolidation, capability preservation,
+aliases, stubs, absorbed commands, or any "shipped / absorbed / stubbed /
+deprecated" claim, the Completion Evidence Contract is the acceptance
+criterion for `capability_preserved`. The contract lives at
+`debrief/references/completion-evidence-contract.md`. Required evidence:
+
+- old-source file:line (the absorbed command's SKILL.md / command file)
+- parent-source file:line (where the absorption is claimed)
+- backend existence (engine / runner / harness / script path that
+  actually serves the absorbed capability — not just a mention)
+- behavior evidence OR explicit `pending` + `DEFERRED` status
+
+Any one missing → `NOT_PROVEN`. Two or more missing → BLOCK. The
+`scripts/capability_preservation.py` scaffold runs the four-way check; the
+review's job is to demand the four pieces of evidence, not to accept a
+"documented absorption" claim alone.
+
+## Source-first classification rule
+
+For skill/command classification, consolidation, aliasing, stub
+classification, absorbed commands, and capability preservation, every
+claim requires old-source + parent-source + backend-existence evidence.
+A doc-only "this command was absorbed" without all three is `NOT_PROVEN`
+under the Completion Evidence Contract. The pre-flight for any
+"absorbed/stub/alias" claim:
+
+1. Read the old source. State file:line.
+2. Read the parent source. State file:line.
+3. Verify the backend engine/runner exists. State path.
+4. Demonstrate behavior OR mark `pending` + `DEFERRED` with task id.
+
+If any step is skipped, the claim is `NOT_PROVEN`. The
+`scripts/capability_preservation.py` rubric enforces this; the
+`references/capability-preservation-check.md` is the audit procedure.
+Emit one XSTC in the `recommend` workflow-step output (after Phase 4). For
+command-routing / consolidation / absorbed-command claims, XSTC is the
+strongest discipline — owner is `/skill-audit` unless the routing itself
+disagrees with the affordance analysis, in which case flag for audit.
 
 ## Notes
 

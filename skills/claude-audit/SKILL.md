@@ -1,6 +1,30 @@
 ---
 name: claude-audit
 description: Audit and optimize Claude Code configuration (CLAUDE.md, .claude/rules/, skills, hooks, agents, MCP, plugins, MEMORY.md) for over-engineering, token waste, and rule-shape — whether each rule lives in the right mechanism. Consolidates claudit + config-audit. Self-contained; no external subagent fleet.
+
+## Boundary — what `/claude-audit` owns
+
+`/claude-audit` owns the **runtime environment** layer:
+
+- `settings.json` / `settings.local.json` wiring and dispatch surface
+- Hook registration, ordering, and double-fire risk
+- Plugin marketplace state, cache hygiene, version drift
+- MCP server allowlist and lifecycle
+- Context-injection sources (UPS hooks, mechanism_manifest)
+- CLAUDE.md / `.claude/rules/` content shape (rule-shape audit: does this rule live in the right mechanism?)
+
+It does **not** own:
+
+- **Skill/command design quality** (8-category rubric, contract compliance, capability preservation) → `/skill-audit`
+- **Routine code/diff review** of product source → `/review`
+- **Trust/adversarial verdict** on a proposal → `/red-team`
+- **Improving a single artifact's design** → `/improve`
+- **Transcript mining** for bad-LLM-behavior → `/debrief`
+
+When the user's question touches both layers (e.g., "is this hook design
+correct?"), `/claude-audit` answers the *wiring* question; `/skill-audit`
+answers the *content* question; route accordingly or run both with explicit
+scope.
 version: 1.1.1
 status: stable
 category: analysis
@@ -258,6 +282,49 @@ Path: comprehensive → `{PROJECT_ROOT}/.claude/claude-audit-decisions.json`; gl
 
 ### Re-score + show delta
 After fixes, re-score affected categories and show before → after.
+
+## Cross-Skill Transfer Check (XSTC)
+
+`/claude-audit` emits XSTC for **runtime/environment/hook/config/context-
+injection patterns** that recur or generalize. Hook double-fire, MCP
+lifecycle issues, plugin cache drift, context-injection source overlap →
+XSTC `classification: applies_to_hooks_or_gates` with owner
+`/claude-audit` itself (it owns the surface). If the pattern touches the
+skill/command layer too, split into two XSTCs — one per owner, since the
+template requires one `owner` per artifact. One-off runtime issues → no
+XSTC; record in the audit report.
+
+## Completion Evidence Contract — required for runtime claims
+
+When reviewing plugin activation, hook/runtime/config changes, cache
+rebuilds, mechanism manifests, or command-surface claims, the Completion
+Evidence Contract governs the acceptance bar. The contract lives at
+`debrief/references/completion-evidence-contract.md`. Required mappings:
+
+- `plugin_bumped` rows require the literal `=== Done ===` line from
+  `plugin-audit-and-fix.py --bump`.
+- `cache_rebuilt` rows require the literal `Zero drift confirmed` line.
+- `drift_checked` rows require either `--drift` exit 0 OR the literal
+  `Zero drift confirmed` line.
+- `command_surface_changed` rows require a structural `triggers:` diff
+  OR `claude plugin list` before/after. A static test forbidding a few
+  token strings is PARTIAL at best.
+- `wiki_not_written` rows require grep across `plugins/` for
+  `/wiki ingest` in `workflow_steps:` or `triggers:` + absence of
+  `wiki_after_write` import wiring in any active hook.
+- `guardrail_added` rows require file:line of the new gate. They are NOT
+  proof the gate fires in the live dispatch path — that is a separate
+  `guardrail_runtime_enforced` row, requiring live smoke or direct
+  invocation.
+
+If a report claims a runtime artifact is "enforced" with only a doc or
+text-test behind it, flag as `NOT_PROVEN` with `protection_level:
+prompt_advisory` or `static_invariant_tested` (whichever matches).
+
+**Advisory status:** The CEC discipline itself is prompt-advisory; the
+runtime BLOCK authority lives in `/red-team`'s Pre-check 0 (see
+`red-team/commands/red-team.md`). `/claude-audit` applies the contract as
+a reviewer, not as a runtime gate.
 
 ## Error handling
 - Research fetch fails → continue with bundled Rule-Shape reference, note gap.

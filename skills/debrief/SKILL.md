@@ -99,6 +99,34 @@ So a task written by `/debrief` is a **memory-transfer device anchored at the co
 
 `/debrief` is two surfaces of the same shared logic. The **skill** is invoked manually with `/debrief <file>` and produces findings on demand. The **hook** is the `SessionEnd_debrief_reflect.py` script wired to Claude Code's `SessionEnd` event and produces findings automatically at every session close. Both share the same `__lib/debrief_core.py` state machine, the same `assets/opportunity_task_template.md` schema, and the same `__lib/dream_state.py` for cross-session idempotency. Findings from both surfaces land in the same artifacts directory; the user reviews and promotes them the same way.
 
+## Routing rule — read this before answering "should I use /debrief?"
+
+Do not route to `/debrief` because some other skill's docs say so. Read
+[`references/routing-by-affordances.md`](references/routing-by-affordances.md)
+first; route by the work's affordances, not by citing another skill's
+self-positioning. The full rule + a worked example for transcript-mining
+questions live there.
+
+## Internal rubric — bad LLM behavior detection
+
+When the walked transcript/chain contains examples of bad LLM behavior (false
+claims, name-based inference, sycophancy, goal drift, compact drift, fabricated
+completion, rubber-stamping, missed user corrections, wrong command choice,
+recurring patterns), `/debrief` applies the rubric at
+[`references/bad-behavior-rubric.md`](references/bad-behavior-rubric.md) as an
+internal check. It is not a new mode or visible command; findings ride
+`/debrief`'s existing state-machine output through the same `/truth` gate as
+any other finding.
+
+## Handoff routing
+
+After classifying findings, `/debrief` emits a `HANDOFF:` block naming each
+finding's destination (`/improve`, `/skill-audit`, `/claude-audit`, `/red-team`,
+`/review`, `/wiki` candidate, task, reject). The full per-finding destination
+rules live at [`references/handoff-routing.md`](references/handoff-routing.md).
+`/debrief` produces `/wiki` **candidates**; it does not auto-write `/wiki`.
+The consolidation acceptance checklist (criterion 6) enforces this gate.
+
 ## The investigator loop
 
 The skill's body is **a loop, not a pipeline**. Each finding is the unit of work; each iteration walks one layer closer to the origin. The bundled state machine `__lib/debrief_core.py` enforces the discipline; the LLM supplies the human judgment (read files, classify, recurse).
@@ -177,6 +205,45 @@ When the session under review contains command-consolidation, migration, or abso
 Detection cue: any doc/migration-table row using the words *stub*, *absorbed*, *shipped*, *deprecated*, *internalized*, *retired* without a source citation. Each instance becomes a root-cause task pointing at `/skill-audit preserve <plan>` (or `/red-team` for adversarial review). The mechanical scaffold is `cc-skills-analysis/skills/skill-audit/scripts/capability_preservation.py`; the rubric is `references/capability-preservation-check.md`.
 
 `/debrief` does not run the audit itself — it captures the lesson and routes.
+
+## Cross-Skill Transfer Check (XSTC)
+
+After the `HANDOFF:` block and before the breadcrumb task body, emit one
+XSTC artifact per run. Local transcript findings → `local_only`; recurring
+LLM-behavior or process patterns → classification + affected_surfaces +
+owner + validation_step. Canonical template + worked examples at
+[`references/cross-skill-transfer-check.md`](references/cross-skill-transfer-check.md).
+The owner field maps to a retained command (`/improve`, `/red-team`,
+`/review`, `/debrief`, `/claude-audit`, `/skill-audit`, or "shared routing
+reference") — pick by the affordance table in the template, not by name.
+
+**Advisory status:** XSTC discipline is currently prompt-advisory only. No
+runtime hook enforces XSTC emission. See the CEC's
+`completion-evidence-contract.md` for the typed-evidence discipline that
+governs completion claims.
+
+## Completion Evidence Contract — after-action rubric
+
+When mining transcripts that contain overclaim patterns, classify each
+discovery using the contract's four overclaim types. The contract lives
+at
+[`references/completion-evidence-contract.md`](references/completion-evidence-contract.md).
+The four rubric classes:
+
+| behavior_type | What it means | Evidence |
+|---|---|---|
+| `overclaimed_completion` | Report claims "done"/"verified"/"zero drift" without ledger row, or with row whose evidence doesn't match authority_required | Compare the report's ✅ block to its ledger rows; mismatched status = overclaim. |
+| `fake_verification` | Report quotes output that was never actually produced (echoed, hallucinated) | Re-run the verification command; if output differs, the quote is fabricated. |
+| `static_test_runtime_confusion` | Report claims `runtime_enforced` for a guardrail whose only evidence is `static_invariant_tested` or `prompt_advisory` | Read the SKILL.md claim + the test; the mismatch is the overclaim. |
+| `user_surface_verification_gap` | Report claims user-visible behavior without driving the actual user path (no `claude plugin list`, no slash command invocation) | Check for `claude plugin list` / command-line smoke evidence; absence = overclaim. |
+
+Emit the classified finding into the same XSTC `HANDOFF:` block under
+`/debrief`. Routes:
+
+- `overclaimed_completion` → `/red-team` (the contract is the acceptance criterion; `/red-team` BLOCKs).
+- `fake_verification` → `/red-team` + `/skill-audit` (the SKILL.md that made the claim needs audit).
+- `static_test_runtime_confusion` → `/claude-audit` if it's a hook/config gate, else `/skill-audit`.
+- `user_surface_verification_gap` → `/claude-audit` if the surface is plugin/marketplace, else `/skill-audit`.
 
 ## Suggest
 
