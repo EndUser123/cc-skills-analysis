@@ -51,7 +51,7 @@ new command. It activates whenever the target's text contains routing claims.
 
 Consolidates the prior `/quickstop:audit`, `/quickstop:improve`, `/cc-skills-sdlc:prompt-audit`,
 `/cc-skills-architect:skill-craft`, `/skill-guard:migrate_skill_ef`, and `/cc-skills-sdlc:av`
-skills. One entry point, one rubric, seven subcommands.
+skills. One entry point, one rubric, eight subcommands.
 
 ## Subcommands
 
@@ -69,6 +69,7 @@ Parse `$ARGUMENTS` for the subcommand. Default subcommand when only a path is gi
 | `intel <artifact>` | Detect external skills referenced in a transcript/log/file/dir, map to our internal skills, diff, and emit ranked improvement recommendations. No rubric score — produces a *diff*, not a grade. |
 | `generate-hooks <path>` | Classify skill type (EXECUTION / KNOWLEDGE / PROCEDURE) + score complexity (multi-phase / state-transitions / critical-enforcement) → recommend a hook package and write it on confirmation. Absorbs `/av`. |
 | `preserve <path\|plan>` | Capability-preservation check for command consolidation / absorption / stub / alias / retirement claims. Source-backed: reads each old command's full source + referenced backends, classifies (`true_thin_stub` / `retained_engine_with_deprecation_header` / `internalized_engine` / `alias_only` / `pending_unimplemented` / `unsafe_to_remove` / `unresolved_source_missing`), verifies the parent mode and its backends, emits the classification table + `false_absorption_claim` / `capability_preservation_gap` findings. Runs `scripts/capability_preservation.py` for the mechanical scaffold; rubric in `references/capability-preservation-check.md`. |
+| `prune <plugin\|all>` | Skill-sprawl triage — scans for retire (stub/deprecated/empty), merge (high token-overlap dupes), and review_primitive (single-tool wrappers) candidates. Runs `scripts/prune_scan.py` (scan-only — never deletes). **DRY-RUN by design**; archival is a manual, reviewed step (see the `prune` section). Use to attack the 167-skill sprawl without auto-deleting anything. |
 
 ## Intake — route the request
 
@@ -94,9 +95,31 @@ Resolve the target path:
    (namespaced forms scope the search to the named plugin).
 4. If multiple matches → use AskUserQuestion to disambiguate.
 
+## Subcommand: prune
+
+Triage skill sprawl without destroying anything. **Scan-only** — the scaffold
+script emits candidates; archival is always a manual, human-reviewed step.
+
+1. Run the scaffold:
+   `python ${SKILL_ROOT}/scripts/prune_scan.py <plugin|all> --json` (or omit `--json`
+   for the default JSON). Targets a single plugin (`cc-skills-sdlc`), a skill dir, or `all`.
+2. Read the three candidate lists:
+   - **retire** — stub/deprecated/empty-body (mechanical: description markers or <80-char body).
+     Provenance: `INFERENCE` from a marker; confirm with `/skill-audit preserve` before removing.
+   - **merge** — pairs with Jaccard ≥ 0.4 over ≥3 shared significant tokens (advisory dedupe).
+     Provenance: `INFERENCE`; confirm which is canonical via `/similarity` + `/skill-audit preserve`.
+   - **review_primitive** — single-tool wrappers (reuses `primitive_smells`); see Phase-1 check 6.
+3. Emit an OPP-XXX-style report ( retire / keep / merge ) with provenance tags
+   (`FACT(self-verified)` / `INFERENCE` / `RISK`), one row per candidate, citing the scan JSON.
+4. **Never auto-archive.** If the user confirms specific retirements, archive (don't delete) by
+   moving the skill dir to `P:/.data/skill-archive/<YYYY-MM-DD>/`, then run
+   `plugin-audit-and-fix.py --bump <affected-plugin>` + `/reload-plugins`. Matches
+   `/similarity`'s "does NOT delete" discipline and user memory #1005 ("don't auto-clean,
+   confirm first").
+
 ## Phase 1 — Diagnose
 
-For the default and `score` subcommands, run all five checks:
+For the default and `score` subcommands, run all six checks:
 
 1. **Rubric scoring** — apply `${SKILL_ROOT}/references/scoring-rubric.md` (8 categories, weights).
    Includes the **adaptive-pathing** sub-check under Instruction Quality: for any skill with 3+
@@ -122,6 +145,14 @@ For the default and `score` subcommands, run all five checks:
    clothing. Emit one row per component + the summary count. `Confidence: low` rows are
    surfaced as hypotheses, never auto-applied (partition changes are architectural and hard to
    reverse). Skip for `score`-only runs if the user asked a narrower question.
+6. **Primitive smells** — run `python ${SKILL_ROOT}/scripts/primitive_smells.py <skill-dir>`.
+   Emits the mechanically-checkable "wrong primitive" signal: a skill whose
+   `required_first_command_patterns` bind it to a single external CLI (a *wrapper*),
+   cross-referenced against configured MCP servers. A wrapper with an MCP candidate →
+   consider the MCP connector (hands) over a skill (habit); a wrapper with no MCP →
+   confirm the skill adds LLM judgment a bare CLI/permission wouldn't. Advisory only —
+   the fuzzier "deterministic body → should be a hook" judgment stays in check 5's rubric.
+   Zero output until invoked, so it costs nothing on skills that don't match.
 
 ## Phase 2 — Plan
 

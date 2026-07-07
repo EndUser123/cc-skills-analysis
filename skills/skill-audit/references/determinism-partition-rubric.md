@@ -48,6 +48,8 @@ A second language is justified only when the component's ecosystem advantage is 
 | TS file in a Python-only plugin (or vice versa) for one helper | Language mismatch | Inline in the dominant language |
 | Gate/heuristic with magic thresholds and no `measured_tp_on_corpus` | Unverified discrimination | Code is fine; the *threshold* must be calibrated on a real corpus before it can block (advisory until then) |
 | LLM called for a step that has a deterministic equivalent already in the repo | Reinvention | Reuse the existing code path |
+| Skill body is pure deterministic steps (counting, gating, transforms, path math) with no LLM judgment | Wrong primitive — a skill is a *suggestion* to the LLM; a deterministic rule belongs in a hook or Python function | Convert to a hook (PreToolUse/Stop) or a CLI command. Keep the skill only if it adds judgment a hook can't |
+| Skill is a single-tool wrapper (`required_first_command_patterns` binds one CLI) AND an MCP server already exposes that capability | Wrong primitive — MCP gives Claude *hands* (reach); a skill encodes a *habit* (behavior). If the skill only wraps the tool call, the MCP fits | Prefer the MCP connector. Keep the skill only to encode judgment/retry the MCP lacks. Detect mechanically via `scripts/primitive_smells.py` |
 
 ## LangGraph specifically — when it earns its keep
 
