@@ -326,6 +326,22 @@ runtime BLOCK authority lives in `/red-team`'s Pre-check 0 (see
 `red-team/commands/red-team.md`). `/claude-audit` applies the contract as
 a reviewer, not as a runtime gate.
 
+## Discoverability ground-truth injection
+
+`/claude-audit` ensures known transcript/log/config locations can be
+injected as runtime ground truth — so agents have fewer excuses to ask the
+user for discoverable facts. When auditing the runtime environment, check:
+
+- Are known transcript roots (`~/.claude/projects/**/*.jsonl`) resolvable?
+- Are known config paths (`settings.json`, plugin roots, `.claude/`) resolvable?
+- Are known log/artifact paths injectable via the mechanism manifest or UPS?
+
+If an agent asks the user for a path that's already in the runtime ground
+truth, that's a `discoverable_fact_offloading` enabler — the fix is to
+surface the known path in the context injection, not to teach the agent a
+new instruction. Full rule at
+`debrief/references/discoverability-classification.md`.
+
 ## Error handling
 - Research fetch fails → continue with bundled Rule-Shape reference, note gap.
 - File doesn't exist → valid data, report "not configured."

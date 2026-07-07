@@ -396,6 +396,20 @@ command-routing / consolidation / absorbed-command claims, XSTC is the
 strongest discipline — owner is `/skill-audit` unless the routing itself
 disagrees with the affordance analysis, in which case flag for audit.
 
+## Discoverability audit criterion
+
+When auditing a skill/command/agent/prompt, flag as a rubric violation any
+instruction that tells the agent to ask the user for files, configs,
+transcripts, line numbers, or repo facts **before** attempting local
+discovery. The skill's instructions should default to: run the read-only
+tool first (grep, Read, Glob, find), then ask only if the fact is
+`USER_ONLY` (preference, approval, credential, intent).
+
+Full rule at `debrief/references/discoverability-classification.md`.
+A skill that instructs "ask the user for X" where X is discoverable is a
+`discoverable_fact_offloading` enabler — emit as a finding with severity
+REVISE (BLOCK if the instruction is load-bearing for the skill's workflow).
+
 ## Notes
 
 - One skill, one rubric, one report. Don't rephrase the rubric — copy it from
