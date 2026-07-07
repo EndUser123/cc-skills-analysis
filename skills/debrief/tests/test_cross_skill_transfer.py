@@ -240,36 +240,20 @@ def test_claude_audit_xstc_runtime_layer_only():
 # ---- No-new-command invariants ----
 
 def test_no_new_top_level_command_added_for_xstc():
-    """XSTC is an artifact emitted by existing commands, not a new command."""
-    forbidden = ("/xstc", "/transfer-check", "/cross-skill", "/generalize-check")
-    search_roots = [PLUGIN_ROOT, REPO_ROOT / "docs"]
-    for root in search_roots:
-        for path in root.rglob("*.md"):
-            text = path.read_text(encoding="utf-8")
-            for token in forbidden:
-                # Allow mentions in the new template + sections themselves,
-                # but not as a slash command (triggers: list entry).
-                if re.search(
-                    rf"triggers:\s*\n[\s\S]{{0,200}}-\s*{re.escape(token)}",
-                    text,
-                ):
-                    pytest.fail(
-                        f"{token} appears as a trigger in {path}"
-                    )
+    """Replaced by structural allowlist in test_no_new_triggers_structural.py.
+
+    The XSTC-specific forbidden tokens (/xstc, /transfer-check, /cross-skill,
+    /generalize-check) are now checked by name in
+    test_no_cec_xstc_routing_triggers there. Kept as a pointer for grep-discoverability.
+    """
+    import test_no_new_triggers_structural as _nt
+    _nt.test_no_cec_xstc_routing_triggers()
 
 
 def test_no_wiki_ingest_for_xstc():
-    """XSTC classifies wiki_or_memory as a destination, but does NOT auto-write."""
-    forbidden = "/wiki-ingest"
-    search_roots = [PLUGIN_ROOT, REPO_ROOT / "docs"]
-    for root in search_roots:
-        for path in root.rglob("*.md"):
-            text = path.read_text(encoding="utf-8")
-            if re.search(
-                rf"triggers:\s*\n[\s\S]{{0,200}}-\s*{re.escape(forbidden)}",
-                text,
-            ):
-                pytest.fail(f"{forbidden} appears as a trigger in {path}")
+    """Replaced by test_no_wiki_ingest_trigger in test_no_new_triggers_structural.py."""
+    import test_no_new_triggers_structural as _nt
+    _nt.test_no_wiki_ingest_trigger()
 
 
 # ---- Worked-example content checks ----

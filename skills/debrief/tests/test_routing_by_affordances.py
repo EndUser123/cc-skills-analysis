@@ -67,27 +67,16 @@ def test_handoff_doc_exists():
 
 
 def test_no_new_top_level_command_added():
-    """No /wiki-ingest, no /transcript-mine, no new mode in any SKILL.md.
+    """Replaced by the structural allowlist in test_no_new_triggers_structural.py.
 
-    Ponytail constraint: do not add visible commands. Internal references in
-    docs do not count; this guards against command-table additions.
+    The token-regex check only caught commands whose names we predicted. The
+    allowlist inverts the logic: enumerate every `triggers:` entry and assert
+    each is in an explicit ALLOWED_TRIGGERS set. A new command (any name)
+    fails until the developer adds it. This makes the claim PROVEN, not PARTIAL.
+    Kept as a thin pointer for grep-discoverability.
     """
-    forbidden = ("/wiki-ingest", "/transcript-mine", "/debrief-miner", "/mine-transcripts")
-    search_roots = [
-        PLUGIN_ROOT,
-        REPO_ROOT / "docs",
-    ]
-    for root in search_roots:
-        for path in root.rglob("*.md"):
-            text = path.read_text(encoding="utf-8")
-            for token in forbidden:
-                # Allow the token to appear in a "do not create" warning, but
-                # not as a slash command or trigger.
-                occurrences = re.findall(rf"\b{re.escape(token)}\b", text)
-                if occurrences and "do not create" not in text.lower():
-                    pytest.fail(
-                        f"{token} appears in {path} — forbidden new command"
-                    )
+    import test_no_new_triggers_structural as _nt
+    _nt.test_no_new_triggers_structural()
 
 
 def test_no_debrief_to_wiki_auto_wire():

@@ -352,33 +352,15 @@ def test_debrief_cec_after_action_rubric():
 # ---- No-new-command invariants ----
 
 def test_no_new_top_level_command_for_cec():
-    """Completion Evidence Contract must not have introduced a new command.
-    Reuse the structural check from the prior test file."""
-    forbidden = ("/cec", "/completion-evidence", "/ledger", "/verify-claim")
-    search_roots = [PLUGIN_ROOT, REPO_ROOT / "docs"]
-    for root in search_roots:
-        for path in root.rglob("*.md"):
-            text = path.read_text(encoding="utf-8")
-            for token in forbidden:
-                if re.search(
-                    rf"triggers:\s*\n[\s\S]{{0,200}}-\s*{re.escape(token)}",
-                    text,
-                ):
-                    pytest.fail(f"{token} appears as a trigger in {path}")
+    """Replaced by structural allowlist in test_no_new_triggers_structural.py."""
+    import test_no_new_triggers_structural as _nt
+    _nt.test_no_new_triggers_structural()
 
 
 def test_no_wiki_ingest_for_cec():
-    """Same as above: no /wiki-ingest appears as a new trigger."""
-    forbidden = "/wiki-ingest"
-    search_roots = [PLUGIN_ROOT, REPO_ROOT / "docs"]
-    for root in search_roots:
-        for path in root.rglob("*.md"):
-            text = path.read_text(encoding="utf-8")
-            if re.search(
-                rf"triggers:\s*\n[\s\S]{{0,200}}-\s*{re.escape(forbidden)}",
-                text,
-            ):
-                pytest.fail(f"{forbidden} appears as a trigger in {path}")
+    """Replaced by test_no_wiki_ingest_trigger in test_no_new_triggers_structural.py."""
+    import test_no_new_triggers_structural as _nt
+    _nt.test_no_wiki_ingest_trigger()
 
 
 # ---- Worked-example content ----

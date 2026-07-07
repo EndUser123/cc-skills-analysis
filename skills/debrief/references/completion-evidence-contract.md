@@ -1,5 +1,32 @@
 # Completion Evidence Contract
 
+## Bump evidence convention
+
+When bumping plugins with `plugin-audit-and-fix.py --bump`, capture **full
+stdout** (not just the tail) by redirecting to a log file:
+
+```bash
+python plugins/cc-skills-utils/scripts/plugin-audit-and-fix.py \
+  --bump <plugin> --marketplace-root P:/packages/.claude-marketplace \
+  2>&1 | tee /tmp/bump-<plugin>.log
+```
+
+In the Completion Evidence Ledger, cite the log file and quote the
+`Zero drift confirmed` literal — not just the `=== Done ===` line.
+
+Recommended report format:
+```
+claim_type: plugin_bumped / cache_rebuilt / drift_checked
+evidence_provided: /tmp/bump-<plugin>.log → "Zero drift confirmed for <plugin>."
+status: PROVEN
+protection_level: runtime_enforced
+```
+
+A `=== Done ===` line alone (without the `Zero drift confirmed` literal) is
+PARTIAL at best.
+
+# Completion Evidence Contract
+
 Every final implementation report must include a **Completion Evidence Ledger** —
 one row per completion claim, each typed and proven from the correct authority.
 
