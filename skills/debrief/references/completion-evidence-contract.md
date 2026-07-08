@@ -30,6 +30,39 @@ PARTIAL at best.
 Every final implementation report must include a **Completion Evidence Ledger** —
 one row per completion claim, each typed and proven from the correct authority.
 
+## Report-time enforcement (Close-the-Loop Phase 4)
+
+This contract is enforced at report time, not only at `/debrief` after-action
+mining. The mechanical check lives in
+`cc-aca-epistemic/hooks/stop/Stop_fake_done_detector.py` (Tier 4, WARN mode):
+a response is implementation-report-shaped when it carries a completion claim
+("done", "fixed", "verified", "shipped", "complete") AND either (a) the output
+mentions concrete code artifacts (file paths, plugin names, hook names, packet
+sections) or (b) follows an `/improve`/`/claude-audit`/`/red-team`/`/skill-audit`
+output shape. When the shape matches but **no ledger is present** (no markdown
+table whose header row contains `claim` + `claim_type`/`status`/`evidence`, and
+no fenced yaml block with `claim_type:` + `evidence_provided:`), the detector
+WARNs:
+
+> MISSING COMPLETION LEDGER — you claimed completion on an
+> implementation-report-shaped response but did not include a Completion
+> Evidence Ledger (per `completion-evidence-contract.md`). Add one row per
+> completion claim.
+
+The delta vs. the existing Tier 1/1.5/2 tiers: those check whether **evidence
+exists** for a single claim. This tier checks whether **the report itself is
+structured to make every claim auditable** — the contract's structural
+requirement, not a per-claim verification. It does NOT re-verify any claim.
+That authority stays with `/red-team` (BLOCKs ledger-less reports on review)
+and the existing claim-verification gates.
+
+Promotion to BLOCK requires measured corpus signal (Phase 6 yield review,
+earliest ~2026-07-21): ≥5 real implementation-report-shaped completions where
+the ledger presence correlated with the report's eventual verdict (REVISE for
+ledger-less, PROCEED for ledger-bearing). Until then the tier is WARN, advisory.
+
+
+
 The contract exists because bare "done," "tests green," "zero drift,"
 "constraints satisfied," and "guardrail enforced" claims all conflate different
 authorities. A SKILL.md edit is not runtime enforcement. A text-existence test
