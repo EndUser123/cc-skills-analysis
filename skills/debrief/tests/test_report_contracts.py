@@ -456,6 +456,144 @@ def test_improve_pointer_mentions_report_contracts_vocabularies():
     )
 
 
+# ---- Part G: Feedback Loop / Harness Calibration Addendum ----
+
+def test_feedback_loop_addendum_section_exists():
+    """report-contracts.md must carry the Feedback Loop Addendum section."""
+    text = REPORT_CONTRACTS_DOC.read_text(encoding="utf-8")
+    assert "## Feedback Loop / Harness Calibration Addendum" in text, (
+        "report-contracts.md must include the Feedback Loop Addendum section"
+    )
+
+
+def test_feedback_loop_addendum_names_all_seven_mechanisms():
+    """The addendum must name all seven feedback-loop mechanisms."""
+    text = REPORT_CONTRACTS_DOC.read_text(encoding="utf-8")
+    idx = text.find("## Feedback Loop / Harness Calibration Addendum")
+    assert idx != -1, "Feedback Loop Addendum section missing"
+    section = text[idx:]
+    for mechanism in (
+        "Runtime Ground Truth Freshness",
+        "Public Baseline Taxonomy",
+        "Two-Layer Gold Corpus",
+        "Disallowed Conclusions",
+        "Epistemic Hook Calibration",
+        "Local JSONL Verification Packets",
+        "Deterministic-First / LLM-Last",
+    ):
+        assert mechanism in section, (
+            f"Feedback Loop Addendum missing mechanism: {mechanism!r}"
+        )
+
+
+def test_feedback_loop_addendum_cites_real_artifacts():
+    """Each cited artifact path in the addendum must point at a real file/dir.
+
+    These are the artifacts the addendum's runtime-status claims depend on.
+    If any is renamed/moved, the addendum's falsification condition trips and
+    this test fails so the doc is updated, not silently broken.
+    """
+    rt = REPO_ROOT / ".claude/hooks/analysis/runtime-ground-truth.md"
+    assert rt.exists(), f"addendum cites missing artifact: {rt}"
+    gold = REPO_ROOT / ".data/evals/gold"
+    assert gold.exists() and any(gold.iterdir()), (
+        "addendum cites Two-Layer Gold Corpus but gold/ is empty or missing"
+    )
+    for script in ("replay_eval.py", "shadow_eval.py"):
+        assert (REPO_ROOT / f".data/evals/{script}").exists(), (
+            f"addendum cites missing eval script: {script}"
+        )
+    manifest = PLUGIN_ROOT / "cc-skills-architect/skills/ask/lib/abstraction_audit_manifest.py"
+    assert manifest.exists(), f"addendum cites missing manifest script: {manifest}"
+
+
+def test_feedback_loop_addendum_states_honest_runtime_status():
+    """The addendum must state plainly that none of the seven is a BLOCK gate.
+
+    This is the central honesty invariant: an addendum about calibration must
+    not imply runtime BLOCK enforcement where only advisory/WARN exists.
+    """
+    text = REPORT_CONTRACTS_DOC.read_text(encoding="utf-8")
+    idx = text.find("## Feedback Loop / Harness Calibration Addendum")
+    section = text[idx:]
+    lowered = section.lower()
+    assert "block-level gate" in lowered or "none of the seven is a block" in lowered, (
+        "Addendum must state plainly that none of the seven is a BLOCK gate today"
+    )
+    # Each mechanism row must carry a runtime status, not an implied "enforced."
+    for status_token in ("prompt_advisory", "documentation_only", "runtime_surface"):
+        assert status_token in lowered, (
+            f"Addendum must use honest protection_level token: {status_token!r}"
+        )
+
+
+def test_feedback_loop_addendum_names_coverage_authority():
+    """The addendum must name its own coverage authority (targeted, not whole_repo_static)."""
+    text = REPORT_CONTRACTS_DOC.read_text(encoding="utf-8")
+    idx = text.find("## Feedback Loop / Harness Calibration Addendum")
+    section = text[idx:]
+    assert "Coverage authority for this addendum" in section, (
+        "Addendum must state its own coverage authority"
+    )
+    assert "`targeted`" in section, (
+        "Addendum must label its coverage as targeted (not whole_repo_static)"
+    )
+
+
+def test_feedback_loop_addendum_carries_falsification():
+    """The addendum must carry a falsification condition."""
+    text = REPORT_CONTRACTS_DOC.read_text(encoding="utf-8")
+    idx = text.find("## Feedback Loop / Harness Calibration Addendum")
+    section = text[idx:]
+    assert "**Falsification:**" in section, (
+        "Addendum must carry a Falsification condition"
+    )
+
+
+def test_improve_carries_feedback_loop_pointer():
+    """/improve must carry a Feedback Loop pointer (it owns durable improvement work
+    and already has the Deeper Abstraction Check reference section)."""
+    text = IMPROVE_SKILL.read_text(encoding="utf-8")
+    assert "## Feedback Loop / Harness Calibration — pointer" in text, (
+        "/improve must carry a Feedback Loop pointer section"
+    )
+    idx = text.find("## Feedback Loop / Harness Calibration — pointer")
+    section = text[idx : idx + 1200]
+    # Names the canonical home (report-contracts.md addendum).
+    assert "report-contracts.md" in section, (
+        "/improve pointer must name the canonical reference file"
+    )
+    assert "Feedback Loop" in section and "Addendum" in section, (
+        "/improve pointer must name the addendum section"
+    )
+    # Must restate advisory status, not claim BLOCK enforcement.
+    assert "BLOCK" in section, "pointer must address the BLOCK status boundary"
+    assert "prompt-advisory" in section.lower() or "prompt_advisory" in section.lower(), (
+        "pointer must restate advisory status"
+    )
+    # Pointer-only: must NOT redefine the seven mechanism definitions.
+    assert "Two-Layer Gold Corpus" not in section, (
+        "/improve pointer must not duplicate mechanism definitions (pointer-only)"
+    )
+
+
+def test_feedback_loop_addendum_introduces_no_new_command():
+    """No mechanism in the addendum may become a user-visible command."""
+    import test_no_new_triggers_structural as _nt
+    found = _nt._enumerate_triggers(PLUGIN_ROOT)
+    for trigger in (
+        "/feedback-loop",
+        "/harness-calibration",
+        "/calibration",
+        "/ground-truth",
+        "/gold-corpus",
+        "/verification-packet",
+    ):
+        assert trigger not in found, (
+            f"{trigger} introduced as a trigger — Feedback Loop work must not add commands"
+        )
+
+
 if __name__ == "__main__":
     for fn in list(globals().values()):
         if callable(fn) and getattr(fn, "__name__", "").startswith("test_"):

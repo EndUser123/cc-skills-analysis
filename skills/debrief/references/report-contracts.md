@@ -121,3 +121,29 @@ This meta-reference is wrong if any of the following hold:
   prose across command docs — the pattern was available and not chosen.
 - A contract's status line claims `runtime_enforced` without a matching hook
   file:line (the central overclaim this reference exists to prevent).
+
+## Feedback Loop / Harness Calibration Addendum
+
+This addendum names the **feedback mechanisms** that keep the report-contract
+discipline calibrated to reality. It is not a new contract and adds **no
+commands, no `/wiki` write, and no BLOCK-level gate.** Each mechanism is filed
+at its honest runtime status — none of the seven is a BLOCK gate today.
+
+| Mechanism | Canonical artifact | Rule / schema | Runtime status |
+|---|---|---|---|
+| **Runtime Ground Truth Freshness** | `P:/.claude/hooks/analysis/runtime-ground-truth.md` (schema table) + SessionStart injection block | Each fact carries `fact` / `source` / `verification_command` / `last_verified` / `expiry_trigger`; a stale row renders `[STALE — reverify: <cmd>]` instead of silently dropping | `runtime_surface`, **advisory** — injection fires at SessionStart; no block on stale facts |
+| **Public Baseline Taxonomy + Local Diff** | `completion-evidence-contract.md:114-121` (`protection_level` enum) + the ledger row | Every local claim is diffed against the 6-value taxonomy (`documentation_only` → `runtime_enforced_and_regression_tested`); a claim landing below its required level becomes an overclaim row | `prompt_advisory` — enforced only at `/red-team` / `/review`; no live gate |
+| **Two-Layer Gold Corpus** | `P:/.data/evals/gold/` + `replay_eval.py` (replay layer); `shadow_eval.py` + `shadow_hits.jsonl` (shadow layer) | Layer 1: deterministic regression replay against gold fixtures. Layer 2: live SHADOW detection writing non-blocking telemetry | replay `behavior_eval_tested` (real fixtures through real detectors, when run); shadow `runtime_surface`, advisory |
+| **Disallowed Conclusions** | `completion-evidence-contract.md:123-134` (Rules 1–10) + `cc-skills-architect/skills/ask/SKILL.md:432-435,451-455` ("Prohibited:" lines) | Forbidden verdicts: "full coverage" without an authority, "live" from a source edit alone, "done" without a ledger row, "zero drift" without the literal, "shipped" from a cache rebuild alone | `prompt_advisory` — except `Stop_fake_done_detector.py` enforces the **ledger-presence** requirement at **WARN** (not BLOCK) |
+| **Epistemic Hook Calibration Before Blocking** | `completion-evidence-contract.md:59-62` ("Promotion to BLOCK" paragraph) + the gate-discrimination discipline | A behavioral gate must measure TP/FP on a real corpus (≥3 non-discrimination cases) before promotion from WARN to BLOCK; the close-the-loop ladder ships WARN first, BLOCK only after corpus signal (earliest ~2026-07-21) | `documentation_only` — pre-ship discipline; nothing at runtime enforces the discipline itself |
+| **Local JSONL Verification Packets** | `P:/.claude/hooks/analysis/phase_0_5_*`, `phase_1_*`, `phase_1_5_*`, `phase_2_*`, `phase_3_*_evidence_packet_*.md`; plus `P:/.data/evals/misses.jsonl`, `shadow_hits.jsonl` | Per-phase markdown packets cite the JSONL streams they summarize; each carries its own status (DONE / SHADOW / RETIRED) and re-calibration numbers | `documentation_only` — packets are hand-authored post-hoc; the JSONL they cite is runtime-generated |
+| **Deterministic-First / LLM-Last** | `cc-skills-architect/skills/ask/lib/abstraction_audit_manifest.py` + `cc-skills-architect/skills/ask/SKILL.md:349-372` | Deterministic whole-repo enumeration (file inventory + term search + risk heuristics) runs first; the LLM inspects only the ranked recommended-read set last, and must say so before claiming `whole_repo_static` | `prompt_advisory` (the instruction) + `runtime_surface` (the script, when invoked) |
+
+**Coverage authority for this addendum:** `targeted` — each cited path was read
+or `ls`-verified during authoring; non-cited surfaces were not enumerated. This
+is not `whole_repo_static`.
+
+**Falsification:** This addendum is wrong if (a) any mechanism is filed at a
+stronger runtime status than it actually has, (b) a cited artifact no longer
+exists at the named path, or (c) a future BLOCK-level gate is wired without the
+corpus measurement the calibration rule requires.
