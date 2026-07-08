@@ -81,11 +81,23 @@ If no text is provided, analyze the **current session context** — the full con
 
 ## Output Structure
 
+**Formatting rule (terminal readability):** Prefer compact one-line list items over markdown tables. Tables render as box-drawing ASCII that explodes horizontally when cells hold long strings (file paths, prose, multi-clause reasons) — which is most of what this skill outputs. Use tables ONLY for small fixed-vocabulary data (≤4 rows, short cells, like the Conditional Depth guide). **Evidence Audit, Action Ranking, and GAP COVERAGE must be plain lists, never tables.**
+
+**Section structure is fixed — exactly five numbered sections, no more, no preamble:**
+1. EVIDENCE AUDIT → 2. DIAGNOSIS → 3. ACTION RANKING & RED TEAM → 4. GUARDRAILS → 5. FINAL SELECTION.
+Begin the response directly with `## 1. EVIDENCE AUDIT` — no intro sentence, no "Running /rns on…" preamble. GAP COVERAGE is an inline block inside Section 3 (after the `0` footer), **not a numbered section** — do not label it `## 5.` or similar.
+
 ### 1. EVIDENCE AUDIT
 
-List inspected files/logs/tool outputs with status: `[CURRENT]` / `[STALE]` / `[NOT_VERIFIED]`.
+Render as a compact list — **one item per line, status tag first, never a markdown table**:
 
-Every item must cite a specific tool call from this session (Read, Grep, Glob, Bash). If no meaningful symptoms and everything is verified, skip to Section 4 and use `EXIT`.
+- `[CURRENT] path/or/source — short finding (one line)`
+- `[STALE] path/or/source — short finding`
+- `[NOT_VERIFIED] path/or/source — short finding`
+
+Statuses: `[CURRENT]` (fresh this session), `[STALE]` (checked but may have changed), `[NOT_VERIFIED]` (inferred, not tool-confirmed). Keep each finding to a single line; truncate long paths with `…`.
+
+Every item must cite a specific tool call from this session (Read, Grep, Glob, Bash). If no meaningful symptoms and everything is verified, skip to Section 5 and use `EXIT`.
 
 **Evidence rules (codebase conventions):**
 - **E1 — Evidence before claims**: before claiming code is absent, unchanged, or non-existent, search and verify with tools first.
@@ -160,7 +172,7 @@ When processing structured inputs (gap tables, pre-mortem findings, skill audits
 
 **Rule**: severity alone is NOT a valid exclusion. MEDIUM/LOW items require explicit REJECTED or DEFERRED disposition, not silence.
 
-Render gap coverage as a `GAP COVERAGE` section after action ranking and before the `<selection>` block:
+Render gap coverage as an inline block at the end of Section 3, immediately after the `0 — Do ALL` footer (and only when the input is structured — gap table, pre-mortem findings, skill audit). The `GAP COVERAGE (N items)` line is the block's only header — **do NOT also emit a `## N. GAP COVERAGE` section title** (that produces a duplicate header). **Use the plain indented list below verbatim — do NOT render it as a markdown table** (long reasons in table cells explode the box-drawing layout):
 
 ```
 GAP COVERAGE (N items)

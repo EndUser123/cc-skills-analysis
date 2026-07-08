@@ -1,6 +1,27 @@
 ---
 name: claude-audit
-description: Audit and optimize Claude Code configuration (CLAUDE.md, .claude/rules/, skills, hooks, agents, MCP, plugins, MEMORY.md) for over-engineering, token waste, and rule-shape — whether each rule lives in the right mechanism. Consolidates claudit + config-audit. Self-contained; no external subagent fleet.
+description: "Audit and optimize Claude Code configuration (CLAUDE.md, .claude/rules/, skills, hooks, agents, MCP, plugins, MEMORY.md) for over-engineering, token waste, and rule-shape — whether each rule lives in the right mechanism. Consolidates claudit + config-audit. Self-contained; no external subagent fleet."
+version: 1.1.1
+status: stable
+category: analysis
+enforcement: advisory
+triggers:
+  - /claude-audit
+argument-hint: "[focus-area]"
+allowed-tools: Task, Read, Glob, Grep, Bash, Write, Edit, AskUserQuestion
+workflow_steps:
+  - map
+  - research
+  - audit
+  - memory
+  - env-vars
+  - score
+  - apply
+---
+
+# /claude-audit — Claude Code Configuration Audit
+
+One local-owned audit skill. Replaces `/claudit` (quickstop, third-party) and `/config-audit` (this plugin). Adds a dimension neither had: **Rule-Shape** — auditing whether each rule lives in the mechanism that matches its trigger.
 
 ## Boundary — what `/claude-audit` owns
 
@@ -25,27 +46,6 @@ When the user's question touches both layers (e.g., "is this hook design
 correct?"), `/claude-audit` answers the *wiring* question; `/skill-audit`
 answers the *content* question; route accordingly or run both with explicit
 scope.
-version: 1.1.1
-status: stable
-category: analysis
-enforcement: advisory
-triggers:
-  - /claude-audit
-argument-hint: "[focus-area]"
-allowed-tools: Task, Read, Glob, Grep, Bash, Write, Edit, AskUserQuestion
-workflow_steps:
-  - map
-  - research
-  - audit
-  - memory
-  - env-vars
-  - score
-  - apply
----
-
-# /claude-audit — Claude Code Configuration Audit
-
-One local-owned audit skill. Replaces `/claudit` (quickstop, third-party) and `/config-audit` (this plugin). Adds a dimension neither had: **Rule-Shape** — auditing whether each rule lives in the mechanism that matches its trigger.
 
 ## The Rule-Shape decision map (core differentiator)
 

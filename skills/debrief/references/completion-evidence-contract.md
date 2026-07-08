@@ -229,8 +229,20 @@ Claim: "Capability absorbed into /debrief."
 | `/skill-audit` | When reviewing skill/command consolidation, capability preservation, aliases, stubs, absorbed commands, and skill docs | Mandatory for `capability_preserved` rows. |
 | `/claude-audit` | When reviewing plugin activation, hook/runtime/config changes, cache rebuilds, mechanism manifests, command-surface claims | Mandatory for `plugin_bumped`, `cache_rebuilt`, `drift_checked`, `command_surface_changed` rows. |
 | `/review` | For code/test/diff completion claims | Mandatory for `file_changed`, `test_passed` rows. |
+| `/ship` | For deploy-readiness and runtime-snapshot completion claims — pre/post/status verification that the deploy surface is live. | Mandatory for `plugin_bumped`, `cache_rebuilt`, `drift_checked`, `runtime_behavior_changed`, `user_visible_behavior_verified` rows. |
 | `/improve` | Do NOT own enforcement of this contract. Add a routing note: when the issue is unsupported completion claims, suggest `/red-team` (if the report is the artifact), `/skill-audit` (if it's about skill consolidation), `/claude-audit` (if it's about hooks/config/plugins), or `/review` (if it's about code/diff). | Routing-only. |
 | `/debrief` | Use the contract as the **after-action** rubric for transcript-mined bad-LLM-behavior findings. Each discovered overclaim gets classified as one of: `overclaimed_completion`, `fake_verification`, `static_test_runtime_confusion`, `user_surface_verification_gap`. | Internal rubric, not new mode. |
+
+### Note on the `/ship` claim-type set (honest gap)
+
+`/ship`'s deploy-readiness work conceptually wants a claim type called
+`activation_verified` (the slash command is live and reachable end-to-end after
+a deploy). **That enum value does not exist.** The closest existing authority is
+`user_visible_behavior_verified` ("slash command → orchestrator → output driven
+end-to-end"), which is what `/ship` must use. If a future deploy surface needs
+to distinguish "command present" from "command driven to output," add
+`activation_verified` as a 17th enum value rather than overloading
+`user_visible_behavior_verified`.
 
 ## Why this exists
 
