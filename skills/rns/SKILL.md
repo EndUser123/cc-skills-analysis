@@ -54,14 +54,15 @@ Act as an aggressive strategic thought partner. Challenge assumptions, prioritiz
 /rns {optional pasted text or @reference}
 ```
 
-If no text is provided, analyze the **current session context** — the full conversation, not just the last message. Fall back to transcript reading only when conversation context is insufficient (e.g., session restored from compact with limited context).
+If no text is provided, analyze the **current session context** — the full conversation, not just the last message.
 
 **Input sources (in priority order):**
 
 1. **Inline text** — if `/rns {text}` was called with pasted text, use that directly.
 2. **Current session context** — the LLM already has all user/assistant messages in context. Process the full conversation.
 3. **File reference** — if a file path is provided (e.g., `@debrief-session.md`), read that file.
-4. **Transcript fallback** — when context-first approach fails (rare: compact-restore with stripped context).
+
+**Prior-session carryover:** `/rns` operates on the current session only. For cross-session carryover (unresolved actions from prior sessions), use `/recap` — it owns the session-chain walker and surfaces carryover in its handoff template.
 
 **Do not ask the user to re-run commands or paste content** — if you can read it, read it.
 
