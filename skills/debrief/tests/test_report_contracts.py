@@ -318,6 +318,9 @@ def test_no_new_report_contract_triggers():
         "/deeper-abstraction",
         "/abstraction-check",
         "/meta-reference",
+        "/coverage-authority",
+        "/activation-truth",
+        "/bounded-action",
     ):
         assert trigger not in found, (
             f"{trigger} introduced as a trigger — report-contracts work must "
@@ -348,6 +351,109 @@ def test_no_automatic_wiki_write_introduced():
             assert phrase not in text, (
                 f"{path.name} introduces forbidden /wiki write pattern: {phrase!r}"
             )
+
+
+# ---- Part F: Three new vocabularies in /ask ----
+
+def test_coverage_authority_in_ask():
+    """Coverage Authority must be defined in the Deeper Abstraction Check area."""
+    text = ASK_SKILL.read_text(encoding="utf-8")
+    idx = text.find("## Deeper Abstraction Check")
+    assert idx != -1, "Deeper Abstraction Check missing from /ask"
+    section = text[idx:]
+    assert "coverage_authority" in section, (
+        "Deeper Abstraction Check must include coverage_authority field"
+    )
+    for value in ("sampled", "targeted", "whole_repo_static", "runtime_surface", "live_behavior"):
+        assert value in section, f"coverage_authority enum missing: {value!r}"
+
+
+def test_coverage_authority_prohibits_full_coverage_without_authority():
+    """The Coverage Authority section must forbid bare 'full coverage' claims."""
+    text = ASK_SKILL.read_text(encoding="utf-8")
+    idx = text.find("### Coverage Authority")
+    assert idx != -1, "### Coverage Authority section missing from /ask"
+    section = text[idx : idx + 2000]
+    assert "full coverage" in section.lower(), (
+        "Coverage Authority must address the 'full coverage' anti-pattern"
+    )
+    assert "without an authority" in section.lower() or "without an authority label" in section.lower() or "prohibited" in section.lower(), (
+        "Coverage Authority must explicitly prohibit bare 'full coverage' claims"
+    )
+
+
+def test_activation_truth_model_in_ask():
+    """Activation Truth Model must be defined in the Deeper Abstraction Check area."""
+    text = ASK_SKILL.read_text(encoding="utf-8")
+    idx = text.find("## Deeper Abstraction Check")
+    section = text[idx:]
+    assert "activation_truth_layer" in section, (
+        "Deeper Abstraction Check must include activation_truth_layer field"
+    )
+    for value in ("source_changed", "cache_rebuilt", "plugin_loaded", "command_resolves", "behavior_observed"):
+        assert value in section, f"activation_truth_layer enum missing: {value!r}"
+
+
+def test_activation_truth_model_prohibits_source_only_live_claim():
+    """The Activation Truth section must forbid claiming 'live' from a source edit."""
+    text = ASK_SKILL.read_text(encoding="utf-8")
+    idx = text.find("### Activation Truth Model")
+    assert idx != -1, "### Activation Truth Model section missing from /ask"
+    section = text[idx : idx + 2000]
+    assert "source_changed" in section.lower() or "source edit" in section.lower() or "source edit" in section, (
+        "Activation Truth Model must address the source-edit-only overclaim"
+    )
+    assert "prohibited" in section.lower() or "must not" in section.lower() or "forbidden" in section.lower(), (
+        "Activation Truth Model must explicitly state what is prohibited"
+    )
+
+
+def test_bounded_action_continuation_in_ask():
+    """Bounded Action Continuation must exist in /ask STEP 5 or nearby."""
+    text = ASK_SKILL.read_text(encoding="utf-8")
+    assert "Bounded Action Continuation" in text, (
+        "/ask must own the Bounded Action Continuation rule"
+    )
+    idx = text.find("Bounded Action Continuation")
+    section = text[idx : idx + 2000]
+    # Must name the four conditions: authorized, bounded, reversible, directly implied
+    for keyword in ("authorized", "bounded", "reversible", "directly implied"):
+        assert keyword in section.lower() or keyword in section, (
+            f"Bounded Action Continuation must name condition: {keyword!r}"
+        )
+
+
+def test_bounded_action_continuation_prohibits_deferral_after_authorized():
+    """The rule must explicitly address the 'say the word' deferral pattern."""
+    text = ASK_SKILL.read_text(encoding="utf-8")
+    idx = text.find("Bounded Action Continuation")
+    section = text[idx : idx + 2000]
+    assert "say the word" in section.lower() or "deferral" in section.lower() or "re-ask" in section.lower(), (
+        "Bounded Action Continuation must address the deferral-after-authorization failure pattern"
+    )
+
+
+def test_improve_pointer_mentions_report_contracts_vocabularies():
+    """/improve must reference the three new vocabularies in its Deeper Abstraction Check pointer."""
+    text = IMPROVE_SKILL.read_text(encoding="utf-8")
+    idx = text.find("## Deeper Abstraction Check")
+    assert idx != -1, "/improve missing Deeper Abstraction Check section"
+    section = text[idx : idx + 2000]
+    # At minimum, one of the three field names must appear (snake_case or title-case)
+    found_any = any(
+        kw in section
+        for kw in (
+            "coverage_authority",
+            "Coverage Authority",
+            "activation_truth_layer",
+            "Activation Truth",
+            "bounded_actions_completed_or_deferred",
+            "Bounded Action Continuation",
+        )
+    )
+    assert found_any, (
+        "/improve Deeper Abstraction Check pointer should reference the new vocabularies"
+    )
 
 
 if __name__ == "__main__":

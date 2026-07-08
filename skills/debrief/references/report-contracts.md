@@ -58,6 +58,10 @@ strictly less code and strictly less drift.
 | **Cross-Skill Transfer Check (XSTC)** | `cross-skill-transfer-check.md` | `/debrief` (drives), every retained command emits | Whether a failure/fix class is local or reusable across skills/hooks/gates | **Prompt-advisory.** No runtime gate. Static test asserts the required fields + pointer invariants. |
 | **Discoverability Classification** | `discoverability-classification.md` | every command that might ask the user for a fact | Missing facts → `DISCOVERABLE` (run the tool) vs `USER_ONLY` (ask) | **Prompt-advisory.** Discipline rule, not a gate. |
 | **Routing by Affordances** | `routing-by-affordances.md` | `/debrief` (drives), referenced by XSTC | Work → affordance → command, forbidding circular self-positioning | **Prompt-advisory.** Referenced by the XSTC rule; no runtime gate. |
+| **Deeper Abstraction Check** | inside `/ask/SKILL.md` (`## Deeper Abstraction Check`) | `/ask` (owns) | Local concept → reusable class / ownership map → disposition | **Prompt-advisory.** A static test pins the canonical fields + 6 disposition enum values; no runtime gate. |
+| **Coverage Authority** | inside `/ask/SKILL.md` (`### Coverage Authority`) | `/ask` (owns) | Every audit/claim must name its evidence-breadth authority (sampled → live_behavior) | **Prompt-advisory.** Static test asserts the five values + the "no bare full coverage" rule; no runtime gate. |
+| **Activation Truth Model** | inside `/ask/SKILL.md` (`### Activation Truth Model`) | `/ask` (owns) | Every "live / active / shipped" claim names which of 5 layers is actually proven | **Prompt-advisory.** Static test asserts the five layers + the source-only-overclaim prohibition; no runtime gate. |
+| **Bounded Action Continuation** | inside `/ask/SKILL.md` (`### Bounded Action Continuation`) | `/ask` (owns) | Decide whether to complete a small reversible action or stop to re-ask, using 4 conditions | **Prompt-advisory.** Discipline rule, not a gate. |
 
 Adjacent files in `references/` that are **not** report contracts (they do not
 follow the canonical + per-command-pointer shape): `bad-behavior-rubric.md`
