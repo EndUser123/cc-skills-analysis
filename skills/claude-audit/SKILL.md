@@ -184,6 +184,8 @@ These optimize long-term outcomes — the audit is not just "is this file live,"
 
 Record answers in the audit notes; an entry survives the archive recommendation only if at least one prompt produces a concrete future-mistake that is *not* already structurally blocked.
 
+**Behavioral (`metadata.type: feedback`) entries:** the "structurally blocked?" test is wrong for these — they are prompt-advisory discipline by definition, so the answer is always "no," which would wrongly archive every behavioral rule. For `feedback` entries, substitute the recurrence-based liveness test and consult `references/behavioral-memory-lifecycle.md` for the memory→hook graduation ladder (recurring + specific → deterministic trigger → measurable FP → advisory-then-blocking). Do not auto-archive behavioral entries; flag them for user decision.
+
 ### Output
 A ranked `keep / shorten / merge / archive` table with evidence (`MEMORY.md:line`, resolved path, cluster members) and **token-delta per candidate** (always-loaded tokens freed = `(index_line_chars + topic_body_chars)/4`). Feed `archive`/`merge`/`shorten` candidates into Phase 4 (apply). Score feeds Phase 3 Memory category.
 
