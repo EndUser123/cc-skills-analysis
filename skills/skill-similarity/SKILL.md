@@ -1,16 +1,16 @@
 ---
-name: similarity
+name: skill-similarity
 description: "Find skills similar to a target skill based on keywords, dependencies, and metadata"
 version: 1.0.43
 status: stable
 category: analysis
 enforcement: advisory
 triggers:
-  - /similarity
+  - /skill-similarity
   - "similar skills"
   - "find similar"
 aliases:
-  - /similarity
+  - /skill-similarity
 suggest:
   - /search
   - /skill-ship
@@ -25,7 +25,7 @@ suggest:
 depends_on_skills: []
 ---
 
-# /similarity - Find Similar Skills
+# /skill-similarity - Find Similar Skills
 
 ## Purpose
 
@@ -45,17 +45,17 @@ This is a PROCEDURE-type skill — it runs a Python script that:
 ## Usage
 
 ```
-/similarity <target>           # Find skills similar to <target>
-/similarity /evolve            # Find skills similar to /evolve
-/similarity /tdd               # Find skills similar to /tdd
-/similarity                    # Infer from context
+/skill-similarity <target>           # Find skills similar to <target>
+/skill-similarity /evolve            # Find skills similar to /evolve
+/skill-similarity /tdd               # Find skills similar to /tdd
+/skill-similarity                    # Infer from context
 ```
 
 ## Output
 
 The skill outputs:
 1. **Console summary** - Grouped by similarity tier (HIGH/MEDIUM/LOW/MINIMAL)
-2. **JSON report** - Full similarity data exported to `~/.claude/.artifacts/{terminal_id}/similarity/<target>_report.json`
+2. **JSON report** - Full similarity data exported to `~/.claude/.artifacts/{terminal_id}/skill-similarity/<target>_report.json`
 
 Each result shows:
 - Skill name and similarity score
@@ -77,13 +77,13 @@ Each result shows:
 
 ## Your Workflow
 
-When `/similarity` is invoked with a target:
+When `/skill-similarity` is invoked with a target:
 
 ### Step 1: Run Similarity Analysis
 
 ```bash
 # Run the similarity script
-python P://.claude/skills/similarity/similarity.py <target>
+python P://.claude/skills/skill-similarity/skill-similarity.py <target>
 ```
 
 ### Step 2: Format Results for User
@@ -121,7 +121,7 @@ LOW (0.05-0.19)
 
 ```bash
 # View full report
-cat ~/.claude/.artifacts/{terminal_id}/similarity/<target>_report.json
+cat ~/.claude/.artifacts/{terminal_id}/skill-similarity/<target>_report.json
 ```
 
 ## Phase Gates

@@ -19,7 +19,7 @@ Analyzing HOW the work is progressing.
 | Skill | Purpose | Home |
 |-------|---------|------|
 | /behave | Analyzes LLM behavior and session patterns | `behave/` |
-| /similarity | Finds functionally similar skills to prevent bloat | `similarity/` |
+| /skill-similarity | Finds functionally similar skills to prevent bloat | `skill-similarity/` |
 | /why | Deep "5 Whys" root cause analysis | `why/` |
 | /top-problems | *DEPRECATED stub → /debrief top* (6-source scan engine; findings become tasks) | `top-problems/` |
 | /trace | Evidence provenance and workflow tracing | `trace/` |

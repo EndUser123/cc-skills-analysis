@@ -311,7 +311,7 @@ external `SKILL.md`, or a directory of them. It produces a *diff*, never a rubri
 3. **Recommend (actionable)** — each gap becomes one recommendation of the form
    `GAP / OURS / FIX → target-path → hand-off`. The hand-off for an internal target is
    `run /skill-audit improve <target-path>`; for no target (`match_basis: none`), it's
-   greenfield via `/cc-skills-architect:write-a-skill`. **Do not auto-apply** — intel
+   greenfield via `/cc-skills-architect:skill-write`. **Do not auto-apply** — intel
    proposes, the user picks, Phase 3 executes.
 4. **Read external SKILL.md when available** — if the artifact is or contains external
    skill files, Read them before diffing; structured capability evidence beats invocation traces.
@@ -325,7 +325,7 @@ Artifacts: <path> (kind: transcript|text|skillmd|dir, N signals)
 External skill: <name>   [×N invocations]   citations: file:line, ...
   Internal match: <ours|none>   confidence: 0.XX   basis: name|keyword|none
   Gaps (axis A first):
-    A. <capability ours lacks>  → FIX: ...  → /skill-audit improve <path> | write-a-skill
+    A. <capability ours lacks>  → FIX: ...  → /skill-audit improve <path> | skill-write
     ...
 Ranked recommendations: [Critical/High/Medium/Low as in the rubric]
 ```
@@ -493,7 +493,7 @@ REVISE (BLOCK if the instruction is load-bearing for the skill's workflow).
   `/cc-skills-architect:skill-craft`, `/skill-guard:migrate_skill_ef`, and `/cc-skills-sdlc:av`
   (all retired or stubbed). `/av` is now a deprecation stub → `/skill-audit generate-hooks`;
   its hook templates + validation checklist stay canonical at `cc-skills-sdlc/skills/av/references/`.
-- Distinct intent skills (kept separate): `/cc-skills-architect:write-a-skill` (greenfield),
+- Distinct intent skills (kept separate): `/cc-skills-architect:skill-write` (greenfield),
   `/cc-skills-analysis:doc-compiler` (HTML output), `/cc-skills-analysis:similarity` (search).
 
 ## Suggest

@@ -27,7 +27,7 @@ Each gap becomes ONE recommendation of the form:
 GAP: <external-skill> does <X> via <evidence-citation>
 OURS: <internal-skill-or-null> currently <state>
 FIX: <concrete change>
-  → target: <internal skill path>   (if null, → greenfield: /cc-skills-architect:write-a-skill)
+  → target: <internal skill path>   (if null, → greenfield: /cc-skills-architect:skill-write)
   → hand-off: run `/skill-audit improve <target-path>` with the patch below, OR apply directly
 ```
 
@@ -43,7 +43,7 @@ The manifest's `internal_match.confidence` + `match_basis` gate how hard to push
 |-------------|------------|--------|
 | `name` | ≥ 0.7 | Direct diff is safe; propose edits to the matched internal skill |
 | `keyword` | 0.35–0.69 | Treat the match as a *hypothesis*. State it as "possibly maps to X — verify before editing" |
-| `none` / `< 0.35` | — | No internal counterpart; recommend greenfield via `write-a-skill`, do not edit |
+| `none` / `< 0.35` | — | No internal counterpart; recommend greenfield via `skill-write`, do not edit |
 | `no-internal-index` | — | Internal skill index missing/empty; surface as a setup problem, do not guess |
 
 ## Out of scope for intel
