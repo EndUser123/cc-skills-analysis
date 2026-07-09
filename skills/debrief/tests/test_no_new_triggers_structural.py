@@ -108,7 +108,7 @@ ALLOWED_TRIGGERS = frozenset({
     "/trace",
     "/ut",
     "/why",
-    "/{SKILL_NAME}",  # template placeholder in skill-creator — not a real command
+    "/{SKILL_NAME}",  # template placeholder (originally from skill-creator, now absorbed into skill-write) — not a real command
 })
 
 

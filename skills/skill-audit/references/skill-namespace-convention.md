@@ -11,8 +11,7 @@ operand is something else (code, docs, sessions, config) do not take the prefix.
 | Name | Plugin | Instrument |
 |---|---|---|
 | `skill-audit` | cc-skills-analysis | Audit + improve + migrate + generate-hooks (governance) |
-| `skill-write` | cc-skills-architect | Greenfield authoring |
-| `skill-creator` | skill-creator (local fork) | Eval / benchmark / description-optimizer (measurement) |
+| `skill-write` | cc-skills-architect | Create-side super-skill: author + eval + benchmark + description-optimize + tournament (absorbed skill-creator) |
 | `skill-similarity` | cc-skills-analysis | Find functionally similar skills (search) |
 | `skill-from-docs` | cc-skills-architect | Convert docs/PDFs/URLs/repos → skill (conversion) |
 
@@ -33,5 +32,5 @@ affordance to routing and to `/skill-audit`'s governance scope.
 
 - `dangling-reference-check.md` (planned) — runtime gate: every skill name in a CLAUDE.md
   table, `/ask` routing entry, or `Suggest` block must resolve to an enabled skill.
-  This is the structural fix for the "dormant duplicate" class (two skill-creators, one
-  enabled, unnoticed for weeks).
+  This is the structural fix for the "dormant duplicate" class (the skill-creator
+  consolidation found 4 orphan forks across 3 plugins before convergence).
