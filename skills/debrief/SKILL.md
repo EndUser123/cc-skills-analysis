@@ -28,7 +28,7 @@ do_not:
   - skip the source-file rename when the user gave a file path
 execution:
   directive: Read the source transcript, detect victim-log signature, dispatch parallel investigator subagents that call debrief_core.run() per finding-tree with /truth verification at every layer, then TaskCreate/Update and rename the source file.
-  default_args: "<path-to-transcript-or-export>"
+  default_args: "<path-to-transcript-or-export>"  # If omitted, auto-resolve via resolve_export.py (see Auto-resolving the input file below).
   examples:
     - "/debrief C:/Users/brsth/Downloads/session-export.txt"
     - "/debrief  (uses the file already referenced in conversation)"
@@ -117,6 +117,30 @@ recurring patterns), `/debrief` applies the rubric at
 internal check. It is not a new mode or visible command; findings ride
 `/debrief`'s existing state-machine output through the same `/truth` gate as
 any other finding.
+
+## Auto-resolving the input file
+
+When `/debrief` is invoked **without** a `<path>` argument, the LLM MUST auto-resolve an export for the current session before invoking the `plan` step. The flow:
+
+1. **Derive `session_id` explicitly** — from the live `transcript_path` in your most recent hook payload (per `/recap` SKILL.md rule). Do **NOT** rely on terminal-keyed auto-detection.
+2. **Run the resolver**:
+   ```bash
+   python "P:/packages/.claude-marketplace/plugins/cc-skills-analysis/skills/debrief/scripts/resolve_export.py" \
+     --session-id "<derived_session_id>"
+   ```
+   It prints one JSON line to stdout: `{"path": "...", "session_id": "...", "action": "reused"|"exported"|"stale"|"missing", "stale": bool}`.
+   - `action=reused` — an existing export in `~/.claude/exports/` or `~/Downloads/` matches this session and the live transcript is not newer than the export. Use the `path` field directly.
+   - `action=exported` — no fresh export existed (or the existing one was stale); the resolver invoked `chs_cli.py --export --session-id <id>` and wrote a new file. Use the new `path`.
+   - `action=stale` or `missing` — only happens with `--no-export`; re-export first or pass `--force-export`.
+3. **Pass the resolved path to `plan`**: `python scripts/debrief.py plan --path "<resolved_path>"`.
+
+**How matching works.** Exports written after this commit ship with a YAML frontmatter block (`session_id`, `exported_at`, `session_count`, `chain_depth`) at the top — that is the authoritative match key. Older exports lack frontmatter; the resolver falls back to the prose `**Root session:**` line at the top of the file. This backward-compat fallback means legacy exports from before this commit still resolve correctly.
+
+**How staleness works.** The export is stale when the live transcript's mtime is newer than the export file's mtime. During a live session the transcript is being written continuously, so a re-export is expected to fire once per `/debrief` invocation — that's a point-in-time snapshot, not a bug. Re-running `/debrief` later will re-export again; proliferation is bounded by the timestamp suffix and can be GC'd separately.
+
+**Why the resolver requires `--session-id`.** The resolver does NOT auto-detect the current session from a terminal-keyed file or `~/.claude/active-session-*.txt` — that path is unsafe under concurrent Claude sessions in one Windows Terminal (last-writer-wins). The LLM is the only actor that can correctly derive `session_id` from the live `transcript_path` in its hook payload context. The resolver is therefore a *consumer* of an explicitly-passed id, not an auto-detector.
+
+**Safety.** Creating a new export is additive (it writes a new file under `~/.claude/exports/`); it does NOT mutate live state. The skill's "confirm before mutating live state" rule (below) does not require a confirmation prompt here. Re-exports for a stale match overwrite `chain_<session_id>_refresh.md` (a sibling filename) to avoid timestamp pile-up; the original stale file is left in place for forensic reference.
 
 ## Handoff routing
 
