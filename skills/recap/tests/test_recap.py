@@ -470,6 +470,37 @@ class TestErrorMessages:
         assert "Returning empty session list" not in source, "Should not have technical return value description"
 
 
+class TestHandoffRendering:
+    """The default recap is a resume document; detailed history remains available."""
+
+    def test_handoff_leads_with_resume_and_ends_with_checklist(self):
+        from recap import format_handoff, format_recap
+
+        sessions = [{
+            "session_id": "session-current",
+            "entry_count": 12,
+            "user_message_count": 3,
+            "assistant_message_count": 9,
+            "outcomes": [{"status": "success", "description": "Added the handoff renderer"}],
+            "what_was_done": ["Added the handoff renderer"],
+            "next_steps": ["Run the recap tests"],
+            "modified_files": ["P:\\src\\recap.py"],
+            "current_state": {"modified": ["P:\\src\\recap.py"], "working": [], "blocked": []},
+            "transcript": "Raw transcript evidence",
+        }]
+
+        handoff = format_handoff(sessions, "terminal-1")
+        assert handoff.index("## Resume Here") < handoff.index("## Completed")
+        assert handoff.index("## Completed") < handoff.index("## Evidence Appendix")
+        assert handoff.rindex("## Next Session Checklist") > handoff.index("## Evidence Appendix")
+        assert handoff.endswith("- [ ] Run the recap tests")
+        assert "Raw transcript evidence" in handoff
+
+        detailed = format_recap(sessions, "terminal-1")
+        assert "## Session History" in detailed
+        assert "### Raw Context" in detailed
+
+
 class TestExtractModifiedFiles:
     """Tests for _extract_modified_files() — scans Edit/Write tool_use blocks."""
 

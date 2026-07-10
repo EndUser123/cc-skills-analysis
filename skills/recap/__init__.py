@@ -1232,6 +1232,155 @@ def format_brief(sessions: list[dict[str, Any]]) -> str:
     return "\n".join(parts)
 
 
+def _handoff_text(value: Any) -> str:
+    """Turn extracted narrative values into concise, deterministic text."""
+    if isinstance(value, dict):
+        for key in ("description", "text", "title", "issue", "question", "statement"):
+            if value.get(key):
+                return str(value[key])
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return str(value).strip()
+
+
+def _handoff_items(session: dict[str, Any], *fields: str, limit: int = 5) -> list[str]:
+    """Collect and deduplicate narrative items from a session summary."""
+    items: list[str] = []
+    for field in fields:
+        value = session.get(field, [])
+        if isinstance(value, (str, dict)):
+            value = [value]
+        for item in value or []:
+            text = _handoff_text(item)
+            if text and text not in items:
+                items.append(text)
+            if len(items) >= limit:
+                return items
+    return items
+
+
+def _handoff_status(session: dict[str, Any]) -> str:
+    state = session.get("current_state") or {}
+    active = session.get("active_work") or {}
+    if state.get("blocked") or str(active.get("status", "")).lower() == "blocked":
+        return "blocked"
+    if state.get("working") or active.get("description"):
+        return "partial"
+    if session.get("outcomes") or session.get("what_was_done"):
+        return "complete"
+    return "partial"
+
+
+def format_handoff(sessions: list[dict[str, Any]], terminal_id: str) -> str:
+    """Render the default recap as a resume-oriented handoff.
+
+    The existing ``format_recap`` renderer remains the detailed/full view. This
+    renderer deliberately keeps evidence bounded; ``/recap full`` retains the
+    unabridged session history and raw context.
+    """
+    latest = sessions[-1] if sessions else {}
+    status = _handoff_status(latest) if latest else "partial"
+    outcome_items = _handoff_items(latest, "outcomes", "what_was_done", limit=3)
+    outcome = outcome_items[0] if outcome_items else "No verified outcome was extracted."
+    active = latest.get("active_work") or {}
+    next_items = _handoff_items(latest, "next_actions", "next_steps", limit=5)
+    immediate = active.get("next") or (next_items[0] if next_items else "none — session is closed")
+    blocked = _handoff_items(latest, "known_issues", limit=5)
+    state = latest.get("current_state") or {}
+    blocked.extend(item for item in state.get("blocked", []) if item not in blocked)
+    risks = _handoff_items(latest, "known_issues", "open_questions", limit=8)
+    decisions = _handoff_items(latest, "decisions_made", "decisions", limit=8)
+
+    artifacts: list[str] = []
+    for session in sessions:
+        for path in session.get("modified_files", []) or []:
+            path = str(path)
+            if path and path not in artifacts:
+                artifacts.append(path)
+            if len(artifacts) >= 10:
+                break
+        if len(artifacts) >= 10:
+            break
+
+    lines = [
+        "# Session Recap",
+        "",
+        "## Resume Here",
+        f"- **Status**: {status}",
+        f"- **Outcome**: {outcome}",
+        f"- **Immediate next action**: {immediate}",
+        "- **Do not**: Read unbounded raw transcript content into the main context; use `/recap full` when complete history is required.",
+        f"- **Handoff confidence**: {'high' if outcome_items else 'low'}",
+        "",
+        "## Completed",
+    ]
+    completed = []
+    for session in sessions:
+        completed.extend(_handoff_items(session, "outcomes", "what_was_done", limit=5))
+    completed = list(dict.fromkeys(completed))[:10]
+    if completed:
+        lines.extend(f"- {item}" for item in completed)
+    else:
+        lines.append("- No verified completed work was extracted.")
+
+    lines.extend(["", "## Remaining Work", "### Urgent"])
+    urgent = _handoff_items(latest, "current_tasks", limit=5)
+    if urgent:
+        lines.extend(f"- {item}" for item in urgent)
+    else:
+        lines.append("- None recorded.")
+    lines.extend(["### Blocked"])
+    if blocked:
+        lines.extend(f"- {item}" for item in blocked)
+    else:
+        lines.append("- None recorded.")
+    lines.extend(["### Optional"])
+    optional = next_items[1:]
+    if optional:
+        lines.extend(f"- {item}" for item in optional)
+    else:
+        lines.append("- None recorded.")
+
+    lines.extend(["", "## Risks and Constraints"])
+    if risks:
+        lines.extend(f"- {item}" for item in risks)
+    else:
+        lines.append("- None material recorded.")
+    lines.extend(["", "## Decisions"])
+    if decisions:
+        lines.extend(f"- {item}" for item in decisions)
+    else:
+        lines.append("- None recorded.")
+    lines.extend(["", "## Artifacts"])
+    if artifacts:
+        lines.extend(f"- `{path}`" for path in artifacts)
+    else:
+        lines.append("- None recorded.")
+
+    lines.extend(["", "## Evidence Appendix", f"- **Terminal**: {terminal_id}", f"- **Sessions**: {len(sessions)}"])
+    if sessions:
+        lines.append("### Detailed Session Evidence")
+        for index, session in enumerate(sessions, 1):
+            lines.append(f"#### Session {index}: {session.get('session_id', 'unknown')[:16]}")
+            lines.append(f"- Entries: {session.get('entry_count', 0)}")
+            if session.get("goal") or session.get("last_goal"):
+                lines.append(f"- Goal: {session.get('goal') or session.get('last_goal')}")
+            transcript = str(session.get("transcript", "") or "")
+            if transcript:
+                preview = transcript[:4000]
+                suffix = "\n[Evidence preview truncated; use /recap full for complete raw context.]" if len(transcript) > len(preview) else ""
+                lines.extend(["", "```text", preview + suffix, "```"])
+    else:
+        lines.append("- No session history found.")
+
+    lines.extend(["", "## Next Session Checklist"])
+    checklist = next_items or ([immediate] if immediate != "none — session is closed" else [])
+    if checklist:
+        lines.extend(f"- [ ] {item}" for item in checklist)
+    else:
+        lines.append("- [ ] No pending action recorded.")
+    return "\n".join(lines)
+
+
 def format_recap(
     sessions: list[dict[str, Any]],
     terminal_id: str,
@@ -1835,8 +1984,8 @@ def main() -> None:
         "command",
         nargs="?",
         default="recap",
-        choices=["recap", "brief"],
-        help="Command: recap (full) or brief (catch-up summary)",
+        choices=["recap", "brief", "full"],
+        help="Command: recap (handoff), brief (catch-up), or full (detailed history)",
     )
     args = parser.parse_args()
 
@@ -1853,9 +2002,15 @@ def main() -> None:
             entries = load_transcript_entries(str(transcript_path))
             sessions = extract_sessions_from_transcript(entries)
 
-    # Format and print recap (format_recap handles empty sessions gracefully)
+    # The default is a bounded resume handoff. The legacy detailed renderer is
+    # retained behind `full` so no extracted session evidence is lost.
     is_brief = args.command == "brief"
-    recap = format_recap(sessions, terminal_id, brief=is_brief)
+    if is_brief:
+        recap = format_recap(sessions, terminal_id, brief=True)
+    elif args.command == "full":
+        recap = format_recap(sessions, terminal_id)
+    else:
+        recap = format_handoff(sessions, terminal_id)
     print(recap)
 
 
