@@ -127,7 +127,7 @@ This meta-reference is wrong if any of the following hold:
 This addendum names the **feedback mechanisms** that keep the report-contract
 discipline calibrated to reality. It is not a new contract and adds **no
 commands, no `/wiki` write, and no BLOCK-level gate.** Each mechanism is filed
-at its honest runtime status — none of the seven is a BLOCK gate today.
+at its honest runtime status — none of the nine is a BLOCK gate today.
 
 | Mechanism | Canonical artifact | Rule / schema | Runtime status |
 |---|---|---|---|
@@ -138,6 +138,8 @@ at its honest runtime status — none of the seven is a BLOCK gate today.
 | **Epistemic Hook Calibration Before Blocking** | `completion-evidence-contract.md:59-62` ("Promotion to BLOCK" paragraph) + the gate-discrimination discipline | A behavioral gate must measure TP/FP on a real corpus (≥3 non-discrimination cases) before promotion from WARN to BLOCK; the close-the-loop ladder ships WARN first, BLOCK only after corpus signal (earliest ~2026-07-21) | `documentation_only` — pre-ship discipline; nothing at runtime enforces the discipline itself |
 | **Local JSONL Verification Packets** | `P:/.claude/hooks/analysis/phase_0_5_*`, `phase_1_*`, `phase_1_5_*`, `phase_2_*`, `phase_3_*_evidence_packet_*.md`; plus `P:/.data/evals/misses.jsonl`, `shadow_hits.jsonl` | Per-phase markdown packets cite the JSONL streams they summarize; each carries its own status (DONE / SHADOW / RETIRED) and re-calibration numbers | `documentation_only` — packets are hand-authored post-hoc; the JSONL they cite is runtime-generated |
 | **Deterministic-First / LLM-Last** | `cc-skills-architect/skills/ask/lib/abstraction_audit_manifest.py` + `cc-skills-architect/skills/ask/SKILL.md:349-372` | Deterministic whole-repo enumeration (file inventory + term search + risk heuristics) runs first; the LLM inspects only the ranked recommended-read set last, and must say so before claiming `whole_repo_static` | `prompt_advisory` (the instruction) + `runtime_surface` (the script, when invoked) |
+| **Spec-Anchored Review** | `P:/.claude/templates/delegation-prompt-pattern.md` (invariant core #5) | Any self-review or scope change re-quotes the original acceptance criteria first; a scope cut is a SPEC DEVIATION stated as "spec requires X; propose dropping X because Y" — never folded into an "MVP" framing | `prompt_advisory` — no runtime gate. Origin: ROOT_CAUSE_BACKLOG #20 (a self-review cut a module's core requirement and called it minimalism) |
+| **Reproduce-First + Risk Register** | `P:/.claude/templates/delegation-prompt-pattern.md` (invariant core #6) | A fix for a reported symptom cites the captured failing artifact (rc/stdout/stderr) it is designed against — no repro → say so and stop; every report ends with a risk register (open assumptions, severity, smallest falsifier each) plus a closure pass that closes cheaply-closable risks before handoff; "expected"/"transient"/"known limitation" without a citation is prohibited | `prompt_advisory` — no runtime gate. Origin: ROOT_CAUSE_BACKLOG #21 (an unreproduced fix targeted the wrong output channel; the residual was hedged as "expected") |
 
 **Coverage authority for this addendum:** `targeted` — each cited path was read
 or `ls`-verified during authoring; non-cited surfaces were not enumerated. This
