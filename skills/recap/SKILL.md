@@ -232,62 +232,66 @@ When invoked without arguments, `/recap` produces a **handoff document** suitabl
 ### Handoff Template
 
 ```markdown
-# Session Handoff
+# Session Recap
 
-## Context
-- **Project**: {project.project_root}
-- **Terminal**: {project.terminal_id}
-- **Sessions in chain**: {session_count}
-- **Time span**: {earliest_session} → {latest_session}
-- **Current session**: {current_session_id}
+## Resume Here
+- **Status**: {complete | partial | blocked}
+- **Outcome**: {one-sentence summary of what landed and what state the system is in now}
+- **Immediate next action**: {one concrete command, file edit, or "none — session is closed"}
+- **Do not**: {1–3 hard constraints the next agent must respect, e.g. "do not read the 495K-token export into main context"}
+- **Handoff confidence**: {high | medium | low — anchored to GATE 1/2 signals below in "Evidence Appendix"}
 
 ## Completed
-{completed_section}
+- **Change**:
+- **Verification**:
+- **Commits**:
 
-## In Progress
-{in_progress_section}
+## Remaining Work
+### Urgent
+- {only items requiring action before the next session can proceed}
+### Blocked
+- {external blockers; internal uncertainty belongs in Risks}
+### Optional
+- {deferred follow-ups clearly labeled non-urgent}
 
-## Blocked
-{blocked_section}
+## Risks and Constraints
+- {assumptions, failure modes, unsafe paths, hook false positives, stale tracker rows}
+- {if nothing material, write "None material." rather than omit}
 
-## Next Actions
-{next_actions_rns}
+## Decisions
+- {only decisions that constrain future work, each with its reversal trigger}
 
-## Risks
-{risks_section}
+## Artifacts
+- {files written/edited, exports, transcripts, evidence-store entries}
+- {max 10; if exceeded, list the most-recent 10 and link to the rest in the appendix}
 
-## Decisions Made
-{decisions_section}
+## Evidence Appendix
+- **Friction**: {observed tool/hook/skill frictions that constrained this session}
+- **Hypotheses**: {behave-style hypotheses surfaced but not confirmed}
+- **Weakest assumption challenge**: {one assumption you'd be most confident about that you HAVEN'T verified}
+- **Inversion prompt**: failure modes and their mitigations
+- **Catch-up integrity prompts** (internal self-check): see SKILL.md "Catch-Up Integrity Prompts" — expand here as needed for the worst 2–3
+- **Multi-terminal context** (only when chain spans terminals): {terminal-by-terminal summary}
 
-## Enrichment Signals
-
-### GTO Findings
-{gto_findings_section}
-
-### Friction Patterns
-{friction_patterns_section}
-
-### Behave Hypotheses
-{behave_hypotheses_section}
-
-### Trace Findings
-{trace_findings_section}
-
-## Key Files
-{key_files_section}
+## Next Session Checklist
+- [ ] {concrete, deduplicated next action 1}
+- [ ] {concrete next action 2}
 ```
 
-The handoff format replaces the per-session narrative as the **default output**. Use `/recap full` for the detailed session-by-session view with origin tags and confidence labels. Use `/recap brief` for a quick one-paragraph catch-up.
+The handoff format replaces the per-session narrative as the **default output**. Use `/recap full` for the detailed session-by-session view with origin tags and confidence labels. Use `/recap brief` for a quick one-paragraph catch-up — `brief` mode is **exempt from this template** and stays one section.
 
 ### Handoff Synthesis Rules
 
-1. **Completed** section: only items with VERIFIED evidence (tests passing, files written, commands succeeded). Infer nothing — if completion is uncertain, put it in In Progress.
-2. **In Progress** section: include current state (file paths, what's left, what's next). Must be actionable — a new developer should know exactly where to pick up.
-3. **Blocked** section: external blockers only (missing API access, unanswered questions, upstream dependencies). Internal uncertainty goes in Risks.
-4. **Next Actions**: ordered by impact. Each action must be a concrete command or file edit, not a vague suggestion.
-5. **Risks**: surface assumptions, failure modes, and inversion prompts. If the handoff consumer does nothing else, they should read this section.
-6. **Decisions Made**: architectural or design decisions that constrain future work. Include reversal triggers.
-7. **Key Files**: files that appear across multiple sessions or carry important state. Limit to 10.
+1. **Resume Here** is the only section a future agent must read to keep moving. Status is one word; outcome is one sentence; immediate next action is one concrete step. Resist the urge to over-explain.
+2. **Completed**: only items with VERIFIED evidence (tests passing, files written, commands succeeded). Infer nothing — if completion is uncertain, put it in Remaining Work → Urgent or Optional.
+3. **Remaining Work → Urgent**: blocks the next session from proceeding. Use it sparingly; most sessions end with "none urgent."
+4. **Remaining Work → Blocked**: external blockers only (missing API access, unanswered questions, upstream dependencies). Internal uncertainty goes in Risks.
+5. **Remaining Work → Optional**: clearly labeled non-urgent. Do not pretend "nothing urgent" means "nothing pending."
+6. **Risks and Constraints**: surface assumptions, failure modes, hook false positives, and inversion mitigations. If the handoff consumer does nothing else, they should read this section.
+7. **Decisions**: architectural or design decisions that constrain future work. Each must include a reversal trigger. Drop trivial decisions.
+8. **Artifacts**: files written/edited, exports, transcripts, evidence-store entries. Limit to 10; if exceeded, list the most-recent 10 and link to the rest.
+9. **Evidence Appendix**: friction, hypotheses, assumption challenge, inversion prompt, and catch-up integrity prompts — supporting detail for the resume-oriented sections above, NOT a substitute for them. Keep the catch-up integrity prompts condensed to the worst 2–3 issues; expand them only when a specific integrity question matters.
+10. **Next Session Checklist**: deduplicated, concrete. Each item must be a command, file edit, or decision, not a vague suggestion. If the session is closed and the next agent must simply pick a follow-up issue, the checklist can be one item: "Pick from #1296 / #1282 / #1283."
 
 ### Multi-Terminal Context
 
@@ -320,6 +324,8 @@ This section is omitted when all sessions belong to the same terminal.
 `/recap` should not implement fixes itself.
 
 ## Catch-Up Integrity Prompts
+
+These prompts are the **source-of-truth rubric** the Evidence Appendix in the Handoff Template draws from. `/recap` runs them as an internal self-check before authoring the handoff; the worst 2–3 failures land in the Evidence Appendix `Catch-up integrity prompts (internal self-check)` subsection. Do NOT fan them out into the user-facing handoff at full length — that is exactly the audit-buried-in-prose failure the new template fixes.
 
 Before synthesizing a catch-up summary, `/recap` should run a short internal catch-up integrity check:
 
