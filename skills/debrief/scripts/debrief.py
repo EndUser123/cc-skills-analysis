@@ -282,6 +282,7 @@ def mode_run(path: str, findings_path: str, truth_mode: str,
     out = {
         "summary": res["summary"],
         "written": res["tasks"]["written"],
+        "opportunities_skipped": res["summary"].get("opportunities_skipped", 0),
         "blocked": [f for f in res["findings"]
                     if f.get("state") == "located" or f.get("recursion_exhausted")],
     }

@@ -93,7 +93,7 @@ So a task written by `/debrief` is a **memory-transfer device anchored at the co
 
 **Modes compose.** `/debrief gaps top <path>` runs deterministic detectors AND the 6-source scan, merging both finding sets before the recursive state machine. `/debrief chain <file>` implies `gaps` (chain mode always runs the deterministic detectors on each session segment).
 
-**The unifying rule across all modes:** every finding flows through `debrief_core.run()` — the enforced CLASSIFIED → LOCATED → VERIFIED → WRITTEN state machine with `/truth` verification at every layer. No mode bypasses the gate. The difference is *what seeds the findings*: default relies on LLM extraction, gaps adds deterministic detectors, top adds the 6-source ranked scan, chain sequences it across sessions.
+**The unifying rule across all modes:** every finding flows through `debrief_core.run()` — the enforced CLASSIFIED → LOCATED → VERIFIED → WRITTEN state machine with `/truth` verification at every layer. No mode bypasses the gate. The difference is *what seeds the findings*: default relies on LLM extraction, gaps adds deterministic detectors, top adds the 6-source ranked scan, chain sequences it across sessions. Lateral opportunity findings are currently surfaced as `opportunities_skipped` until their end-to-end VERIFIED classification path is validated; they must not enter the defect writer.
 
 ## Two surfaces of /debrief
 

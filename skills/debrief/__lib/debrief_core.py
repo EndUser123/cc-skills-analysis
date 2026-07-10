@@ -374,6 +374,15 @@ def write_layer(findings: list[Finding]) -> dict:
     for f in findings:
         if f.state != State.VERIFIED:
             continue
+        if f.kind != FindingKind.DEFECT:
+            # Keep the defect writer closed to lateral findings even if a
+            # future caller accidentally supplies an origin for an opportunity.
+            f.recursion_exhausted = True
+            note = "opportunity cannot enter the defect writer"
+            if note not in f.must_re_verify:
+                f.must_re_verify.append(note)
+            rejected.append(f)
+            continue
         # Safety guard: an under-resolved finding must not produce a WRITTEN
         # task with <unknown> placeholders. The cheap experiment showed that
         # defect and opportunity inputs both reach this function; without the
@@ -483,6 +492,7 @@ def recurse_layer(
     parent_findings: list[Finding],
     budget: Budget,
     layer_extractor: Callable[[Finding], tuple[list[str], list[str]]],
+    visited: Optional[set[str]] = None,
 ) -> list[Finding]:
     """For each parent at LOCATED, recurse one layer: extract child findings
     that point AT the parent as candidate origin. Returns the new child
@@ -496,11 +506,16 @@ def recurse_layer(
         for p in parent_findings:
             p.recursion_exhausted = True
         return []
+    visited = visited if visited is not None else set()
     budget.layers_used += 1
     children: list[Finding] = []
     for parent in parent_findings:
         if parent.state != State.LOCATED:
             continue
+        if parent.finding_id in visited:
+            parent.recursion_exhausted = True
+            continue
+        visited.add(parent.finding_id)
         try:
             texts, sources = layer_extractor(parent)
         except Exception as e:
@@ -607,6 +622,7 @@ def run(
 
     # Recurse until all findings are at WRITTEN or recursion is exhausted.
     layers_seen = 0
+    visited_findings: set[str] = set()
     current = [f for f in findings if f.state == State.CLASSIFIED]
     while current and not all(f.state == State.WRITTEN for f in findings):
         if layers_seen >= budget.max_layers:
@@ -620,7 +636,7 @@ def run(
         for parent in current:
             if parent.state != State.LOCATED:
                 continue
-            children = recurse_layer([parent], budget, layer_extractor)
+            children = recurse_layer([parent], budget, layer_extractor, visited_findings)
             classify_layer(children)
             next_layer.extend(children)
         # verify
@@ -661,7 +677,22 @@ def run(
                 if principle:
                     f.generalizable_principle = principle
                     f.applies_to = applies_to
-    written = write_layer(findings)
+    # The opportunity writer remains deliberately unarmed. Its input path
+    # depends on an end-to-end VERIFIED LLM classification contract that is
+    # not proven by this core pipeline. Surface the dropped work explicitly so
+    # it cannot be mistaken for a completed analysis.
+    defect_findings = [f for f in findings if f.kind == FindingKind.DEFECT]
+    opportunity_findings = [f for f in findings if f.kind == FindingKind.OPPORTUNITY]
+    opportunities_skipped = 0
+    for f in opportunity_findings:
+        if f.state != State.WRITTEN:
+            opportunities_skipped += 1
+            f.recursion_exhausted = True
+            note = "opportunity writer is not armed until the VERIFIED LLM path is validated"
+            if note not in f.must_re_verify:
+                f.must_re_verify.append(note)
+    written = write_layer(defect_findings)
+    written["opportunities_skipped"] = opportunities_skipped
     return {
         "victim_log": victim,
         "budget": {
@@ -675,6 +706,7 @@ def run(
         "summary": {
             "total_findings": len(findings),
             "written": written["count"],
+            "opportunities_skipped": opportunities_skipped,
             "blocked_unverified": sum(
                 1 for f in findings if f.state == State.LOCATED
             ),
