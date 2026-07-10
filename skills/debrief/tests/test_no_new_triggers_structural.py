@@ -98,6 +98,7 @@ ALLOWED_TRIGGERS = frozenset({
     "/s",
     "/similarity",
     "/simplify",
+    "/skill-similarity",
     "/skill-to-page",
     "/skeptic",
     "/slc",

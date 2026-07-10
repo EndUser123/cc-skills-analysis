@@ -466,8 +466,10 @@ def test_feedback_loop_addendum_section_exists():
     )
 
 
-def test_feedback_loop_addendum_names_all_seven_mechanisms():
-    """The addendum must name all seven feedback-loop mechanisms."""
+def test_feedback_loop_addendum_names_all_nine_mechanisms():
+    """The addendum must name all feedback-loop mechanisms (7 original + 2 added
+    by parallel-workstream commit 9ceeea1: Spec-Anchored Review, Reproduce-First +
+    Risk Register)."""
     text = REPORT_CONTRACTS_DOC.read_text(encoding="utf-8")
     idx = text.find("## Feedback Loop / Harness Calibration Addendum")
     assert idx != -1, "Feedback Loop Addendum section missing"
@@ -480,6 +482,8 @@ def test_feedback_loop_addendum_names_all_seven_mechanisms():
         "Epistemic Hook Calibration",
         "Local JSONL Verification Packets",
         "Deterministic-First / LLM-Last",
+        "Spec-Anchored Review",
+        "Reproduce-First + Risk Register",
     ):
         assert mechanism in section, (
             f"Feedback Loop Addendum missing mechanism: {mechanism!r}"
@@ -508,17 +512,20 @@ def test_feedback_loop_addendum_cites_real_artifacts():
 
 
 def test_feedback_loop_addendum_states_honest_runtime_status():
-    """The addendum must state plainly that none of the seven is a BLOCK gate.
+    """The addendum must state plainly that none of the (currently 9) mechanisms
+    is a BLOCK gate today.
 
     This is the central honesty invariant: an addendum about calibration must
-    not imply runtime BLOCK enforcement where only advisory/WARN exists.
+    not imply runtime BLOCK enforcement where only advisory/WARN exists. The
+    assertion is strict (no lenient `or "block-level gate"` fallback) so that
+    drift between the documented count and the real count is caught immediately.
     """
     text = REPORT_CONTRACTS_DOC.read_text(encoding="utf-8")
     idx = text.find("## Feedback Loop / Harness Calibration Addendum")
     section = text[idx:]
     lowered = section.lower()
-    assert "block-level gate" in lowered or "none of the seven is a block" in lowered, (
-        "Addendum must state plainly that none of the seven is a BLOCK gate today"
+    assert "none of the nine is a block gate today" in lowered, (
+        "Addendum must state plainly that none of the nine is a BLOCK gate today"
     )
     # Each mechanism row must carry a runtime status, not an implied "enforced."
     for status_token in ("prompt_advisory", "documentation_only", "runtime_surface"):
