@@ -100,6 +100,11 @@ Statuses: `[CURRENT]` (fresh this session), `[STALE]` (checked but may have chan
 
 Every item must cite a specific tool call from this session (Read, Grep, Glob, Bash). If no meaningful symptoms and everything is verified, skip to Section 5 and use `EXIT`.
 
+**Evidence provenance labeling (must-read.1):**
+- Every `[CURRENT]` or `[STALE]` tag states its tool's provenance turn — e.g. `(Bash turn-3)`, `(Grep this turn)`.
+- `(this turn)` is only valid when the tool actually ran in the **audit turn itself**. An evidence claim is `[STALE]` when its source tool ran in a prior turn, even if the facts feel recent — stale-tagged evidence is honest and actionable.
+- **Recommended path** (avoids the stale-label trap AND satisfies the skill-execution gate): the audit phase re-runs its cheapest verifications (a targeted `grep`, `pytest -q`, or `Read`) in the `/rns` turn itself, producing fresh evidence with a valid `(this turn)` tag.
+
 **Evidence rules (codebase conventions):**
 - **E1 — Evidence before claims**: before claiming code is absent, unchanged, or non-existent, search and verify with tools first.
 - **E4 — Investigate before asking**: do not ask the user for information you can obtain yourself via Read, Grep, Bash, git, or available MCP tools.
