@@ -253,6 +253,38 @@ def classify_with_friction(finding_text: str) -> Category:
     return Category.DEFECT
 
 
+# ── causal chain reconstruction ──────────────────────────────────────────────
+def _reconstruct_chain(f: Finding, index: dict[str, Finding]) -> list[str]:
+    """Walk parent_id links from a finding to reconstruct the full causal chain.
+    Emits root cause first (earliest ancestor). Includes cycle protection via
+    a visited set and a missing-parent marker when a parent_id does not resolve.
+    Bounded at 100 depth to prevent infinite loops from malformed input."""
+    visited: set[str] = set()
+    chain: list[str] = []
+    node = f
+    depth = 0
+    while node is not None and depth < 100:
+        visited.add(node.finding_id)
+        chain.append(
+            f"  L{node.symptom_layer}: {node.origin_file or '<symptom>'}:"
+            f"{node.origin_line or node.symptom_source} — {node.symptom_text[:80]}"
+        )
+        if node.parent_id:
+            if node.parent_id in visited:
+                chain.append(f"  <cycle detected at {node.parent_id} — chain truncated>")
+                break
+            parent = index.get(node.parent_id)
+            if parent is None:
+                chain.append(f"  <missing parent {node.parent_id}>")
+                break
+            node = parent
+        else:
+            node = None
+        depth += 1
+    # Reverse: root cause first
+    return list(reversed(chain))
+
+
 # ── /truth integration ─────────────────────────────────────────────────────
 def verify_with_truth(claim: str, file_path: str = "", timeout: int = 30) -> dict:
     """Run /truth (the sdlc verification gate) on a claim. Returns the verdict
@@ -371,6 +403,7 @@ def write_layer(findings: list[Finding]) -> dict:
     description field should be set to."""
     written = []
     rejected = []
+    findings_by_id = {f.finding_id: f for f in findings}
     for f in findings:
         if f.state != State.VERIFIED:
             continue
@@ -395,16 +428,8 @@ def write_layer(findings: list[Finding]) -> dict:
                 f.must_re_verify.append("no origin_file resolved; investigation did not converge")
             rejected.append(f)
             continue
-        # Emit a TaskCreate-ready description that uses the cold-start template
-        # from assets/task_template.md.
-        chain_lines = []
-        node = f
-        while node is not None:
-            chain_lines.append(
-                f"  L{node.symptom_layer}: {node.origin_file or '<symptom>'}:"
-                f"{node.origin_line or node.symptom_source} — {node.symptom_text[:80]}"
-            )
-            node = None  # chain reconstruction would walk child_ids; omitted for brevity
+        # Reconstruct the full causal chain by walking parent_id links.
+        chain_lines = _reconstruct_chain(f, findings_by_id)
         chain = "\n".join(reversed(chain_lines))
         body = (
             f"TLDR: {f.origin_explanation or f.symptom_text[:120]}\n"
@@ -614,10 +639,40 @@ def run(
         findings.append(df)
         classify_layer([df])
 
-    # Layer 0: discover
-    layer0_texts  = [t for t, _ in initial_findings]
-    layer0_sources = [s for _, s in initial_findings]
-    discover_layer(findings, layer0_texts, layer0_sources, budget)
+    # Layer 0: discover — accept both (text, source) tuples and structured dicts
+    for item in initial_findings:
+        if isinstance(item, dict):
+            # Structured finding dict -> create Finding with all fields preserved
+            kind = FindingKind.DEFECT
+            try:
+                kind = FindingKind(item.get("kind", "defect"))
+            except ValueError:
+                pass
+            category = Category.UNKNOWN
+            try:
+                category = Category(item.get("category", "unknown"))
+            except ValueError:
+                pass
+            f = Finding(
+                finding_id=_stable_fid(
+                    item.get("symptom_source", ""),
+                    item.get("symptom_text", ""),
+                ),
+                symptom_text=item.get("symptom_text", ""),
+                symptom_source=item.get("symptom_source", ""),
+                kind=kind,
+                category=category,
+                idea=item.get("idea", ""),
+                generalization_test=item.get("generalization_test", ""),
+                promote_to=item.get("promote_to", ""),
+                evidence_strength=item.get("evidence_strength", ""),
+            )
+            findings.append(f)
+        else:
+            # Tuple (text, source) — backward compatible
+            text, source = item
+            f = _new_finding(text, source)
+            findings.append(f)
     classify_layer(findings)
 
     # Recurse until all findings are at WRITTEN or recursion is exhausted.
@@ -629,6 +684,14 @@ def run(
             for f in current:
                 f.recursion_exhausted = True
             break
+        # Opportunities bypass the locate requirement (no origin_file/line needed)
+        # BEFORE locate_layer runs, since locate_layer with no resolver sets
+        # recursion_exhausted on all CLASSIFIED findings.
+        for f in current:
+            if f.kind == FindingKind.OPPORTUNITY and f.state == State.CLASSIFIED:
+                f.state = State.LOCATED
+                if not f.origin_file:
+                    f.origin_file = "<opportunity>"
         # locate → recurse
         locate_layer(current, source_tree_resolver)
         # recursion: each located finding may produce children
@@ -666,33 +729,41 @@ def run(
     if truth_callable is not None:
         for f in findings:
             if f.state == State.VERIFIED and f.kind == FindingKind.DEFECT and not f.generalizable_principle:
-                # Adapt the in-pipeline truth_callable(f)->dict contract to
-                # the (claim=, file_path=)->dict contract the principle
-                # extractor expects. The verdict is the same /truth verdict
-                # the verify step already obtained for this finding; the
-                # adapter re-queries truth_callable so the principle claim
-                # is stamped independently.
-                principle_truth = lambda claim="", file_path="": truth_callable(f) or {}
+                # Build an adapter that passes the actual principle claim and
+                # source file to the verifier, NOT the original finding.
+                # extract_generalizable_principle calls truth_callable(claim=, file_path=);
+                # we wrap the pipeline's truth_callable(f: Finding) to match that contract.
+                def _make_claim_adapter(finding, tc):
+                    def _adapter(claim="", file_path=""):
+                        # Build a synthetic Finding for the principle claim so the
+                        # pipeline truth_callable (which expects a Finding) can evaluate it.
+                        pf = Finding(
+                            finding_id=f"p-{finding.finding_id}",
+                            symptom_text=claim,
+                            origin_file=file_path or finding.origin_file,
+                        )
+                        return tc(pf) or {}
+                    return _adapter
+                principle_truth = _make_claim_adapter(f, truth_callable)
                 principle, applies_to, status = extract_generalizable_principle(f, principle_truth)
                 if principle:
                     f.generalizable_principle = principle
                     f.applies_to = applies_to
-    # The opportunity writer remains deliberately unarmed. Its input path
-    # depends on an end-to-end VERIFIED LLM classification contract that is
-    # not proven by this core pipeline. Surface the dropped work explicitly so
-    # it cannot be mistaken for a completed analysis.
+    # Route verified findings: defects through write_layer, opportunities
+    # through write_opportunity_layer (lateral pipeline, no origin_file needed).
+    # Opportunities must still clear the idea + generalization_test guards.
     defect_findings = [f for f in findings if f.kind == FindingKind.DEFECT]
     opportunity_findings = [f for f in findings if f.kind == FindingKind.OPPORTUNITY]
-    opportunities_skipped = 0
-    for f in opportunity_findings:
-        if f.state != State.WRITTEN:
-            opportunities_skipped += 1
-            f.recursion_exhausted = True
-            note = "opportunity writer is not armed until the VERIFIED LLM path is validated"
-            if note not in f.must_re_verify:
-                f.must_re_verify.append(note)
     written = write_layer(defect_findings)
-    written["opportunities_skipped"] = opportunities_skipped
+    if opportunity_findings:
+        opp_result = write_opportunity_layer(opportunity_findings)
+        written["written"] = written["written"] + opp_result["written"]
+        written["rejected"] = written["rejected"] + opp_result["rejected"]
+        written["count"] = written["count"] + opp_result["count"]
+        written["opportunities_written"] = opp_result["count"]
+    else:
+        written["opportunities_written"] = 0
+    written["opportunities_skipped"] = 0  # no longer skipped; see opportunities_written
     return {
         "victim_log": victim,
         "budget": {
@@ -706,7 +777,7 @@ def run(
         "summary": {
             "total_findings": len(findings),
             "written": written["count"],
-            "opportunities_skipped": opportunities_skipped,
+            "opportunities_written": written.get("opportunities_written", 0),
             "blocked_unverified": sum(
                 1 for f in findings if f.state == State.LOCATED
             ),

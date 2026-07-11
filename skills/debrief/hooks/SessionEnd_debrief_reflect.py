@@ -341,10 +341,16 @@ def main():
         out_dir = CANDIDATES_DIR / str(session_id) if session_id else CANDIDATES_DIR / "unknown"
         os.makedirs(out_dir, exist_ok=True)
         out_path = out_dir / "candidates.json"
+        coverage_desc = (
+            f"tail-only (last {TAIL_LINES} lines of transcript); "
+            "candidate extraction — not full debrief verification. "
+            "Use /debrief for recursive origin-trace."
+        )
         record = {
             "session_id": session_id,
             "transcript_path": transcript_path,
             "produced_at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()),
+            "coverage_scope": coverage_desc,
             "model_used": model_used,
             "fallback_used": fallback_used,
             "candidates": reflect,

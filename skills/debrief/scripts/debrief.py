@@ -232,10 +232,11 @@ def mode_run(path: str, findings_path: str, truth_mode: str,
         if isinstance(item, (list, tuple)) and len(item) >= 2:
             initial.append((str(item[0]), str(item[1])))
         elif isinstance(item, dict):
+            # Pass structured dicts through as-is so debrief_core can preserve
+            # kind, idea, generalization_test, promote_to, evidence_strength, etc.
             t = item.get("symptom_text") or item.get("text") or item.get("subject") or ""
-            s = item.get("symptom_source") or item.get("source") or item.get("id") or path
             if t:
-                initial.append((str(t), str(s)))
+                initial.append(item)
 
     # truth_callable per --truth-mode
     truth_callable = None
@@ -282,7 +283,8 @@ def mode_run(path: str, findings_path: str, truth_mode: str,
     out = {
         "summary": res["summary"],
         "written": res["tasks"]["written"],
-        "opportunities_skipped": res["summary"].get("opportunities_skipped", 0),
+        "opportunities_written": res["summary"].get("opportunities_written", 0),
+        "opportunities_skipped": 0,
         "blocked": [f for f in res["findings"]
                     if f.get("state") == "located" or f.get("recursion_exhausted")],
     }
