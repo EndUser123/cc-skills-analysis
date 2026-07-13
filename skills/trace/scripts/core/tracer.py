@@ -28,11 +28,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-# GTO skill coverage integration
+# gap-engine skill coverage integration
 _gto_lib = Path("P:\\\\\\.claude/skills")
 if str(_gto_lib) not in sys.path:
     sys.path.insert(0, str(_gto_lib))
-from gto.lib.skill_coverage_detector import _append_skill_coverage
+from skills.debrief.gap_engine.__lib.skill_coverage_detector import _append_skill_coverage
 
 
 @dataclass
@@ -369,7 +369,7 @@ class TraceReport:
                 )
                 stored_count += 1
 
-            # GTO skill coverage logging
+            # gap-engine skill coverage logging
             try:
                 _append_skill_coverage(
                     target_key="skills/trace",
