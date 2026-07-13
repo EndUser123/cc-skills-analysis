@@ -165,7 +165,7 @@ def _is_tagged(basename: str) -> bool:
 
 def mode_run(path: str, findings_path: str, truth_mode: str,
              resolver_cache_path: str = "", apply: bool = False,
-             gto_detectors: bool = False, gap_review: bool = False,
+             gap_detectors: bool = False, gap_review: bool = False,
              session_id: str = "debrief-run") -> int:
     """Route deduped findings through debrief_core.run() — the only executable
     path to WRITTEN tasks. The state machine enforces /truth + origin guards;
@@ -175,11 +175,11 @@ def mode_run(path: str, findings_path: str, truth_mode: str,
     with recursion_exhausted + a MUST RE-VERIFY note. That is today's behavior,
     but now it is machine-stamped rather than LLM-asserted.
 
-    --gto-detectors: run gto's deterministic detectors (session goal/outcome,
+    --gap-detectors: run gap's deterministic detectors (session goal/outcome,
     completion filter, carryover+resolution registry, leverage scoring,
     gap-to-skill routing) on --path and merge findings in. Lazy-imported from
-    skills.gto.__lib; base run path stays import-free.
-    --gap-review: requires --gto-detectors. First pass writes the gap_reviewer
+    skills.debrief.gap_engine.__lib; base run path stays import-free.
+    --gap-review: requires --gap-detectors. First pass writes the gap_reviewer
     handoff + emits the Agent-tool dispatch instruction to stderr; re-run after
     the agent writes gap_reviewer_result.json to merge its findings.
     """
@@ -190,8 +190,8 @@ def mode_run(path: str, findings_path: str, truth_mode: str,
         return 2
     with open(path, "r", encoding="utf-8", errors="replace") as f:
         transcript_text = f.read()
-    if not findings_path and not gto_detectors:
-        print("error: --findings required unless --gto-detectors is set", file=sys.stderr)
+    if not findings_path and not gap_detectors:
+        print("error: --findings required unless --gap-detectors is set", file=sys.stderr)
         return 2
     raw_findings: list = []
     if findings_path:
@@ -200,32 +200,32 @@ def mode_run(path: str, findings_path: str, truth_mode: str,
             loaded = loaded.get("findings", loaded.get("tasks", []))
         raw_findings = loaded if isinstance(loaded, list) else []
 
-    gto_shaped: list[dict] = []
-    gto_raw_findings: list = []
-    if gto_detectors:
-        from gto_adapter import (run_gto_detectors, gto_findings_to_debrief,
+    gap_shaped: list[dict] = []
+    gap_raw_findings: list = []
+    if gap_detectors:
+        from gap_engine_adapter import (run_gap_detectors, gap_findings_to_debrief,
                                  write_gap_review_handoff, read_gap_review_debrief)
         artifacts_dir = Path.home() / ".claude" / ".artifacts" / "debrief" / session_id
-        gto_raw_findings = run_gto_detectors(path, session_id, artifacts_dir,
+        gap_raw_findings = run_gap_detectors(path, session_id, artifacts_dir,
                                              root=os.getcwd())
-        gto_shaped = gto_findings_to_debrief(gto_raw_findings)
+        gap_shaped = gap_findings_to_debrief(gap_raw_findings)
         if gap_review:
             # Second pass: agent already wrote the result file -> merge.
             agent_shaped = read_gap_review_debrief(artifacts_dir)
             if agent_shaped:
-                gto_shaped = gto_shaped + agent_shaped
-                gto_raw_findings = []  # score/owner attach skipped; agent findings have no score
+                gap_shaped = gap_shaped + agent_shaped
+                gap_raw_findings = []  # score/owner attach skipped; agent findings have no score
             else:
                 # First pass: write handoff + tell the LLM to dispatch the agent.
                 handoff = write_gap_review_handoff(
-                    artifacts_dir, gto_raw_findings,
+                    artifacts_dir, gap_raw_findings,
                     session_context={"session_id": session_id, "transcript": path})
                 print(f"# gap_reviewer handoff written: {handoff}", file=sys.stderr)
                 print(f"# Dispatch the gap_reviewer agent (GAP_REVIEW_SYSTEM), then re-run "
                       f"this command with the same flags to merge gap_reviewer_result.json.",
                       file=sys.stderr)
                 return 0
-        raw_findings = list(raw_findings) + gto_shaped
+        raw_findings = list(raw_findings) + gap_shaped
 
     initial = []
     for item in raw_findings:
@@ -288,10 +288,10 @@ def mode_run(path: str, findings_path: str, truth_mode: str,
         "blocked": [f for f in res["findings"]
                     if f.get("state") == "located" or f.get("recursion_exhausted")],
     }
-    if gto_shaped:
-        from gto_adapter import attach_score_and_owner
-        out["gto_findings_merged"] = len(gto_shaped)
-        out["written"] = attach_score_and_owner(out["written"], gto_shaped)
+    if gap_shaped:
+        from gap_engine_adapter import attach_score_and_owner
+        out["gap_findings_merged"] = len(gap_shaped)
+        out["written"] = attach_score_and_owner(out["written"], gap_shaped)
     print(json.dumps(out, indent=2))
     if apply:
         print(f"\n# Phase 8 rename (fill themes + run):", file=sys.stderr)
@@ -473,7 +473,7 @@ def main():
 
     p_run = sub.add_parser("run", help="route findings through debrief_core.run() (the enforced path)")
     p_run.add_argument("--path", required=True, help="transcript file")
-    p_run.add_argument("--findings", default="", help="deduped findings JSON (optional with --gto-detectors)")
+    p_run.add_argument("--findings", default="", help="deduped findings JSON (optional with --gap-detectors)")
     p_run.add_argument("--truth-mode", choices=("contract", "skip", "skill"),
                        default="contract",
                        help="contract=UNVERIFIED stamp (default); skip=no gate; skill=stub")
@@ -481,10 +481,10 @@ def main():
                        help="optional JSON: [{text,file,line,explanation}]")
     p_run.add_argument("--apply", action="store_true",
                        help="emit Phase 8/9 instructions to stderr")
-    p_run.add_argument("--gto-detectors", action="store_true",
-                       help="run gto's goal/outcome/carryover/score/route detectors on --path and merge")
+    p_run.add_argument("--gap-detectors", action="store_true",
+                       help="run gap's goal/outcome/carryover/score/route detectors on --path and merge")
     p_run.add_argument("--gap-review", action="store_true",
-                       help="with --gto-detectors: write gap_reviewer handoff (pass 1) / merge result (pass 2)")
+                       help="with --gap-detectors: write gap_reviewer handoff (pass 1) / merge result (pass 2)")
     p_run.add_argument("--session-id", default="debrief-run",
                        help="artifacts dir key (default: debrief-run)")
 
@@ -508,7 +508,7 @@ def main():
     if args.mode == "run":
         return mode_run(args.path, args.findings, args.truth_mode,
                         args.resolver_cache, args.apply,
-                        args.gto_detectors, args.gap_review, args.session_id)
+                        args.gap_detectors, args.gap_review, args.session_id)
     if args.mode == "close":
         return mode_close(args.path, args.breadcrumb_task, args.tracker_snapshot,
                           args.allow_untagged, args.wiki)

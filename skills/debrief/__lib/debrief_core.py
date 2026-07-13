@@ -643,6 +643,18 @@ def run(
     for item in initial_findings:
         if isinstance(item, dict):
             # Structured finding dict -> create Finding with all fields preserved
+            # Accept the legacy ``text``/``source`` spelling at this boundary;
+            # canonical fields remain authoritative when both are supplied.
+            symptom_text = (
+                item["symptom_text"]
+                if "symptom_text" in item
+                else item.get("text", "")
+            )
+            symptom_source = (
+                item["symptom_source"]
+                if "symptom_source" in item
+                else item.get("source", "")
+            )
             kind = FindingKind.DEFECT
             try:
                 kind = FindingKind(item.get("kind", "defect"))
@@ -655,11 +667,11 @@ def run(
                 pass
             f = Finding(
                 finding_id=_stable_fid(
-                    item.get("symptom_source", ""),
-                    item.get("symptom_text", ""),
+                    symptom_source,
+                    symptom_text,
                 ),
-                symptom_text=item.get("symptom_text", ""),
-                symptom_source=item.get("symptom_source", ""),
+                symptom_text=symptom_text,
+                symptom_source=symptom_source,
                 kind=kind,
                 category=category,
                 idea=item.get("idea", ""),
@@ -701,6 +713,10 @@ def run(
                 continue
             children = recurse_layer([parent], budget, layer_extractor, visited_findings)
             classify_layer(children)
+            # Keep every discovered node in the canonical collection so later
+            # verification, principle extraction, summaries, and task writing
+            # can reconstruct the complete causal graph.
+            findings.extend(children)
             next_layer.extend(children)
         # verify
         verify_layer(current)

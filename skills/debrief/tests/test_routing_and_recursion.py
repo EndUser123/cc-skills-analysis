@@ -126,6 +126,10 @@ def test_weak_opportunity_rejected():
 def test_three_layer_causal_chain_reconstructed():
     """A 3-layer defect chain walks parent_id links and emits root cause first."""
     def resolver(text):
+        if "crash at top" in text:
+            return ("src/top.py", 100, "top symptom")
+        if "mid layer" in text:
+            return ("src/mid.py", 15, "intermediate cause")
         return ("src/root.py", 42, "root cause")
     calls = []
     def extractor(parent):
@@ -148,12 +152,72 @@ def test_three_layer_causal_chain_reconstructed():
         truth_callable=truth,
         budget=Budget(max_layers=3, max_findings_per_layer=4),
     )
-    # Must have at least 1 written task with the chain
+    # The collection must retain the complete three-node causal chain.
+    findings = result["findings"]
+    assert result["summary"]["total_findings"] == 3
+    by_text = {f["symptom_text"]: f for f in findings}
+    assert set(by_text) == {
+        "crash at top layer",
+        "mid layer: unvalidated input",
+        "root cause: missing null check",
+    }
+    assert by_text["mid layer: unvalidated input"]["parent_id"] == by_text[
+        "crash at top layer"
+    ]["finding_id"]
+    assert by_text["root cause: missing null check"]["parent_id"] == by_text[
+        "mid layer: unvalidated input"
+    ]["finding_id"]
+
+    # Must have at least 1 written task with the chain.
     assert result["summary"]["written"] >= 1, f"No written tasks: {result}"
-    for t in result["tasks"]["written"]:
-        body = t["task_body"]
-        # Chain indicator must be present
-        assert "Causal chain (root cause first)" in body
+    assert len(result["tasks"]["written"]) == 3
+    chain_bodies = [
+        t["task_body"]
+        for t in result["tasks"]["written"]
+        if all(term in t["task_body"] for term in (
+            "root cause: missing null check",
+            "mid layer: unvalidated input",
+            "crash at top layer",
+        ))
+    ]
+    assert len(chain_bodies) == 1
+    body = chain_bodies[0]
+    # The written body must preserve root -> middle -> symptom ordering.
+    assert "Causal chain (root cause first)" in body
+    assert body.index("root cause: missing null check") < body.index(
+        "mid layer: unvalidated input"
+    ) < body.index("crash at top layer")
+
+
+def test_legacy_structured_finding_keys_are_normalized():
+    """Legacy text/source dictionaries retain evidence at the boundary."""
+    result = run(
+        transcript_text="rows duplicated during ingest",
+        initial_findings=[{"text": "rows duplicated", "source": "transcript L10"}],
+        layer_extractor=lambda _finding: ([], []),
+        source_tree_resolver=lambda _text: ("src/db.py", 42, "missing constraint"),
+        truth_callable=lambda _finding: {"status": "VERIFIED", "evidence": "confirmed"},
+    )
+    finding = result["findings"][0]
+    assert finding["symptom_text"] == "rows duplicated"
+    assert finding["symptom_source"] == "transcript L10"
+
+
+def test_canonical_structured_keys_win_over_legacy_aliases():
+    """Canonical fields remain authoritative when both spellings exist."""
+    result = run(
+        transcript_text="canonical evidence",
+        initial_findings=[{
+            "symptom_text": "canonical text",
+            "symptom_source": "canonical source",
+            "text": "legacy text",
+            "source": "legacy source",
+        }],
+        layer_extractor=lambda _finding: ([], []),
+    )
+    finding = result["findings"][0]
+    assert finding["symptom_text"] == "canonical text"
+    assert finding["symptom_source"] == "canonical source"
 
 
 def test_principle_verification_receives_exact_claim():

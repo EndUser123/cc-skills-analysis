@@ -1,6 +1,6 @@
 ---
 name: debrief
-description: "Unified analysis hub — mines transcripts for unfinished work + origin-anchored tasks. Modes: default (transcript → root-cause tasks), chain (multi-session retrospective: /recap→gaps→/friction→/red-team→/rns + SCORES), gaps (deterministic gap detectors + mandatory haiku gap reviewer + RNS + artifact contract), top (6-source problem scan → ranked tasks). Trigger phrases: 'debrief this transcript', 'mine the chat history', 'victim log', 'why is this broken', 'run a retro', 'top problems', 'what gaps remain'. Absorbs /retro, /gto, /top-problems."
+description: "Unified analysis hub — mines transcripts for unfinished work + origin-anchored tasks. Modes: default (transcript → root-cause tasks), chain (multi-session retrospective: /recap→gaps→/friction→/red-team→/rns + SCORES), gaps (deterministic gap detectors + mandatory haiku gap reviewer + RNS + artifact contract), top (6-source problem scan → ranked tasks). Trigger phrases: 'debrief this transcript', 'mine the chat history', 'victim log', 'why is this broken', 'run a retro', 'top problems', 'what gaps remain'. Absorbs /retro and /top-problems; gap detection is debrief-owned."
 version: 1.0.50
 status: stable
 category: analysis
@@ -11,7 +11,6 @@ triggers:
   - "victim log"
   - "why is this broken"
   - /retro
-  - /gto
   - /top-problems
   - "run a retro"
   - "top problems"
@@ -88,7 +87,7 @@ So a task written by `/debrief` is a **memory-transfer device anchored at the co
 |---|---|---|---|
 | **default** | `/debrief <file>` | A single transcript or session export | Victim-log detection → recursive origin-trace → VERIFIED tasks + source-file rename. The full Phase 0–9 loop. |
 | **chain** | `/debrief chain <chain_*.md>` (or `/retro`) | A multi-session chain export | Walks the chain through the retrospective protocol: recap → gaps → `/friction` → `/red-team` (pre-mortem) → `/rns`, then emits a SCORES summary. Absorbs `/retro`. |
-| **gaps** | `/debrief gaps <path>` (or `/gto`) | Want deterministic first-pass detectors before recursion | Runs `/gto`'s session-goal/outcome detectors + carryover registry + leverage scoring + mandatory haiku gap-reviewer, seeds the findings into `debrief_core.run()`. Artifact contract enforced. Absorbs `/gto`. |
+| **gaps** | `/debrief gaps <path>` | Want deterministic first-pass detectors before recursion | Runs debrief's session-goal/outcome detectors + carryover registry + leverage scoring + mandatory haiku gap-reviewer, seeds the findings into `debrief_core.run()`. Artifact contract enforced. |
 | **top** | `/debrief top <path>` (or `/top-problems`) | Want a ranked architectural-problem scan across the 6 sources | 6-source scan + veto checks + X-Y detection + fix-level classification → **ranked tasks** (findings become tasks; debrief creates them just like in default mode). Absorbs `/top-problems`. |
 
 **Modes compose.** `/debrief gaps top <path>` runs deterministic detectors AND the 6-source scan, merging both finding sets before the recursive state machine. `/debrief chain <file>` implies `gaps` (chain mode always runs the deterministic detectors on each session segment).
@@ -162,7 +161,7 @@ The full Phase 0 → Phase 9 diagram lives in [`references/loop-diagram.md`](ref
 | File | Role |
 |---|---|
 | `__lib/debrief_core.py` | The state machine + recursive loop. The LLM supplies `source_tree_resolver` and `layer_extractor` callbacks (Agent tool invocations); `debrief_core` enforces the state discipline and emits ready-to-task bodies. `--selfcheck` green. |
-| `__lib/gto_adapter.py` | Optional bridge to `/gto`'s deterministic detectors (session goal/outcome, completion filter, carryover+resolution registry, leverage scoring, gap-to-skill routing). Lazy-imported from `skills.gto.__lib`; only loaded under `--gto-detectors`. Converts gto Findings to debrief's `{symptom_text, symptom_source}` shape at the boundary so debrief's state machine stays the single source of truth. `/gto` remains the source of truth for its detector modules — debrief imports, does not vendor. |
+| `__lib/gap_engine_adapter.py` | Optional bridge to debrief's deterministic gap engine (session goal/outcome, completion filter, carryover+resolution registry, leverage scoring, gap-to-skill routing). Lazy-imported from `skills.debrief.gap_engine`; only loaded under `--gap-detectors`. Converts engine Findings to debrief's `{symptom_text, symptom_source}` shape at the boundary so the state machine stays the single source of truth. |
 | `scripts/chunk_plan.py` | Chunk plan + theme-hint grep. |
 | `scripts/debrief.py` | Driver: `plan` (chunks + extraction prompts), `run` (route deduped findings through `debrief_core.run()` — the only path to `WRITTEN`), `validate` (BLOCKERS-id check), `close` (Phase 8/9 closure gate — refuses done without a tagged file + breadcrumb task), `selfcheck`. |
 | `scripts/rename_tag.py` | Deterministic source-file rename. |
@@ -206,17 +205,17 @@ A debriefer running `/debrief` does, in order: (1) `debrief.py plan --path <file
 
 `/debrief` handles both single-transcript files and multi-session chain exports (`chain_*.md`) — the victim-log detector, recursion budget, and `--truth-mode contract` gate all scale to chain length. **Chain mode** (`/debrief chain` or `/retro`) walks the chain through the retrospective protocol: recap → gaps → `/friction` → `/red-team` (pre-mortem) → `/rns`, then emits a SCORES summary. Both the default and chain modes share `debrief_core` (same state machine, victim-log detection, /truth gate, task template). `/retro` is now a stub routing to `/debrief chain` — do not invoke it directly; chain `chain_*.md` inputs through `/debrief chain`.
 
-## Gaps mode: deterministic detectors from /gto (`--gto-detectors`)
+## Gaps mode: debrief-owned deterministic detectors (`--gap-detectors`)
 
-`/debrief gaps` (formerly `/gto`) is selected by passing `--gto-detectors` to the run. `/debrief`'s strength is recursive origin-tracing; it has no deterministic first pass. `/gto`'s strength is the opposite — deterministic session-goal/outcome detection, carryover+resolution registry, leverage scoring, and gap-to-skill routing — but no recursive origin work. `--gto-detectors` gives debrief both: a deterministic first pass that seeds the recursion with structured findings.
+`/debrief gaps` is selected by passing `--gap-detectors` to the run. `/debrief`'s strength is recursive origin-tracing; the gap engine supplies the deterministic first pass — session-goal/outcome detection, carryover+resolution registry, leverage scoring, and gap-to-skill routing — before findings enter the recursive state machine.
 
-- `--gto-detectors`: run gto's detectors on `--path` and merge the open findings into the run. Findings arrive as `{symptom_text, symptom_source}` at the same `--findings` seam debrief_core already consumes, then flow through the normal state machine (CLASSIFIED → LOCATED → VERIFIED → WRITTEN). Each WRITTEN task body gets a `[gto] gto_score: N | owner_skill: X` tag stamped by `attach_score_and_owner`.
-- `--gap-review` (requires `--gto-detectors`): two-pass gap-reviewer agent. Pass 1 writes `gap_reviewer_handoff.json` under `~/.claude/.artifacts/debrief/{session-id}/` and prints the Agent-tool dispatch instruction; the running LLM dispatches the gap_reviewer (system prompt `GAP_REVIEW_SYSTEM` from `skills.gto.agents.prompts`), which writes `gap_reviewer_result.json`. Re-run with the same flags (pass 2) to merge the agent's findings.
-- `--findings` is optional when `--gto-detectors` is set; supply both to merge LLM-extracted findings with detector findings.
+- `--gap-detectors`: run debrief's deterministic detectors on `--path` and merge the open findings into the run. Findings arrive as `{symptom_text, symptom_source}` at the same `--findings` seam debrief_core already consumes, then flow through the normal state machine (CLASSIFIED → LOCATED → VERIFIED → WRITTEN). Each WRITTEN task body gets a `[gap] gap_score: N | owner_skill: X` tag stamped by `attach_score_and_owner`.
+- `--gap-review` (requires `--gap-detectors`): two-pass gap-reviewer agent. Pass 1 writes `gap_reviewer_handoff.json` under `~/.claude/.artifacts/debrief/{session-id}/` and prints the Agent-tool dispatch instruction; the running LLM dispatches the gap_reviewer, which writes `gap_reviewer_result.json`. Re-run with the same flags (pass 2) to merge the agent's findings.
+- `--findings` is optional when `--gap-detectors` is set; supply both to merge LLM-extracted findings with detector findings.
 
-**Carryover model:** gto's carryover (`carryover.json`) persists per `--session-id` alongside debrief's `dream-state.json`. Different axes — finding-ID-keyed vs topic-keyed — no merge. Carryover lets a goal that recurred across sessions escalate severity even when each individual transcript mentions it once.
+**Carryover model:** the gap engine's carryover (`carryover.json`) persists per `--session-id` alongside debrief's `dream-state.json`. Different axes — finding-ID-keyed vs topic-keyed — no merge. Carryover lets a goal that recurred across sessions escalate severity even when each individual transcript mentions it once.
 
-**Coupling note:** `--gto-detectors` imports from `skills.gto.__lib` (lazy, in-function). The base `run` path stays import-free — `/debrief` works fine without `/gto`. If `/gto` is restructured or removed, only this opt-in flag breaks; the base skill is unaffected. `/gto` remains the source of truth for its detector modules; debrief imports rather than vendoring to avoid detector drift.
+**Coupling note:** `--gap-detectors` imports from `skills.debrief.gap_engine` (lazy, in-function). The base `run` path stays import-free. The gap engine is debrief-owned, so its adapter and state machine evolve together.
 
 ## After-action rubric — false absorption / lazy stub classification
 
