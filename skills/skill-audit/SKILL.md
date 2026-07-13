@@ -90,7 +90,7 @@ First decide audit-vs-intel. This is one branch, not a separate command.
 Resolve the target path:
 1. If `path` is absolute and contains `SKILL.md` → use it.
 2. If `path` is a directory → look for `SKILL.md` inside.
-3. If `path` is a bare name (e.g. `gto`, `plugin-installer`, `cc-skills-analysis:gto`) →
+3. If `path` is a bare name (e.g. `debrief`, `plugin-installer`, `cc-skills-analysis:debrief`) →
    search `P:/packages/.claude-marketplace/plugins/*/skills/<name>/SKILL.md`
    (namespaced forms scope the search to the named plugin).
 4. If multiple matches → use AskUserQuestion to disambiguate.
@@ -133,7 +133,7 @@ python plugins/cc-skills-analysis/skills/skill-audit/scripts/prune_scan.py selfc
 
 # 3) A real prune pass on this plugin (smoke):
 python plugins/cc-skills-analysis/skills/skill-audit/scripts/prune_scan.py cc-skills-analysis
-# expect at least: 3 retire candidates (gto, retro, top-problems — all DEPRECATED stubs).
+# expect at least: 3 retire candidates (debrief, retro, top-problems — all DEPRECATED or absorbed surfaces).
 ```
 
 The detectors are advisory only — review every finding before any archive, and never auto-apply.
