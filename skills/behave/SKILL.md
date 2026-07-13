@@ -293,7 +293,7 @@ If gate fails: note which hypotheses remain and proceed with MODERATE confidence
 
 - `/diagnose` — Structured diagnostic protocol for code bugs
 - `/trace` — Manual trace-through verification
-- `/gto` — Gap/Task/Opportunity analysis
+- `/debrief gaps` — Gap/Task/Opportunity analysis
 
 **Version**: 1.0.0
 
