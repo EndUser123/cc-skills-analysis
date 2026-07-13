@@ -22,11 +22,11 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# GTO skill coverage for GTO session tracking
+# gap-engine skill coverage for gap-engine session tracking
 _gto_lib = Path("P:\\\\\\.claude/skills")
 if str(_gto_lib) not in _sys.path:
     _sys.path.insert(0, str(_gto_lib))
-from gto.__lib.skill_coverage_detector import _append_skill_coverage  # type: ignore[attr-defined]
+from skills.debrief.gap_engine.__lib.skill_coverage_detector import _append_skill_coverage
 
 
 @dataclass
@@ -539,7 +539,7 @@ def main():
     output_file.write_text(json.dumps(output, indent=2))
     print(f"\n\nFull report exported to: {output_file}")
 
-    # Log GTO skill coverage after report is written
+    # Log gap-engine skill coverage after report is written
     try:
         _append_skill_coverage(
             target_key=f"skills/similarity/{target_name}",
