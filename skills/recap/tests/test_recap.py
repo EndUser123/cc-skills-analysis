@@ -799,3 +799,39 @@ class TestExtractSessionNarrative:
         assert result["current_state"]["modified"] == ["file.py"] or result["current_state"]["modified"] == ["Editing file.py"]
         assert result["current_state"]["working"] == []
         assert result["current_state"]["blocked"] == []
+
+
+class TestPreHandoffCheck:
+    def test_check_is_evidence_scoped_and_grouped(self):
+        from recap import format_pre_handoff_check
+
+        output = format_pre_handoff_check(
+            [{
+                "session_id": "s1",
+                "modified_files": ["src/a.py", "src/b.py"],
+                "known_issues": ["integration test pending"],
+                "next_actions": ["run integration tests", "update handoff"],
+            }],
+            "terminal-1",
+        )
+
+        assert "# Pre-Handoff Check" in output
+        assert "## 🔴 Priority" in output
+        assert "## 🟡 Maintenance" in output
+        assert "## 🔵 Suggestions" in output
+        assert "2 modified file(s) across 1 session(s)" in output
+        assert "integration test pending" in output
+        assert "does not implement" in output
+
+    def test_check_calculates_risk_only_with_explicit_inputs(self):
+        from recap import format_pre_handoff_check
+
+        output = format_pre_handoff_check(
+            [{"session_id": "s1", "modified_files": ["src/a.py"]}],
+            "terminal-1",
+            tier="core",
+            size="large",
+            kind="refactor",
+        )
+
+        assert "Risk score: 1.00 (CRITICAL)" in output

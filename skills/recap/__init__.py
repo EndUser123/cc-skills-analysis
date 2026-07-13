@@ -1381,6 +1381,77 @@ def format_handoff(sessions: list[dict[str, Any]], terminal_id: str) -> str:
     return "\n".join(lines)
 
 
+def format_pre_handoff_check(
+    sessions: list[dict[str, Any]],
+    terminal_id: str,
+    *,
+    tier: str | None = None,
+    size: str | None = None,
+    kind: str | None = None,
+) -> str:
+    """Render DNE's retained pre-handoff checks as a recap-owned audit.
+
+    This is intentionally advisory: it reports what the session evidence says
+    and names checks still requiring human/tool verification. It does not infer
+    commit or push state and it never executes fixes.
+    """
+    latest = sessions[-1] if sessions else {}
+    modified_files = list(dict.fromkeys(
+        str(path)
+        for session in sessions
+        for path in (session.get("modified_files", []) or [])
+        if path
+    ))
+    blocking = _handoff_items(latest, "known_issues", "current_tasks", limit=5)
+    next_items = _handoff_items(latest, "next_actions", "next_steps", limit=5)
+    risk_line = "Risk score: not calculated (pass --tier, --size, and --kind to calculate it)."
+    if tier and size and kind:
+        from recap.risk_calculator import assess_risk, parse_kind, parse_size, parse_tier
+
+        assessment = assess_risk(parse_tier(tier), parse_size(size), parse_kind(kind))
+        risk_line = (
+            f"Risk score: {assessment.score:.2f} ({assessment.level}) — "
+            f"{assessment.tier.value['name']} tier, {assessment.size.value['name']} size, "
+            f"{assessment.kind.value['name']} kind."
+        )
+
+    red = blocking or [
+        "No blocking issue was recorded; verify the transcript before treating that as safe."
+    ]
+    yellow = [
+        f"Blast radius: {len(modified_files)} modified file(s) across {len(sessions)} session(s).",
+        "Rollback: identify the exact revert boundary for each modified artifact.",
+        "Empty test: verify null, empty, and zero-value behavior where the change allows it.",
+        "Inversion: identify the smallest failure that would make the handoff unsafe to resume.",
+    ]
+    blue = next_items[1:] or [
+        "Run `/debrief` later if this session exposes a recurring failure or durable lesson."
+    ]
+
+    lines = [
+        "# Pre-Handoff Check",
+        "",
+        f"- **Terminal**: {terminal_id}",
+        f"- **Evidence scope**: {len(sessions)} session(s), {len(modified_files)} modified file(s)",
+        "- **Push/commit state**: not inferred by recap check; verify from authoritative workflow evidence.",
+        f"- **{risk_line}",
+        "",
+        "## 🔴 Priority",
+        *[f"- {item}" for item in red],
+        "",
+        "## 🟡 Maintenance",
+        *[f"- {item}" for item in yellow],
+        "",
+        "## 🔵 Suggestions",
+        *[f"- {item}" for item in blue],
+        "",
+        "## Assessment",
+        "- Safe to continue only after the Priority items are verified or explicitly accepted.",
+        "- This check produces recommendations; it does not implement them.",
+    ]
+    return "\n".join(lines)
+
+
 def format_recap(
     sessions: list[dict[str, Any]],
     terminal_id: str,
@@ -1984,9 +2055,12 @@ def main() -> None:
         "command",
         nargs="?",
         default="recap",
-        choices=["recap", "brief", "full"],
-        help="Command: recap (handoff), brief (catch-up), or full (detailed history)",
+        choices=["recap", "brief", "full", "check"],
+        help="Command: recap (handoff), brief (catch-up), full (history), or check (pre-handoff audit)",
     )
+    parser.add_argument("--tier", choices=["core", "high", "medium", "low", "utility"])
+    parser.add_argument("--size", choices=["large", "medium", "small", "tiny"])
+    parser.add_argument("--kind", choices=["refactor", "feature", "bugfix", "config", "docs"])
     args = parser.parse_args()
 
     terminal_id = resolve_terminal_key(None)
@@ -2005,7 +2079,15 @@ def main() -> None:
     # The default is a bounded resume handoff. The legacy detailed renderer is
     # retained behind `full` so no extracted session evidence is lost.
     is_brief = args.command == "brief"
-    if is_brief:
+    if args.command == "check":
+        recap = format_pre_handoff_check(
+            sessions,
+            terminal_id,
+            tier=args.tier,
+            size=args.size,
+            kind=args.kind,
+        )
+    elif is_brief:
         recap = format_recap(sessions, terminal_id, brief=True)
     elif args.command == "full":
         recap = format_recap(sessions, terminal_id)

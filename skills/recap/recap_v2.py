@@ -316,7 +316,7 @@ class ResumePacket:
     verification_status: str = "unverified"  # "unverified" | "partially_verified" | "verified"
     resume_risks: list[str] = field(default_factory=list)
     recommended_entry_points: list[dict[str, str]] = field(default_factory=list)
-    enrichment_signals: dict[str, Any] = field(default_factory=dict)  # GTO, friction, behave, trace
+    enrichment_signals: dict[str, Any] = field(default_factory=dict)  # GAP, friction, behave, trace
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1240,8 +1240,8 @@ def _render_handoff_template(state: RecapV2State, handoff_dict: dict[str, Any]) 
         "",
         "## Enrichment Signals",
         "",
-        "### GTO Findings",
-        handoff_dict["gto_findings_section"],
+        "### GAP Findings",
+        handoff_dict["gap_findings_section"],
         "",
         "### Friction Patterns",
         handoff_dict["friction_patterns_section"],
@@ -1423,7 +1423,7 @@ def build_recap_v2(
 
     # stage 7: enrichment (external artifacts)
     # NOTE: No existing enrichment functions found — these are NEW integrations
-    # with GTO/friction/behave/trace artifacts to provide cross-skill signals
+    # with GAP/friction/behave/trace artifacts to provide cross-skill signals
     state = _enrich_from_artifacts(state)
 
     return state
@@ -1433,7 +1433,7 @@ def _enrich_from_artifacts(state: RecapV2State) -> RecapV2State:
     """Stage 7: Enrich resume packet with external skill artifacts.
 
     Reads from:
-    - GTO: .claude/.artifacts/{terminal_id}/gto/outputs/artifact.json
+    - Debrief gaps: .claude/.artifacts/{terminal_id}/debrief/gaps/outputs/artifact.json
     - Friction: .claude/.artifacts/{terminal_id}/friction/outputs/
     - Behave: .claude/.artifacts/{terminal_id}/behave/outputs/
     - Trace: .claude/.artifacts/{terminal_id}/trace/outputs/
@@ -1449,15 +1449,15 @@ def _enrich_from_artifacts(state: RecapV2State) -> RecapV2State:
     if not hasattr(state.resume_packet, "enrichment_signals"):
         state.resume_packet.enrichment_signals = {}
 
-    # GTO enrichment
-    # NOTE: GTO overwrites outputs/artifact.json each run — this is the fresh artifact
-    gto_artifact = artifacts_root / "gto/outputs/artifact.json"
-    if gto_artifact.exists():
+    # GAP enrichment
+    # NOTE: GAP overwrites outputs/artifact.json each run — this is the fresh artifact
+    gap_artifact = artifacts_root / "gap/outputs/artifact.json"
+    if gap_artifact.exists():
         try:
-            gto_data = json.loads(gto_artifact.read_text(encoding="utf-8"))
-            state.resume_packet.enrichment_signals["gto"] = gto_data.get("findings", [])
+            gap_data = json.loads(gap_artifact.read_text(encoding="utf-8"))
+            state.resume_packet.enrichment_signals["gap"] = gap_data.get("findings", [])
         except (json.JSONDecodeError, OSError):
-            state.resume_packet.enrichment_signals["gto"] = []
+            state.resume_packet.enrichment_signals["gap"] = []
 
     # Friction, Behave, Trace — check their output structures
     # Each skill may have outputs/ directories with fresh artifacts
@@ -1523,7 +1523,7 @@ def _export_for_handoff(state: RecapV2State) -> dict[str, Any]:
     Returns a dict with keys matching the handoff template placeholders:
     - completed_section, in_progress_section, blocked_section
     - next_actions_rns, risks_section, decisions_section
-    - gto_findings_section, friction_patterns_section, behave_hypotheses_section, trace_findings_section
+    - gap_findings_section, friction_patterns_section, behave_hypotheses_section, trace_findings_section
     - key_files_section
     """
     # NOTE: No existing handoff exporter found — this is NEW for template integration
@@ -1591,11 +1591,11 @@ def _export_for_handoff(state: RecapV2State) -> dict[str, Any]:
     decisions_section = "\n".join(decisions_lines) if decisions_lines else "No decisions recorded."
 
     # Build Enrichment sections
-    gto_findings = rp.enrichment_signals.get("gto", [])
-    gto_findings_section = "\n".join(
+    gap_findings = rp.enrichment_signals.get("gap", [])
+    gap_findings_section = "\n".join(
         f"- [{f.get('severity', 'unknown')}] {f.get('title', 'Unnamed')}: {f.get('description', '')[:80]}"
-        for f in gto_findings[:5]
-    ) if gto_findings else "No GTO findings."
+        for f in gap_findings[:5]
+    ) if gap_findings else "No GAP findings."
 
     friction_patterns = rp.enrichment_signals.get("friction", [])
     friction_patterns_section = "\n".join(
@@ -1628,7 +1628,7 @@ def _export_for_handoff(state: RecapV2State) -> dict[str, Any]:
         "next_actions_rns": next_actions_rns,
         "risks_section": risks_section,
         "decisions_section": decisions_section,
-        "gto_findings_section": gto_findings_section,
+        "gap_findings_section": gap_findings_section,
         "friction_patterns_section": friction_patterns_section,
         "behave_hypotheses_section": behave_hypotheses_section,
         "trace_findings_section": trace_findings_section,
@@ -1654,7 +1654,7 @@ def main() -> None:
     parser.add_argument(
         "--no-enrichment",
         action="store_true",
-        help="Skip Stage 7 enrichment (GTO/friction/behave/trace artifacts)",
+        help="Skip Stage 7 enrichment (GAP/friction/behave/trace artifacts)",
     )
     parser.add_argument(
         "--export-handoff",
