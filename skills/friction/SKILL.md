@@ -27,7 +27,7 @@ Works standalone via `/friction` or embedded as a step within `/retro`.
 ## When to Use
 
 - `/friction` — standalone analysis of recent friction
-- Embedded in `/retro` between `/gto` and `/ideas`
+- Embedded in `/debrief chain` between gap detection and opportunity review
 - End of session: "what friction did we hit?"
 - Investigating repeated manual steps or corrections
 
