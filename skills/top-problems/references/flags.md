@@ -8,7 +8,7 @@ When specified, skip the broad 6-source scan and run a targeted deep dive on one
 |-----------|-------------|--------------|
 | `hooks` | Grep all files in `hooks/` for `TODO`, `FIXME`, `HACK`, `except.*pass`, bare `except` | Dead code, suppressed errors, deferred fixes |
 | `handoff` | Trace full handoff pipeline: `transcript.py` -> `handoff_v2.py` -> hooks | Structural gaps, missing error handling |
-| `session_chain` | Read `session_chain.py` + all callers (`/recap`, `/gto` skills) | Import failures, ordering bugs, timeout risks |
+| `session_chain` | Read `session_chain.py` + all callers (`/recap`, `/debrief` skills) | Import failures, ordering bugs, timeout risks |
 | `search` | Grep `packages/search-research/` for deprecated functions, broken imports | API drift, unused code paths |
 | `skills` | Glob all `SKILL.md` files, check frontmatter validity, broken suggest links | Missing fields, one-way integrations |
 
