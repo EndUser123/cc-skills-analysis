@@ -154,6 +154,15 @@ def test_tpa_doc_falsification_present():
         assert phrase in section, f"falsification missing phrase: {phrase!r}"
 
 
+def test_debrief_requires_durable_lesson_pass_and_defensive_coding_principle():
+    """Durable lessons are an explicit debrief responsibility, not a suggestion."""
+    text = DEBRIEF_SKILL.read_text(encoding="utf-8")
+    assert "## Durable-lesson pass" in text
+    assert "minimal surface area" in text.lower()
+    assert "complete defensive behavior" in text.lower()
+    assert "must not write durable memory automatically" in text.lower()
+
+
 def test_tpa_doc_forbids_cot_narration():
     """The contract must not require or teach chain-of-thought narration."""
     text = TPA_DOC.read_text(encoding="utf-8")

@@ -179,6 +179,29 @@ The full Phase 0 → Phase 9 diagram lives in [`references/loop-diagram.md`](ref
 - Per the global Destructive Action rules, confirm before deleting or overwriting anything other than the task tracker entries and the single source-file rename.
 - **Before close, ask: did this session surface any stale-path / dead-doc / drifted-config reference?** If yes, file it as a breadcrumb note pointing to `/main` (the `doc_drift` check scans CLAUDE.md + settings.json for absolute script paths that no longer resolve) — not as a task. The next `/main` run will re-flag it until the doc or the code is fixed.
 
+## Durable-lesson pass
+
+Every non-trivial debrief must explicitly check whether a verified finding is
+more than a one-off symptom or local fix. Ask:
+
+1. Does the finding reveal a reusable engineering or workflow principle?
+2. Would the principle apply in another coding task, subsystem, or session?
+3. What evidence supports the generalization, and what observation would
+   falsify it?
+4. Is the right destination a concrete task, a `/wiki` candidate, a skill or
+   hook change, or rejection as local-only?
+
+For coding findings, preserve the general rule: **minimal surface area,
+complete defensive behavior**. A small change must not remove validation,
+error handling, privacy protections, lifecycle cleanup, resource bounds,
+compatibility behavior, or regression coverage merely to keep the diff small.
+The principle applies across coding work, not only to CCR or observability.
+
+Durable lessons require evidence and a stated scope. `/debrief` may emit a
+`/wiki` candidate, but must not write durable memory automatically; `/wiki`
+remains the approval-gated persistence owner. One-off fixes stay tasks or are
+rejected as local-only.
+
 ## Source-file naming standard (Phase 8)
 
 The rename target is **not** a freeform restatement of the transcript. It follows one house format:
